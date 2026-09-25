@@ -33,3 +33,12 @@ Hai yêu cầu kèm theo:
 - "Chưa rõ SOC" còn 118 đơn cả kỳ (khoảng 4 đơn/ngày): Xơ Dừa Miền Tây-PBT (98) và 534 TA HL_PBT (9) không có chuyến nào trong file linehaul; HQ Mart 03/08 (9): xe ghé 6 lần nhưng 0 đơn, có thể bị quét chung với Land Mart; BOO Mart, Masan 31/08 (mỗi điểm 1 đơn).
 - Chờ data mức TO để thay phần đoán SOC.
 - Chưa có trong công thức: ngành hàng, địa điểm, diện tích thật (đang giả định đủ diện tích 100%), giờ cut-off (xử lý bằng ô "Số mốc COT").
+
+## Tối ưu toàn mạng (bước 3, mục 0)
+- Mỗi vùng là một mạng: nút = điểm D2S; ghép được xe khi chung SOC + trùng ≥ 50% ngày + cách ≤ `gKm`, hoặc đang đi chung ≥ 3 chuyến thật; dùng chung người khi cùng FM Hub (≤ `tKm`) hoặc khác Hub nhưng ≤ `xKm`.
+- Tìm kiếm cục bộ bắt đầu từ mạng đang chạy: gộp, chuyển, đổi chỗ, tách; giữ nước làm cả vùng lời nhất. Tuyến ≤ `truck.stops` điểm, nhóm người ≤ `lab.tMax` điểm.
+- So trên cùng mô hình khi tìm; số hiện ra = tiền xe thật + phần mô hình thay đổi (action `net` dùng `tsrc:"real"`), nên không lẫn phần đổi cỡ xe.
+- Xe ghép có thêm chi phí km đi vòng (`truck.kmP`, mặc định 10.000 đ/km, giả định), dùng cho mọi chuyến ghép.
+- Kết quả gom thành gói (tuyến mới + tuyến cũ bị cắt). Loại điều chỉnh mới: `net` (tuyến), `nett` (nhóm người). Bộ đề xuất = kế hoạch mạng trước, rồi đổi cỡ xe / 1 xe nhiều SOC cho điểm còn lại.
+- Cặp ghép từng điểm (`ghep`) giờ tính cả điểm bị bỏ lại trên tuyến đang chạy (`pairNet`).
+- Chưa kiểm: khung giờ lấy hàng, đường đi thực tế, 2 Hub có đồng ý dùng chung người không.
