@@ -670,3 +670,33 @@ ul.thflag li{font-size:12.5px;color:var(--warn);background:var(--warn-fill);bord
 .nvc-stops em.pos{color:var(--profit)}.nvc-stops em.neg{color:var(--loss)}
 .nvc>button{align-self:flex-start}
 </style>
+<style>
+/* ---------- tóm tắt theo tuyến ---------- */
+.nvs{border:1px solid var(--line-2);border-radius:9px;padding:10px 12px;margin:0 0 12px;background:var(--panel-2);display:flex;flex-direction:column;gap:2px}
+.nvs-h{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin-bottom:6px}.nvs-h b{font:600 16px var(--mono);font-variant-numeric:tabular-nums}.nvs-h span{font-size:12px;color:var(--muted)}
+.nvs-r{display:grid;grid-template-columns:minmax(0,230px) minmax(0,1fr) 108px 58px;gap:12px;align-items:center;background:none;border:0;border-radius:5px;padding:4px 6px;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.nvs-r:hover{background:var(--mark-soft)}
+.nvs-n{font-size:12.5px;font-weight:600;display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;min-width:0}.nvs-n i{width:10px;height:10px;border-radius:2px;flex:none}
+.nvs-n small{flex-basis:100%;font-weight:400;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:16px}
+.nvs-t{position:relative;height:20px;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat}
+.nvs-l{position:absolute;top:8.5px;height:3px;border-radius:2px}
+.nvs-v{font:500 12px var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}.nvs-v b{color:var(--ink)}
+.nvs-g{font:600 12px var(--mono);text-align:right;font-variant-numeric:tabular-nums}.nvs-g.pos{color:var(--profit)}.nvs-g.neg{color:var(--loss)}
+@media (max-width:640px){.nvs-r{grid-template-columns:minmax(0,1fr) 58px}.nvs-t{grid-column:1/-1;grid-row:2}.nvs-v{grid-row:3}}
+.nvc.flash{animation:nvflash 1.4s ease-out}@keyframes nvflash{0%{box-shadow:0 0 0 3px var(--mark)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.nvc.flash{animation:none;box-shadow:0 0 0 2px var(--mark)}}
+/* ---------- thẻ nhóm người ---------- */
+.tm-blk{border-radius:7px;background:var(--panel-2);padding:8px 10px}
+.tm-blk.after{background:var(--mark-soft);box-shadow:inset 3px 0 0 var(--c)}
+.tm-blk h5{margin:0 0 4px;font:600 10.5px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tm-blk ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tm-blk li{display:grid;grid-template-columns:minmax(0,1fr) auto 32px;gap:8px;align-items:center}
+.tm-n{font-size:12.5px;font-weight:600;min-width:0;overflow-wrap:anywhere}.tm-n small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.tm-blk em{font:600 12px var(--mono);font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
+.tm-sum{margin-top:6px;font-size:12px;color:var(--ink-2)}.tm-sum b{font-family:var(--mono)}
+.tm-arrow{font-size:11.5px;color:var(--muted);text-align:center}
+.pps{display:inline-flex;gap:2px;flex-wrap:wrap;justify-content:flex-end;max-width:130px}
+.pp{display:inline-block;width:10px;height:16px}.pp svg{display:block;width:100%;height:100%;fill:var(--ink-2)}
+.tm-blk.after .pp svg{fill:var(--c)}
+.pp.part svg{-webkit-mask:linear-gradient(90deg,#000 var(--f),rgba(0,0,0,.18) var(--f));mask:linear-gradient(90deg,#000 var(--f),rgba(0,0,0,.18) var(--f))}
+</style>
