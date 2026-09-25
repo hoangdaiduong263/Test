@@ -1579,14 +1579,18 @@ function nvWhyNeg(x,news,Pb,L){if(x.v>=0||!x.pk)return "";const w=L==="xe"?"Tuy�
 function nvShare(i,Pb,L){const b=Pb.find(h=>h.includes(i))||[i],tot=b.reduce((a,j)=>a+nvAdo(j),0)||1;return (L==="xe"?nvTrips(b):nvHc(b))*nvAdo(i)/tot;}
 /* ---------- tóm tắt: mỗi tuyến/nhóm một dòng, trước → sau (chuyến/ngày hoặc người/ngày) ---------- */
 function nvSummary(st){const {P,L}=st,Pb=L==="xe"?P.T0:P.L0,news=nvNews(st);if(!news.length)return "";
-  const rows=news.map(x=>{const a=x.g.reduce((s,i)=>s+nvShare(i,Pb,L),0),b=L==="xe"?nvTrips(x.g):nvHc(x.g);return Object.assign({},x,{a,b});});
-  const hi=Math.max(...rows.map(r=>Math.max(r.a,r.b)),1),px=v=>(v/hi*100).toFixed(2),u=L==="xe"?"chuyến/ngày":"người/ngày",w=L==="xe"?"Tuyến":"Nhóm";
+  /* xe: vẽ TIỀN XE/ngày (trước = phần của các điểm trong tuyến cũ, chia theo chỗ chiếm) để chấm luôn cùng chiều với cột lãi/lỗ;
+     số chuyến ghi kèm (nhiều chuyến xe nhỏ có thể rẻ hơn ít chuyến xe to). Người: người/ngày. */
+  const nd=Math.max(1,ACT.length),money=i=>{const b=Pb.find(h=>h.includes(i))||[i];return netTC(b).per[i]||0;};
+  const rows=news.map(x=>{const tA=x.g.reduce((s,i)=>s+nvShare(i,Pb,L),0),tB=L==="xe"?nvTrips(x.g):nvHc(x.g);
+    if(L!=="xe")return Object.assign({},x,{a:tA,b:tB});const c=netTC(x.g);return Object.assign({},x,{a:x.g.reduce((s,i)=>s+money(i),0)/nd/1e6,b:x.g.reduce((s,i)=>s+c.per[i],0)/nd/1e6,tA,tB});});
+  const hi=Math.max(...rows.map(r=>Math.max(r.a,r.b)),1e-9),px=v=>(v/hi*100).toFixed(2),u=L==="xe"?"tr tiền xe/ngày":"người/ngày",w=L==="xe"?"Tuyến":"Nhóm",fx=v=>L==="xe"?nf.format(Math.round(v*100)/100):f1(v);
   const ta=rows.reduce((s,r)=>s+r.a,0),tb=rows.reduce((s,r)=>s+r.b,0);
-  return `<div class="nvs"><div class="nvs-h"><b>${f1(ta)} → ${f1(tb)} ${u}</b><span>trên ${rows.length} ${w.toLowerCase()} mới · ${f0((1-tb/Math.max(ta,1e-9))*100)}% ít hơn. Mỗi dòng: chấm rỗng là trước, chấm đặc là sau. Bấm để xem thẻ.</span></div>
+  return `<div class="nvs"><div class="nvs-h"><b>${fx(ta)} → ${fx(tb)} ${u}</b><span>trên ${rows.length} ${w.toLowerCase()} mới · ${f0((1-tb/Math.max(ta,1e-9))*100)}% ít hơn${L==="xe"?` · ${f1(rows.reduce((q,r)=>q+r.tA,0))} → ${f1(rows.reduce((q,r)=>q+r.tB,0))} chuyến/ngày`:""}. Chấm rỗng là trước, chấm đặc là sau. Bấm để xem thẻ.</span></div>
     ${rows.map((r,k)=>{const multi=r.pk&&rows.filter(q=>q.pk===r.pk).length>1,first=multi&&(k===0||rows[k-1].pk!==r.pk);
       return (first?`<div class="nvs-pk">Gói ${r.pi+1}: ${rows.filter(q=>q.pk===r.pk).length} ${w.toLowerCase()} đổi cùng nhau · cả gói <b class="${cls(r.pk.g)}">${sgT(r.pk.g)} tr</b></div>`:"")+`<button type="button" class="nvs-r${multi?" in":""}" data-nvgo="${r.j}"><span class="nvs-n"><i style="background:${r.c}"></i>${w} ${r.j+1}<small>${esc(r.g.map(i=>shortN(S[i].n)).join(" · "))}</small></span>
       <span class="nvs-t"><i class="nvs-l" style="left:${px(Math.min(r.a,r.b))}%;width:${Math.abs(px(r.a)-px(r.b))}%;background:${r.b<=r.a?"var(--profit)":"var(--loss)"}"></i><b class="nv-dot a" style="left:${px(r.a)}%"></b><b class="nv-dot b ${r.b<=r.a?"g":"r"}" style="left:${px(r.b)}%"></b></span>
-      <span class="nvs-v">${f1(r.a)} → <b>${f1(r.b)}</b></span><span class="nvs-g ${cls(r.v)}">${sgT(r.v)}</span></button>`;}).join("")}</div>`;}
+      <span class="nvs-v">${fx(r.a)} → <b>${fx(r.b)}</b>${L==="xe"?`<small>${f1(r.tA)} → ${f1(r.tB)} chuyến</small>`:""}</span><span class="nvs-g ${cls(r.v)}">${sgT(r.v)}</span></button>`;}).join("")}</div>`;}
 /* ---------- thẻ nhóm người: hình người trước → sau, trong một FM Hub ---------- */
 const PERSON=`<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="5" cy="3.4" r="2.9"/><path d="M0.6 16 V10.2 Q0.6 7.2 5 7.2 Q9.4 7.2 9.4 10.2 V16Z"/></svg>`;
 function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=0;k<full;k++)h+=`<i class="pp">${PERSON}</i>`;
