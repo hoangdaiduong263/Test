@@ -1552,8 +1552,8 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
     const ado=g.reduce((a,i)=>a+nvAdo(i),0),dk=L==="xe"?routeKm(g):0;
     const from=i=>{const b=Pb.find(h=>h.includes(i));return !b||b.length===1?(L==="xe"?"trước đi riêng":"trước người riêng"):"trước cùng "+b.filter(y=>y!==i).map(y=>shortN(S[y].n)).join(", ");};
     return `<article class="nvc" id="nvc-${j}"><header><i class="nvc-sw" style="background:${c}"></i><div class="nvc-t"><b>${w} ${j+1}</b><span>${g.length} điểm · ${f0(ado)} đơn/ngày${L==="xe"?` · ${f1(nvTrips(g))} chuyến/ngày${dk>0?` · đi vòng ${f1(dk)} km`:""}`:` · ${f1(nvHc(g))} người/ngày`}</span></div>
-      <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>tr/kỳ</small></b></header>
-      ${nvMini(g,c,L,Pb)}
+      <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>${x.pk&&news.filter(n=>n.pk===x.pk).length>1?`cả gói ${sgT(x.pk.g)}`:"tr/kỳ"}</small></b></header>
+      ${nvWhyNeg(x,news,Pb,L)}${nvMini(g,c,L,Pb)}
       <ol class="nvc-stops" style="--c:${c}">${ord.map(i=>`<li data-pt="${i}"><b>${esc(shortN(S[i].n))}</b><span>${f0(nvAdo(i))} đơn · ${esc(from(i))}</span><em class="${cls(gi(i))}">${sgT(gi(i))}</em></li>`).join("")}
         ${soc?`<li class="soc"><b>${esc(soc)}</b></li>`:""}</ol>
 </article>`;};
@@ -1563,7 +1563,18 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
 /* ---------- các tuyến/nhóm mới của phạm vi đang xem, xếp theo lời ---------- */
 function nvNews(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);
-  return Pa.filter(g=>g.length>1&&!bK.has(gkey(g))&&g.some(i=>inS.has(i))).map(g=>({g,v:g.reduce((a,i)=>a+gi(i),0)})).sort((a,b)=>b.v-a.v).map((x,j)=>Object.assign(x,{j,c:NVCOL[j]||"var(--ink-2)"}));}
+  /* xếp theo GÓI (gói lời nhiều trước), trong gói theo tuyến: một tuyến có thể lỗ nhưng là hệ quả để tuyến khác trong gói lời hơn */
+  const ps=pks.slice().sort((a,b)=>b.g-a.g);
+  return Pa.filter(g=>g.length>1&&!bK.has(gkey(g))&&g.some(i=>inS.has(i))).map(g=>{const pk=ps.find(p=>p.gs.some(h=>gkey(h)===gkey(g)))||null;return {g,v:g.reduce((a,i)=>a+gi(i),0),pk,pi:pk?ps.indexOf(pk):99};})
+    .sort((a,b)=>a.pi-b.pi||b.v-a.v).map((x,j)=>Object.assign(x,{j,c:NVCOL[j]||"var(--ink-2)"}));}
+/* vì sao một tuyến lỗ vẫn nằm trong kế hoạch: điểm của nó phải rời tuyến cũ để tuyến khác trong gói ghép được */
+function nvWhyNeg(x,news,Pb,L){if(x.v>=0||!x.pk)return "";const w=L==="xe"?"Tuyến":"Nhóm",wl=w.toLowerCase();
+  const moved=[];x.g.forEach(i=>{const b=Pb.find(h=>h.includes(i));if(!b||b.length<2)return;b.filter(y=>!x.g.includes(y)).forEach(y=>{const o=news.find(n=>n.g.includes(y));if(o&&o!==x)moved.push([i,y,o]);});});
+  const cost=L==="xe"?netTC:netLC,solo=x.g.reduce((a,i)=>a+cost([i]).tot,0)-cost(x.g).tot;
+  const tot=news.filter(n=>n.pk===x.pk).length;
+  let t=moved.length?`${[...new Set(moved.map(m=>shortN(S[m[0]].n)))].join(", ")} phải rời ${wl} cũ vì ${[...new Set(moved.map(m=>shortN(S[m[1]].n)))].join(", ")} chuyển sang ${[...new Set(moved.map(m=>w+" "+(m[2].j+1)))].join(", ")} (lời ${sgT(moved[0][2].v)} tr). `:"";
+  if(solo>5e4)t+=`Đi chung như thế này vẫn rẻ hơn để các điểm đi riêng ${sgT(solo).replace("+","")} tr. `;
+  return `<p class="nvc-why">${t}Cả gói (${tot} ${wl}) ${sgT(x.pk.g)} tr/kỳ.</p>`;}
 /* phần chuyến (xe) hoặc người của một điểm trong nhóm cũ: chia theo khối lượng */
 function nvShare(i,Pb,L){const b=Pb.find(h=>h.includes(i))||[i],tot=b.reduce((a,j)=>a+nvAdo(j),0)||1;return (L==="xe"?nvTrips(b):nvHc(b))*nvAdo(i)/tot;}
 /* ---------- tóm tắt: mỗi tuyến/nhóm một dòng, trước → sau (chuyến/ngày hoặc người/ngày) ---------- */
@@ -1572,9 +1583,10 @@ function nvSummary(st){const {P,L}=st,Pb=L==="xe"?P.T0:P.L0,news=nvNews(st);if(!
   const hi=Math.max(...rows.map(r=>Math.max(r.a,r.b)),1),px=v=>(v/hi*100).toFixed(2),u=L==="xe"?"chuyến/ngày":"người/ngày",w=L==="xe"?"Tuyến":"Nhóm";
   const ta=rows.reduce((s,r)=>s+r.a,0),tb=rows.reduce((s,r)=>s+r.b,0);
   return `<div class="nvs"><div class="nvs-h"><b>${f1(ta)} → ${f1(tb)} ${u}</b><span>trên ${rows.length} ${w.toLowerCase()} mới · ${f0((1-tb/Math.max(ta,1e-9))*100)}% ít hơn. Mỗi dòng: chấm rỗng là trước, chấm đặc là sau. Bấm để xem thẻ.</span></div>
-    ${rows.map(r=>`<button type="button" class="nvs-r" data-nvgo="${r.j}"><span class="nvs-n"><i style="background:${r.c}"></i>${w} ${r.j+1}<small>${esc(r.g.map(i=>shortN(S[i].n)).join(" · "))}</small></span>
+    ${rows.map((r,k)=>{const multi=r.pk&&rows.filter(q=>q.pk===r.pk).length>1,first=multi&&(k===0||rows[k-1].pk!==r.pk);
+      return (first?`<div class="nvs-pk">Gói ${r.pi+1}: ${rows.filter(q=>q.pk===r.pk).length} ${w.toLowerCase()} đổi cùng nhau · cả gói <b class="${cls(r.pk.g)}">${sgT(r.pk.g)} tr</b></div>`:"")+`<button type="button" class="nvs-r${multi?" in":""}" data-nvgo="${r.j}"><span class="nvs-n"><i style="background:${r.c}"></i>${w} ${r.j+1}<small>${esc(r.g.map(i=>shortN(S[i].n)).join(" · "))}</small></span>
       <span class="nvs-t"><i class="nvs-l" style="left:${px(Math.min(r.a,r.b))}%;width:${Math.abs(px(r.a)-px(r.b))}%;background:${r.b<=r.a?"var(--profit)":"var(--loss)"}"></i><b class="nv-dot a" style="left:${px(r.a)}%"></b><b class="nv-dot b ${r.b<=r.a?"g":"r"}" style="left:${px(r.b)}%"></b></span>
-      <span class="nvs-v">${f1(r.a)} → <b>${f1(r.b)}</b></span><span class="nvs-g ${cls(r.v)}">${sgT(r.v)}</span></button>`).join("")}</div>`;}
+      <span class="nvs-v">${f1(r.a)} → <b>${f1(r.b)}</b></span><span class="nvs-g ${cls(r.v)}">${sgT(r.v)}</span></button>`;}).join("")}</div>`;}
 /* ---------- thẻ nhóm người: hình người trước → sau, trong một FM Hub ---------- */
 const PERSON=`<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="5" cy="3.4" r="2.9"/><path d="M0.6 16 V10.2 Q0.6 7.2 5 7.2 Q9.4 7.2 9.4 10.2 V16Z"/></svg>`;
 function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=0;k<full;k++)h+=`<i class="pp">${PERSON}</i>`;
@@ -1584,9 +1596,10 @@ function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st);
   const N=ui.nvN||6;
   const card=x=>{const g=x.g,befs=Pb.filter(b=>b.some(i=>g.includes(i))),hub=S[g[0]].h||"(chưa gắn hub)",hb=befs.reduce((a,b)=>a+nvHc(b),0),ha=nvHc(g);
     const bRow=b=>`<li><span class="tm-n">${b.length>1?`nhóm ${esc(b.map(i=>shortN(S[i].n)).join(" + "))}`:esc(shortN(S[b[0]].n))}<small>${b.length>1?"đang dùng chung người":"người riêng"} · ${f0(b.reduce((a,i)=>a+nvAdo(i),0))} đơn/ngày</small></span>${nvPeople(nvHc(b))}<em>${f1(nvHc(b))}</em></li>`;
+    const why=nvWhyNeg(x,news,Pb,"nguoi");
     return `<article class="nvc tm" id="nvc-${x.j}"><header><i class="nvc-sw" style="background:${x.c}"></i><div class="nvc-t"><b>Nhóm ${x.j+1} · ${esc(hub.replace(/ Hub$/,""))}</b><span>${g.length} điểm cùng FM Hub · ${f0(g.reduce((a,i)=>a+nvAdo(i),0))} đơn/ngày</span></div>
       <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>tr/kỳ</small></b></header>
-      <div class="tm-blk"><h5>Trước</h5><ul>${befs.map(bRow).join("")}</ul><div class="tm-sum">Cộng ${f1(hb)} người/ngày</div></div>
+      ${why}<div class="tm-blk"><h5>Trước</h5><ul>${befs.map(bRow).join("")}</ul><div class="tm-sum">Cộng ${f1(hb)} người/ngày</div></div>
       <div class="tm-arrow" aria-hidden="true">↓ một nhóm đi vòng ${g.length} điểm, cộng ${G.lab.ovh}% thời gian đi lại</div>
       <div class="tm-blk after" style="--c:${x.c}"><h5>Sau</h5><ul><li><span class="tm-n">${esc(g.map(i=>shortN(S[i].n)).join(" → "))}<small>làm tròn một lần cho cả nhóm</small></span>${nvPeople(ha)}<em>${f1(ha)}</em></li></ul>
         <div class="tm-sum">${f1(hb)} → <b>${f1(ha)}</b> người/ngày${hb>ha?` · bớt ${f1(hb-ha)}`:""}</div></div></article>`;};
