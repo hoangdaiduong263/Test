@@ -1510,8 +1510,12 @@ function nvMap(st){const {P,v,L,sel}=st,W=720,H=470,pad=34;
   const aKey=new Set(Pa.map(gkey)),bKey=new Set(Pb.map(gkey));
   const dim=i=>(sc.q&&!sc.hit.includes(i))||(pk&&!pkS.has(i));
   let e="";
-  const path=(g,cls,stroke,dash,wd,op,tt)=>{if(L==="xe"){const o=routeOrder(g),pts=o.map(i=>XY("p"+i)).filter(Boolean),s=socMain(g),sp_=s&&XY("s"+s);if(sp_)pts.push(sp_);if(pts.length<2)return "";
-      return `<polyline class="${cls}" points="${pts.map(p=>p.map(v=>v.toFixed(1)).join(",")).join(" ")}" style="fill:none;stroke:${stroke};stroke-width:${wd};stroke-linejoin:round;stroke-linecap:round;${dash?`stroke-dasharray:${dash};`:""}opacity:${op}"${tt?` data-tt="${esc(tt)}"`:""}/>`;}
+  /* đoạn giữa các điểm lấy hàng vẽ đậm; đoạn về SOC vẽ mảnh, nhạt (tuyến bị cắt thì bỏ hẳn) để bản đồ không thành "hình quạt" về SOC */
+  const path=(g,cls,stroke,dash,wd,op,tt)=>{if(L==="xe"){const o=routeOrder(g),pts=o.map(i=>XY("p"+i)).filter(Boolean),s=socMain(g),sp_=s&&XY("s"+s);if(!pts.length)return "";
+      const pl=pp=>pp.map(p=>p.map(v=>v.toFixed(1)).join(",")).join(" "),t_=tt?` data-tt="${esc(tt)}"`:"";let h="";
+      if(pts.length>1)h+=`<polyline class="${cls}" points="${pl(pts)}" style="fill:none;stroke:${stroke};stroke-width:${wd};stroke-linejoin:round;stroke-linecap:round;${dash?`stroke-dasharray:${dash};`:""}opacity:${op}"${t_}/>`;
+      if(sp_&&!(dash&&g.length>1))h+=`<polyline points="${pl([pts[pts.length-1],sp_])}" style="fill:none;stroke:${stroke};stroke-width:${g.length>1?1.4:1};${dash?`stroke-dasharray:${dash};`:""}opacity:${g.length>1?.35:.3}"${t_}/>`;
+      return h;}
     // người: nối các điểm trong nhóm theo cây ngắn nhất
     const pts=g.filter(i=>XY("p"+i));if(pts.length<2)return "";const inT=[pts[0]],rest=pts.slice(1);let s="";
     while(rest.length){let best=null;inT.forEach(a=>rest.forEach(b=>{const d=kmPt(a,b)??1e9;if(!best||d<best[2])best=[a,b,d];}));
@@ -1593,18 +1597,76 @@ function nvBridge(st){const {P,sc,sel}=st,inS=new Set(sc.pts),pks=P.tp.concat(P.
     ${steps.map(x=>row(x.lab,x.k==="net"?"tuyến xe":x.k==="nett"?"nhóm người":"",x.a,x.b,x.k==="nett"?"var(--seg-seller)":"var(--seg-truck)",x.g,x.p?` data-netpk="${esc(x.p.id)}" data-netk="${x.k}" aria-pressed="${sel===x.p.id}"`:" disabled",x.p&&sel===x.p.id)).join("")}
     ${row("Sau",`nếu bật cả ${pks.length} gói`,0,cum,cum<0?"var(--loss)":"var(--profit)",null,' disabled')}</div>
     <p class="note" style="margin:6px 0 0">Bấm một gói để tô sáng trên bản đồ và dòng chảy. Số là tr/kỳ, ước khi bật riêng từng gói.</p>`;}
-function netViz(){const st=nvState();if(!st)return "";const {R,Rs,P,sc,v,L}=st;
+/* ---------- TỪNG TUYẾN: mỗi tuyến/nhóm mới một thẻ, bản đồ nhỏ tự phóng + danh sách điểm theo thứ tự lấy hàng ---------- */
+function nvMini(g,c,L,Pb){const W=340,H=200,pad=26,gs=new Set(g);
+  const befs=Pb.filter(b=>b.length>1&&b.some(i=>gs.has(i))),ghosts=[...new Set(befs.flat())].filter(i=>!gs.has(i));
+  const pts=g.concat(ghosts).filter(i=>geoOf(S[i].n));if(pts.length<2)return `<div class="nvc-map nvc-nogeo">Chưa có tọa độ (sheet Station)</div>`;
+  const soc=L==="xe"?socMain(g):null,sg=soc&&geoOf(soc),hubs=L==="nguoi"?[...new Set(g.map(i=>S[i].h).filter(h=>h&&geoOf(h)))]:[];
+  let ll=pts.map(i=>geoOf(S[i].n)).concat(hubs.map(geoOf));const cla=ll.reduce((a,p)=>a+p[0],0)/ll.length,clo=ll.reduce((a,p)=>a+p[1],0)/ll.length;
+  const spanKm=Math.max(...ll.map(p=>kmAB(p,[cla,clo])||0));const socIn=sg&&(kmAB(sg,[cla,clo])||0)<=Math.max(2.2*spanKm,3);if(socIn)ll=ll.concat([sg]);
+  const cx=Math.cos(cla*Math.PI/180),xs=ll.map(p=>p[1]*cx),ys=ll.map(p=>-p[0]);let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const minS=1.2/111;if(x1-x0<minS){const m=(x0+x1)/2;x0=m-minS/2;x1=m+minS/2;}if(y1-y0<minS){const m=(y0+y1)/2;y0=m-minS/2;y1=m+minS/2;}
+  const k=Math.min((W-2*pad-140)/(x1-x0),(H-2*pad)/(y1-y0)),ox=pad+70+((W-2*pad-140)-(x1-x0)*k)/2,oy=pad+((H-2*pad)-(y1-y0)*k)/2;
+  const xy=p=>[ox+(p[1]*cx-x0)*k,oy+(-p[0]-y0)*k],P_=i=>xy(geoOf(S[i].n)),f=v=>v.toFixed(1);
+  let e="",n="";
+  // trước: nét đứt đỏ nối các điểm của tuyến/nhóm cũ
+  befs.forEach(b=>{const o=(L==="xe"?routeOrder(b):b).filter(i=>geoOf(S[i].n)).map(P_);if(o.length>1)e+=`<polyline points="${o.map(p=>f(p[0])+","+f(p[1])).join(" ")}" style="fill:none;stroke:var(--loss);stroke-width:1.6;stroke-dasharray:4 3;opacity:.8"/>`;});
+  // sau: nét liền theo thứ tự lấy hàng, rồi về SOC (hoặc mũi tên chỉ hướng SOC nếu SOC xa)
+  const ord=(L==="xe"?routeOrder(g):g).filter(i=>geoOf(S[i].n)),op=ord.map(P_);
+  if(L==="xe"){if(op.length>1)e+=`<polyline points="${op.map(p=>f(p[0])+","+f(p[1])).join(" ")}" style="fill:none;stroke:${c};stroke-width:3.2;stroke-linejoin:round;stroke-linecap:round"/>`;
+    if(sg){const last=op[op.length-1];let tp;if(socIn)tp=xy(sg);else{const t=xy(sg),dx=t[0]-last[0],dy=t[1]-last[1],d=Math.hypot(dx,dy)||1;tp=[last[0]+dx/d*42,last[1]+dy/d*42];}
+      e+=`<line x1="${f(last[0])}" y1="${f(last[1])}" x2="${f(tp[0])}" y2="${f(tp[1])}" style="stroke:${c};stroke-width:2;stroke-dasharray:${socIn?"0":"2 3"};opacity:.7"/>`;
+      n+=socIn?`<rect x="${f(tp[0]-6)}" y="${f(tp[1]-6)}" width="12" height="12" rx="2" style="fill:var(--ink)"/><text x="${f(tp[0]+9)}" y="${f(tp[1]+4)}" class="nv-lab" style="font-weight:600">${esc(soc.replace(/ Mega SOC| SOC/,""))}</text>`
+        :`<path d="M${f(tp[0])},${f(tp[1])} l-4,-3 l0,6z" transform="rotate(${(Math.atan2(tp[1]-last[1],tp[0]-last[0])*180/Math.PI).toFixed(0)} ${f(tp[0])} ${f(tp[1])})" style="fill:${c}"/><text x="${f(tp[0]+(tp[0]>W/2?-4:4))}" y="${f(tp[1]-6)}" text-anchor="${tp[0]>W/2?"end":"start"}" class="nv-lab" style="font-weight:600">→ ${esc(soc.replace(/ Mega SOC| SOC/,""))} ${f0(kmAB(geoOf(S[ord[ord.length-1]].n),sg)||0)} km</text>`;}}
+  else{for(let a=1;a<op.length;a++)e+=`<line x1="${f(op[a-1][0])}" y1="${f(op[a-1][1])}" x2="${f(op[a][0])}" y2="${f(op[a][1])}" style="stroke:${c};stroke-width:3;stroke-linecap:round"/>`;
+    hubs.forEach(h=>{const p=xy(geoOf(h));n+=`<path d="M${f(p[0])},${f(p[1]-7)} l7,7 l-7,7 l-7,-7z" style="fill:var(--panel);stroke:var(--seg-seller);stroke-width:1.6"/>`;});}
+  const mx=Math.max(1,...g.map(nvAdo)),lab=[];
+  /* nhãn: thử phải, trái, trên, dưới; chỗ nào không đè nhãn khác và không ra ngoài khung thì đặt; nhãn điểm "tách ra" hết chỗ thì bỏ */
+  const box=(x,y,w,anc)=>{const l=anc==="end"?x-w:anc==="middle"?x-w/2:x;return [l,y-9,l+w,y+3];},hit=(a,b)=>a[0]<b[2]&&b[0]<a[2]&&a[1]<b[3]&&b[1]<a[3];
+  const put=(p,r,t,cls,opt)=>{const w=t.length*5.7;
+    for(const [x,y,anc] of [[p[0]+r+4,p[1]+4,"start"],[p[0]-r-4,p[1]+4,"end"],[p[0],p[1]-r-4,"middle"],[p[0],p[1]+r+12,"middle"]]){const b=box(x,y,w,anc);
+      if(b[0]<2||b[2]>W-2||b[1]<2||b[3]>H-2||lab.some(q=>hit(q,b)))continue;lab.push(b);return `<text x="${f(x)}" y="${f(y)}" text-anchor="${anc}" class="nv-lab${cls?" "+cls:""}">${esc(t)}</text>`;}
+    return opt?"":`<text x="${f(p[0]+r+4)}" y="${f(p[1]+4)}" class="nv-lab${cls?" "+cls:""}">${esc(t)}</text>`;};
+  let gh="",nd="",lb="";
+  ghosts.filter(i=>geoOf(S[i].n)).forEach(i=>{const p=P_(i);gh+=`<circle cx="${f(p[0])}" cy="${f(p[1])}" r="5" style="fill:var(--panel);stroke:var(--muted);stroke-width:1.4;stroke-dasharray:2 2"/>`;});
+  ord.forEach((i,j)=>{const p=P_(i),r=7+5*Math.sqrt(nvAdo(i)/mx);lab.push([p[0]-r,p[1]-r,p[0]+r,p[1]+r]);nd+=`<g data-pt="${i}" style="cursor:pointer"><circle cx="${f(p[0])}" cy="${f(p[1])}" r="${f(r)}" style="fill:${c};stroke:var(--panel);stroke-width:2"/><text x="${f(p[0])}" y="${f(p[1]+3.5)}" text-anchor="middle" class="nvc-num">${j+1}</text></g>`;});
+  ord.forEach(i=>{const p=P_(i),r=7+5*Math.sqrt(nvAdo(i)/mx);lb+=put(p,r,shortN(S[i].n).slice(0,20));});
+  ghosts.filter(i=>geoOf(S[i].n)).forEach(i=>{lb+=put(P_(i),5,shortN(S[i].n).slice(0,16)+" (tách ra)","nvc-ghost",1);});
+  n+=gh+nd+lb;
+  return `<div class="nvc-map"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bản đồ tuyến">${e}${n}</svg></div>`;}
+function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
+  const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
+  const news=Pa.filter(g=>g.length>1&&!bK.has(gkey(g))&&g.some(i=>inS.has(i))).map(g=>({g,v:g.reduce((a,i)=>a+gi(i),0)})).sort((a,b)=>b.v-a.v);
+  // tuyến cũ bị giải tán hết (mọi điểm về đi riêng) — cũng là một thay đổi cần thấy
+  const splits=Pb.filter(g=>g.length>1&&g.some(i=>inS.has(i))&&g.every(i=>{const a=Pa.find(h=>h.includes(i));return !a||a.length===1;}));
+  if(!news.length&&!splits.length)return `<p class="note">Không có ${w.toLowerCase()} nào đổi trong phạm vi này${sc.q?` (lọc "${esc(ui.q3)}")`:""}: ${L==="xe"?"các điểm giữ nguyên cách chạy hiện tại":"giữ cách bố trí người hiện tại"}.</p>`;
+  const N=ui.nvN||6,shown=news.slice(0,N);
+  const card=(x,j)=>{const g=x.g,c=NVCOL[j]||"var(--ink-2)",ord=L==="xe"?routeOrder(g):g,soc=L==="xe"?socMain(g):null,pk=pks.find(p=>p.pts.some(i=>g.includes(i)));
+    const ado=g.reduce((a,i)=>a+nvAdo(i),0),dk=L==="xe"?routeKm(g):0;
+    const from=i=>{const b=Pb.find(h=>h.includes(i));return !b||b.length===1?(L==="xe"?"trước đi riêng":"trước người riêng"):"trước cùng "+b.filter(y=>y!==i).map(y=>shortN(S[y].n)).join(", ");};
+    return `<article class="nvc"><header><i class="nvc-sw" style="background:${c}"></i><div class="nvc-t"><b>${w} ${j+1}</b><span>${g.length} điểm · ${f0(ado)} đơn/ngày${L==="xe"?` · ${f1(nvTrips(g))} chuyến/ngày${dk>0?` · đi vòng ${f1(dk)} km`:""}`:` · ${f1(nvHc(g))} người/ngày`}</span></div>
+      <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>tr/kỳ</small></b></header>
+      ${nvMini(g,c,L,Pb)}
+      <ol class="nvc-stops" style="--c:${c}">${ord.map(i=>`<li data-pt="${i}"><b>${esc(shortN(S[i].n))}</b><span>${f0(nvAdo(i))} đơn · ${esc(from(i))}</span><em class="${cls(gi(i))}">${sgT(gi(i))}</em></li>`).join("")}
+        ${soc?`<li class="soc"><b>${esc(soc)}</b></li>`:""}</ol>
+      ${pk?`<button type="button" class="ghost sm" data-netpk="${esc(pk.id)}" data-netk="${pk.k}" data-netm="map">Xem trên bản đồ toàn cảnh</button>`:""}</article>`;};
+  return `<div class="nvc-grid">${shown.map(card).join("")}</div>
+    ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} ${w.toLowerCase()}</button></div>`:""}
+    ${splits.length?`<p class="note">${w} bị giải tán (các điểm về ${L==="xe"?"đi riêng":"người riêng"}): ${splits.map(g=>esc(gName(g))).join("; ")}.</p>`:""}`;}
+function netViz(){const st=nvState();if(!st)return "";const {R,Rs,P,sc,v,L}=st,M=ui.netM||"cards";
   const seg=(key,val,opts)=>`<div class="seg" role="group">${opts.map(([k,l])=>`<button type="button" data-${key}="${k}" aria-pressed="${val===k}">${l}</button>`).join("")}</div>`;
   const nT=P.T1.filter(g=>g.length>1).length,nC=P.T0.filter(g=>g.length>1&&!P.T1.some(h=>gkey(h)===gkey(g))).length;
   return `<div class="card nv" id="nvBox">
     <div class="nv-head">${ui.reg==="all"?seg("netr",R,Rs.map(x=>[x,x])):`<b class="nv-r">${R}</b>`}
-      ${seg("netl",L,[["xe","Tuyến xe"],["nguoi","Nhóm người"]])}${seg("netv",v,[["truoc","Trước"],["sau","Sau"],["ss","So sánh"]])}
+      ${seg("netl",L,[["xe","Tuyến xe"],["nguoi","Nhóm người"]])}${seg("netm",M,[["cards",L==="xe"?"Từng tuyến":"Từng nhóm"],["map","Toàn cảnh"]])}${M==="map"?seg("netv",v,[["truoc","Trước"],["sau","Sau"],["ss","So sánh"]]):""}
       <span class="mini" style="white-space:normal">${sc.q?`Lọc "${esc(ui.q3)}": ${sc.hit.length} điểm khớp + ${sc.pts.length-sc.hit.length} điểm đi chung`:`${sc.pts.length} điểm · ${nC} tuyến bị cắt, ${nT} tuyến ghép sau khi đổi`}</span></div>
-    <div class="nv-grid"><div>${nvMap(st)}
+    ${M==="cards"?`${nvCards(st)}
+    <div class="nv-grid b"><div><h4 class="nv-h">Trước → sau <span class="mini">${sc.q?"các điểm đang lọc":"cả vùng "+R}</span></h4>${nvDumb(st)}</div>
+      <div><h4 class="nv-h">Cầu lãi/lỗ theo gói <span class="mini">${R}</span></h4>${nvBridge(st)}</div></div>`:`<div class="nv-grid"><div>${nvMap(st)}
       <div class="nv-key">${L==="xe"?`<span><i style="background:var(--s1)"></i>tuyến (mỗi màu một tuyến)</span>${v==="ss"?`<span><i class="dash" style="border-color:var(--loss)"></i>tuyến bị cắt</span><span><i style="background:var(--line)"></i>giữ nguyên</span>`:""}<span><i class="dash" style="border-color:var(--muted)"></i>đi riêng về SOC</span><span><i class="sq"></i>SOC</span>`:`<span><i style="background:var(--s1)"></i>nhóm người</span>${v==="ss"?`<span><i class="dash" style="border-color:var(--loss)"></i>nhóm bị thay</span>`:""}<span><i class="dia"></i>FM Hub</span>`}<span><i class="cir"></i>vòng tròn to = nhiều đơn</span><span><i class="cir b"></i>viền đậm = đổi tuyến</span></div></div>
       <div><h4 class="nv-h">Trước → sau</h4>${nvDumb(st)}</div></div>
     <div class="nv-grid b"><div><h4 class="nv-h">${L==="xe"?"Tuyến cũ → tuyến mới":"Nhóm cũ → nhóm mới"} <span class="mini">độ dày = đơn/ngày</span></h4>${nvFlow(st)}</div>
-      <div><h4 class="nv-h">Cầu lãi/lỗ theo gói <span class="mini">${R}</span></h4>${nvBridge(st)}</div></div></div>`;}
+      <div><h4 class="nv-h">Cầu lãi/lỗ theo gói <span class="mini">${R}</span></h4>${nvBridge(st)}</div>`}</div></div>`;}
 /* khối "Tối ưu toàn mạng": kế hoạch mạng từng vùng + các gói (mỗi gói một công tắc) */
 function netCard(){const Rs=REG.filter(R=>ui.reg==="all"||R===ui.reg),q=ui.q3.toLowerCase(),P=Rs.map(netPlan);
   const okq=a=>!q||a.pts.some(i=>S[i].n.toLowerCase().includes(q));
@@ -2740,9 +2802,11 @@ document.addEventListener("click",e=>{
   if(t.closest("[data-more2]")){ui.n2+=40;renderV2();return;}
   const m3=t.closest("[data-more3]");if(m3){ui.more3[m3.dataset.more3]=1;renderV3();return;}
   if(t.closest("[data-rec]")){const R=sug().rec.filter(id=>{const a=parseAct(id);return a&&a.pts.some(inR);});R.forEach(id=>setAct(id,true));toast(`Đã bật ${R.length} điều chỉnh đề xuất${ui.reg!=="all"?" của vùng "+ui.reg:""}.`);scnSoon();return;}
-  const nvb=t.closest("[data-netr],[data-netl],[data-netv],[data-netpk]");if(nvb&&!nvb.disabled){const d=nvb.dataset;
-    if(d.netr){ui.netR=d.netr;ui.netSel="";}if(d.netl){ui.netL=d.netl;ui.netSel="";}if(d.netv)ui.netV=d.netv;
-    if(d.netpk){ui.netSel=ui.netSel===d.netpk?"":d.netpk;ui.netL=d.netk==="nett"?"nguoi":"xe";}
+  if(t.closest("[data-nvmore]")){ui.nvN=(ui.nvN||6)+6;const box=$("nvBox");if(box)box.outerHTML=netViz();return;}
+  const nvb=t.closest("[data-netr],[data-netl],[data-netv],[data-netpk],[data-netm]");if(nvb&&!nvb.disabled){const d=nvb.dataset;
+    if(d.netr){ui.netR=d.netr;ui.netSel="";ui.nvN=6;}if(d.netl){ui.netL=d.netl;ui.netSel="";ui.nvN=6;}if(d.netv)ui.netV=d.netv;
+    if(d.netpk){ui.netSel=d.netm?d.netpk:(ui.netSel===d.netpk?"":d.netpk);ui.netL=d.netk==="nett"?"nguoi":"xe";}
+    if(d.netm){ui.netM=d.netm;if(d.netm==="map"&&!d.netpk)ui.netSel="";}
     const box=$("nvBox");if(box)box.outerHTML=netViz();return;}
   if(t.closest("[data-netall]")){const ids=REG.filter(R=>ui.reg==="all"||R===ui.reg).map(netPlan).flatMap(P=>P.tp.concat(P.lp).map(p=>p.id));ids.forEach(id=>setAct(id,true));toast(`Đã bật ${ids.length} gói mạng lưới.`);scnSoon();return;}
   if(t.closest("[data-clear]")){askConfirm("Tắt mọi điều chỉnh đang bật? Chỉnh tay giữ nguyên.",()=>{SCN.on={};saveScn();scnSoon();},"Tắt hết");return;}
