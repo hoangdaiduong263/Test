@@ -596,3 +596,50 @@ ul.thflag li{font-size:12.5px;color:var(--warn);background:var(--warn-fill);bord
 #gtip{position:fixed;pointer-events:none;background:var(--ink);color:var(--paper);font:12px var(--sans);padding:6px 8px;border-radius:5px;line-height:1.45;z-index:99;opacity:0;max-width:280px;transition:opacity .08s}
 #gtip b{font-weight:600}
 </style>
+<style>
+/* ---------- trực quan kế hoạch mạng ---------- */
+.nv{padding:14px 16px 16px}
+.nv-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:12px}
+.nv-r{font:700 15px var(--sans)}
+.nv-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:16px 22px;align-items:start}
+.nv-grid.b{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);margin-top:18px;padding-top:14px;border-top:1px solid var(--line-2)}
+@media (max-width:860px){.nv-grid,.nv-grid.b{grid-template-columns:minmax(0,1fr)}}
+.nv-h{font:600 13px var(--sans);margin:0 0 8px;color:var(--ink);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.nv-h .mini{display:inline;font-weight:400}
+.nv-mapbox{border:1px solid var(--line-2);border-radius:8px;background:var(--panel-2);overflow:hidden}
+.nv-mapbox svg,.nv-flowbox svg{display:block;width:100%;height:auto}
+.nv-flowbox{overflow-x:auto}.nv-flowbox svg{min-width:560px}
+.nv-lab{font:500 11px var(--sans);fill:var(--ink-2);paint-order:stroke;stroke:var(--panel-2);stroke-width:3px;stroke-linejoin:round}
+.nv-flowbox .nv-lab{stroke:var(--panel)}
+.nv-cap{font:600 10px var(--sans);letter-spacing:.08em;fill:var(--muted)}
+.nv-key{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;color:var(--muted);margin-top:6px}
+.nv-key span{display:inline-flex;align-items:center;gap:6px}
+.nv-key i{display:inline-block;width:16px;height:4px;border-radius:2px}
+.nv-key i.dash{height:0;border-top:2px dashed;border-radius:0;background:none}
+.nv-key i.sq{width:9px;height:9px;background:var(--ink);border-radius:2px}
+.nv-key i.dia{width:8px;height:8px;border:1.6px solid var(--seg-seller);transform:rotate(45deg);border-radius:1px}
+.nv-key i.cir{width:10px;height:10px;border-radius:50%;border:1.2px solid var(--ink-2)}
+.nv-key i.cir.b{border:2px solid var(--ink)}
+.nv-dumb{display:flex;flex-direction:column;gap:12px}
+.nv-drow{display:grid;grid-template-columns:118px minmax(0,1fr) auto;gap:10px;align-items:center}
+.nv-dlab{font-size:12.5px;color:var(--ink);line-height:1.25}.nv-dlab span{display:block;font-size:11px;color:var(--muted)}
+.nv-dtrack{position:relative;height:20px;background:linear-gradient(var(--line-2),var(--line-2)) center/100% 1px no-repeat}
+.nv-dline{position:absolute;top:8.5px;height:3px;border-radius:2px}
+.nv-zero{position:absolute;top:2px;bottom:2px;width:1px;background:var(--muted)}
+.nv-dot{position:absolute;top:4px;width:12px;height:12px;border-radius:50%;transform:translateX(-50%);display:inline-block;box-sizing:border-box}
+.nv-dot.a{background:var(--panel);border:2px solid var(--muted)}
+.nv-dot.b{background:var(--ink-2);border:2px solid var(--panel)}.nv-dot.b.g{background:var(--profit)}.nv-dot.b.r{background:var(--loss)}
+.nv-dval{font:500 12px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+.nv-dval b{font-weight:600;color:var(--ink)}.nv-dval b.pos{color:var(--profit)}.nv-dval b.neg{color:var(--loss)}
+.nv-dkey{display:flex;gap:14px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.nv-dkey span{display:inline-flex;gap:6px;align-items:center}.nv-dkey .nv-dot{position:static;transform:none}
+.nv-bridge{display:flex;flex-direction:column;gap:3px}
+.nv-brow{display:grid;grid-template-columns:minmax(0,160px) minmax(0,1fr) 62px;gap:10px;align-items:center;background:none;border:0;border-radius:5px;padding:3px 4px;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.nv-brow:disabled{cursor:default}.nv-brow:not(:disabled):hover,.nv-brow.on{background:var(--mark-soft)}
+.nv-brow.on{box-shadow:inset 2px 0 0 var(--mark)}
+.nv-blab{font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nv-blab small{display:block;font-size:10.5px;color:var(--muted)}
+.nv-btrack{position:relative;height:16px}
+.nv-bb{position:absolute;top:2px;height:12px;border-radius:3px}
+.nv-bval{font:600 12px var(--mono);text-align:right;font-variant-numeric:tabular-nums}.nv-bval.pos{color:var(--profit)}.nv-bval.neg{color:var(--loss)}
+@media (max-width:560px){.nv-drow{grid-template-columns:92px minmax(0,1fr)}.nv-dval{grid-column:2}.nv-brow{grid-template-columns:minmax(0,110px) minmax(0,1fr) 54px}}
+</style>
