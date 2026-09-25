@@ -1,0 +1,114 @@
+<div id="boot" style="padding:24px;font:15px system-ui">Đang tải…</div>
+<div id="app" hidden>
+<header class="bar"><div class="bar-in">
+  <div class="brand"><b>D2S</b><span>mô phỏng lãi/lỗ</span></div>
+  <div class="grp"><span class="lbl">Kỳ</span><input class="inp" type="date" id="rFrom" aria-label="Từ ngày"><span class="lbl">→</span><input class="inp" type="date" id="rTo" aria-label="Đến ngày">
+    <div class="seg" id="rPreset"><button type="button" data-p="month">Tháng này</button><button type="button" data-p="prev">Tháng trước</button><button type="button" data-p="all">Tất cả</button></div></div>
+  <div class="grp"><span class="lbl">Vùng</span><div class="seg" id="regSeg"></div></div>
+  <div class="grp right"><span class="save-state" id="saveState">Đang tải…</span>
+    <button type="button" class="ghost" data-open="cfg">Cấu hình</button>
+    <button type="button" class="ghost" data-info="how">Cách tính</button></div>
+</div></header>
+
+<nav class="stepnav" id="stepNav" aria-label="Các bước">
+  <div class="stepnav-in">
+    <button type="button" data-v="new" class="tool"><span class="st">Seller mới</span></button>
+    <button type="button" data-v="thr" class="tool"><span class="st">Ngưỡng ADO</span></button>
+    <span class="navsep" aria-hidden="true"></span>
+    <button type="button" data-v="1"><span class="sn">1</span><span class="st">Kỳ &amp; dữ liệu</span></button>
+    <button type="button" data-v="2"><span class="sn">2</span><span class="st">Gốc: không đổi gì</span></button>
+    <button type="button" data-v="3"><span class="sn">3</span><span class="st">Chọn điều chỉnh</span></button>
+    <button type="button" data-v="4"><span class="sn">4</span><span class="st">Kết quả &amp; ảnh hưởng</span></button>
+  </div>
+</nav>
+<div class="strip" id="strip"></div>
+
+<main class="wrap">
+  <section class="view" id="v-1" hidden></section>
+  <section class="view" id="v-2" hidden></section>
+  <section class="view" id="v-3" hidden></section>
+  <section class="view" id="v-4" hidden></section>
+  <section class="view" id="v-new" hidden>
+
+  <h2>Seller mới onboard thì chạy thế nào, lời hay lỗ</h2>
+  <p class="tabsub">Điền hồ sơ seller sắp nhận, thêm các điểm có thể đi cùng (ghép xe, dùng chung người). Trang trả về kế hoạch xe, người cho ba loại ngày, lãi/lỗ từng điểm và cả nhóm, và ngưỡng ADO hoà vốn.</p>
+
+  <details class="dd"><summary>Cách dùng tab này và cách nó tính<span class="tag">đọc một lần</span></summary>
+  <div class="ddbody">
+    <h3 style="margin:0 0 4px">Ba bước dùng</h3>
+    <ol class="why" style="margin:0 0 12px">
+      <li>Bấm <b>"Điền theo seller trung vị của vùng"</b> để có một bộ số khởi điểm hợp lý, rồi sửa những ô bạn biết thật cho từng loại ngày (ADO, % hàng to, số chute, số SOC xe tới, số mốc COT, cách đi xe).</li><li>Bấm <b>"+ Thêm điểm đi cùng"</b> để thêm điểm có thể ghép xe hoặc dùng chung người, rồi sửa hồ sơ điểm đó. Chọn đúng FM Hub quản lý: chỉ điểm cùng Hub mới dùng chung người.</li>
+      <li>Đọc thẻ kế hoạch từng loại ngày: điểm nào đi chung xe nào, mấy người, lãi/lỗ từng điểm và cả nhóm.</li>
+      <li>So <b>ngưỡng ADO</b> với ADO bạn nhập. Nếu dưới ngưỡng, thử thêm điểm đi cùng, đổi cách đi xe, hoặc xem ma trận ở trang Ngưỡng ADO.</li>
+    </ol>
+
+    <h3 style="margin:0 0 4px">Tính theo thứ tự nào</h3>
+    <ol class="why" style="margin:0 0 12px">
+      <li><b>Tách hàng.</b> ADO của loại ngày đó × %hàng to = số hàng to; phần còn lại là hàng nhỏ.</li>
+      <li><b>Đơn phải sort</b> — tự suy ra từ số chute và số SOC xe chở tới. Chia 1 chute: seller không sort gì, chỉ quét, bàn giao, xếp xe. Nhiều chute nhưng xe chỉ về 1 SOC: sort hàng nhỏ, hàng to để nguyên. Xe về từ 2 SOC trở lên: sort cả hàng nhỏ và hàng to.</li>
+      <li><b>Năng suất một người.</b> Bắt đầu từ mức lý tưởng ở Cấu hình chung, rồi trừ theo số chute phải chia, mức đủ diện tích, tỷ lệ hàng to trong phần phải sort, và cách bàn giao.</li>
+      <li><b>Số người.</b> Người của Hub qua điểm làm hết: đơn phải sort ÷ năng suất sort, cộng hàng không sort (chỉ quét, bàn giao, xếp xe) ÷ năng suất bàn giao, làm tròn lên, tối thiểu 1 người. Các điểm cùng FM Hub có thể dùng chung một nhóm người: cộng khối lượng các điểm, cộng hao hụt đi lại, làm tròn một lần rồi chia lại theo khối lượng — nên phần của từng điểm có thể lẻ. "Tự chọn cách rẻ hơn" so hai cách và giữ cách rẻ hơn cho mỗi Hub.</li>
+      <li><b>Chute và SOC.</b> Ba ô, mặc định theo luồng D2S của vùng (file draw.io): số chute seller chia; số SOC xe chở tới (SOC đầu nhận các túi còn lại và chuyển tiếp nguyên túi, không sort lại — đường đỏ trong draw.io), quyết định xe chạy mấy chặng; và số chute theo luồng chuẩn. Chia nhiều chute thì người ở seller sort chậm hơn. Chia ít hơn luồng chuẩn thì phần hàng (chuẩn − thực chia) ÷ chuẩn phải được SOC đầu sort lại, tính theo năng suất và tiền người ở SOC trong Cấu hình.</li>
+      <li><b>Xe.</b> Hàng chia cho số SOC xe chở tới và số mốc COT; mỗi chặng thử từng loại xe và cả tổ hợp nhiều xe lớn cộng một xe nhỏ cho phần dư, giữ phương án rẻ nhất. Sức chứa tính riêng hàng nhỏ và hàng to rồi nhân tỷ lệ lấp đầy. Với nhóm nhiều điểm, trang thử mọi cách chia các điểm thành chuyến riêng hoặc chuyến ghép (điểm "Ghép chung nhóm" luôn đi chung, "Luôn đi riêng" luôn một mình) và giữ cách tổng tiền xe rẻ nhất; tiền xe ghép chia theo chỗ hàng chiếm, cộng phụ phí mỗi điểm dừng. Ké xe FM/LM chỉ trả phần chỗ chiếm cộng phí một điểm dừng.</li>
+      <li><b>Chia lại ở SOC.</b> Chỉ phát sinh khi bật "Luôn tính hàng chia lại ở SOC" trong Cấu hình.</li>
+      <li><b>Tiết kiệm.</b> Số đơn × đơn giá rider và Hub ở Cấu hình chung, hàng to nhân hệ số riêng.</li>
+      <li><b>Lãi/lỗ</b> = tiết kiệm − xe − người − chia lại ở SOC, cho từng loại ngày; rồi nhân số ngày mỗi loại trong khoảng đang chọn để ra cả kỳ.</li>
+    </ol>
+
+    <h3 style="margin:0 0 4px">Ngưỡng ADO được tìm thế nào</h3>
+    <p class="note" style="margin:0 0 12px">Giữ nguyên hồ sơ và các điểm khác, chỉ đổi số đơn của điểm đang xét rồi dò từ thấp lên, chính xác tới từng đơn. Chỉ nhận một mức làm ngưỡng khi <b>từ đó tới gấp đôi đều có lời</b> — tránh bắt nhầm điểm lời tình cờ lúc số xe nhảy bậc. <b>Không dùng chi phí lịch sử.</b></p>
+
+    <h3 style="margin:0 0 4px">Cần biết khi đọc kết quả</h3>
+    <ul class="why" style="margin:0">
+      <li><b>Ngành hàng và địa điểm</b> được ghi lại nhưng chưa vào công thức, vì file volume chưa có hai cột đó. Bảng "seller tương tự" đang khớp theo vùng, ADO và %hàng to.</li>
+      <li><b>Mức đủ diện tích</b> đang là giả định 100%. Khi có số m2 và mật độ đơn thật, sửa ô này thì năng suất và số người đổi theo.</li>
+      <li><b>Chưa tính giờ cut-off.</b> Nếu seller buộc phải bàn giao nhiều đợt, tăng ô "Số mốc COT" — mỗi mốc xe phải tới thêm một lần nên tiền xe tăng.</li>
+      <li><b>Số ngày mỗi loại</b> lấy theo khoảng ngày đang chọn ở thanh trên cùng, nên tổng cả kỳ đổi khi bạn đổi khoảng ngày.</li>
+    </ul>
+  </div></details>
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between;margin-bottom:4px">
+      <h3 style="margin:0">Hồ sơ seller</h3>
+      <span>
+        <button type="button" class="ghost" id="npPreset">Điền theo seller trung vị của vùng</button>
+        <button type="button" class="ghost" id="npReset">Xoá hết</button>
+      </span>
+    </div>
+    <div class="dcols" id="npForm"></div>
+  </div>
+
+  <div class="panel" style="margin-top:12px">
+    <h3>Kế hoạch theo từng loại ngày</h3>
+    <p class="hint">Mỗi thẻ là một loại ngày. Xe được chọn tự động theo lượng hàng trên xe (đi riêng hoặc ghép); tiền xe ghép chia theo chỗ hàng chiếm. Người tính theo FM Hub: điểm cùng Hub có thể dùng chung người.</p>
+    <div class="plan" id="npPlan"></div>
+    <div class="tablewrap" style="margin-top:12px"><table class="data" id="npTable"></table></div>
+  </div>
+
+  <div style="margin-top:12px">
+    <div class="panel">
+      <h3>Ngưỡng ADO hoà vốn</h3>
+      <p class="hint">Mức đơn/ngày thấp nhất mà từ đó tới gấp đôi mức đó seller đều có lời. Mỗi loại ngày có hồ sơ riêng (chute, mốc COT, sort, cách đi xe) nên có ngưỡng riêng. Không dùng chi phí lịch sử.</p>
+      <div class="thr" id="npThr"></div>
+      <div id="npChart"></div>
+      <p class="note">Ngưỡng của một điểm tính khi các điểm khác trong nhóm giữ nguyên số đơn. Muốn xem mọi cách chạy cho một điểm điển hình (đi một mình, nhóm 2–3 điểm giống nhau), dùng ma trận ở trang Ngưỡng ADO.</p>
+    </div>
+    <div class="panel" style="margin-top:12px">
+      <h3>Seller tương tự đang chạy thế nào</h3>
+      <p class="hint" id="npSimNote"></p>
+      <div class="tablewrap"><table class="data"><thead><tr><th>Seller</th><th>ADO BAU</th><th>% hàng to</th><th>Chute · SOC xe tới</th><th>Mốc COT</th><th>Người/ngày</th><th>Xe hay dùng</th><th>Lãi/lỗ (đ/đơn)</th></tr></thead><tbody id="npSim"></tbody></table></div>
+    </div>
+  </div>
+
+  
+  </section>
+  <section class="view" id="v-thr" hidden>
+    <h2>Mức ADO hợp lý để chạy D2S</h2>
+    <p class="lead">Mỗi vùng một con số: số đơn mỗi ngày tối thiểu để một điểm D2S có lời, và điều kiện đi kèm.</p>
+    <div id="thrMain"></div>
+  </section>
+  <p class="foot" id="cacheInfo"></p>
+</main>
+<div id="modals"></div>
+<div id="toast" hidden></div>
+</div>
