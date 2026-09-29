@@ -81,3 +81,9 @@ Hai yêu cầu kèm theo:
 - Số COT từng ngày (`dayN`) lấy theo chuyến thật: ngày seller không có hàng ở một COT thì không tính lượt đó (không có bàn giao → không có xe/người).
 - HN: COT2 17h/21h chỉ cho seller trong vùng cấm tải (`BAN`, đang trống — cần danh sách); còn lại 17h/19h.
 - Bảng "COT từng seller" ở bước 1: % ngày có xe theo từng COT, phút đi trễ so với Packed, số COT trung bình/ngày.
+
+## Cập nhật 30/09 (khuya): giờ bàn giao cuối của seller
+- COT cuối trong ngày của mỗi seller = giờ bàn giao cuối ngày BAU, ưu tiên: (1) sheet "[D2S] - Thông tin Seller/SPC" cột "Các COT bàn giao" (`HANDOVER`, 86 seller; SPC HN theo giờ mở cửa, đa số 21h); (2) giờ đóng cửa trên deck (`CLOSE`); (3) giờ xe linehaul tới điểm muộn nhất trong ngày, mức `truck.lastP` (90%) số ngày (`lastArr`).
+- Sheet khác deck ở 6 seller (dùng sheet): Top Gia HCM 22h (deck 21h), BOX ME Bình Chánh/Bình Tân/Tân Tạo 20h (deck 19h/24h/24h), Cocoon Juno 21h (deck 19h), An Đạt 20h (deck 23h).
+- Received của COT sớm hơn giờ xe thật tới thì nhóm người chung chỉ cần sort xong trước giờ xe đi.
+- Hệ quả: gốc −1.255 tr (−111 tr, gần hết ở North: nhóm người chung SongLo, NamDinh4 phải xong trước giờ xe đi thật ~17h thay vì 21h30). Kế hoạch mạng (xe/người, tr): North 29/32, South 171/41, HN 477/0, HCM 33/7.
