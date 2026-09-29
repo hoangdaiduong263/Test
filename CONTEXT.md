@@ -87,3 +87,9 @@ Hai yêu cầu kèm theo:
 - Sheet khác deck ở 6 seller (dùng sheet): Top Gia HCM 22h (deck 21h), BOX ME Bình Chánh/Bình Tân/Tân Tạo 20h (deck 19h/24h/24h), Cocoon Juno 21h (deck 19h), An Đạt 20h (deck 23h).
 - Received của COT sớm hơn giờ xe thật tới thì nhóm người chung chỉ cần sort xong trước giờ xe đi.
 - Hệ quả: gốc −1.255 tr (−111 tr, gần hết ở North: nhóm người chung SongLo, NamDinh4 phải xong trước giờ xe đi thật ~17h thay vì 21h30). Kế hoạch mạng (xe/người, tr): North 29/32, South 171/41, HN 477/0, HCM 33/7.
+
+## Cập nhật 30/09 (khuya, 2): nhóm người chung chạy lịch riêng
+- Nhóm người chung đi vòng theo lịch riêng, không chờ xe: làm lần lượt theo hạn COT gần nhất, sort xong điểm này mới sang điểm kia (có thời gian đi giữa điểm). Hàng của một COT sort được từ sau lượt xe trước của điểm, không sớm hơn `lab.sortWin` (180) phút trước giờ Packed. Xe tới mà nhóm chưa xong thì xe chờ.
+- Số người của nhóm chỉ tăng vì trễ do nhóm gây ra (so với cùng lịch xe khi sort không tốn thời gian); xe đã trễ sẵn thì không đẩy nhóm về người riêng.
+- Tuyến xe > 5 điểm thử thêm thứ tự ghé theo giờ xe thật tới (lượt đầu và lượt cuối), trước đây chỉ theo đường đi nên có tuyến bị đảo thứ tự (SongLo).
+- Kết quả: gốc −1.085 tr; kế hoạch mạng (xe/người, tr): North 29/63, South 171/45, HN 477/0, HCM 33/12.
