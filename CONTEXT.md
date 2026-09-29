@@ -52,3 +52,10 @@ Hai yêu cầu kèm theo:
 - **Bước 4** có "Mạng lưới sau điều chỉnh": điểm xếp theo xe ghép (từng tuyến) / xe riêng / ké FLM / xe hub trả, và nhóm đi vòng / người riêng; đánh dấu điểm đổi so với gốc.
 - **Báo cáo Linehaul** (artifact riêng, data tháng 8): seller lỗ do xe, nguyên nhân (xe to hơn cần, thừa chuyến, sàn chuyến do SOC × COT, nhiều adhoc).
 - **Occupancy của BI**: sheet "Occu Seller" = TO lên ÷ tổng sức chứa danh nghĩa các chuyến ghé điểm (1T9 2.000, 5T 3.700, 8T 6.000, 1T25 1.300, VAN 1.000); khớp các dòng đã đối chiếu. Sheet "Occu SPC" chưa khớp cách này, cần BI xác nhận định nghĩa. Connector Drive chỉ đọc được dòng mẫu của hai sheet.
+
+## Cập nhật 29/09 (chiều): lịch mô phỏng từ chuyến thật
+- Mỗi điểm, mỗi lượt xe (cách nhau > 2 giờ là lượt mới): giờ xe tới đầu/cuối, giờ đi, giờ về SOC sớm nhất/muộn nhất, số xe, số đơn lên; tốc độ chất hàng (phút/đơn) và thời gian từ điểm về SOC; tốc độ xe chung đo từ data (`stT`, `simK`).
+- `simRun`: mỗi lượt chia thành n xe (n = đơn của lượt ÷ `truck.simCap`), xe j lấy phần hàng sẵn ở mốc j/(n−1) giữa giờ xe tới đầu và cuối hiện nay. Người riêng: hàng sẵn từ giờ xe tới hiện nay (sort độc lập với xe). Nhóm người chung: sort chỉ bắt đầu khi xe đã tới VÀ nhóm có mặt; xe chờ sort xong mới chất.
+- Đạt khi mọi điểm về SOC không trễ quá `truck.cotTol` (mặc định 30 phút) so với hiện nay. Xe ghép thử mọi thứ tự ghé (≤ 4 điểm). Điểm đang đi chung chuyến thật thì lấy data thật làm căn cứ, không mô phỏng.
+- Tuyến ghép chạy theo số lượt của điểm nhiều lượt nhất; lượt của điểm khác gắn vào lượt gần giờ nhất (2, 3 COT được mô phỏng từng lượt).
+- Hệ quả: gốc lỗ thêm ~210 tr vì các hub dùng chung người (≥ 3 điểm) phải thêm người để giữ giờ về SOC; lời từ ghép xe giảm mạnh (HN: 0 ở mức 30 phút, +131 tr ở 60 phút, +287 tr ở 90 phút).
