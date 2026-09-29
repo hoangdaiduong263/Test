@@ -72,3 +72,4 @@ Hai yêu cầu kèm theo:
 - Số chỗ chất hàng mỗi điểm = số xe chất chồng giờ nhau thường gặp trong data (p75 theo ngày), tối thiểu `truck.docks`; xe sau chờ chỗ trống.
 - Tuyến lớn hơn 5 điểm (tuyến gốc) không thử mọi thứ tự ghé.
 - Nút "Bật kế hoạch mạng + đổi cỡ xe": bật gói mạng lưới và mọi dòng "Đổi cỡ xe" có lời trong vùng; "Đổi cỡ xe" giờ đi cùng được với tuyến mạng lưới (điểm đó tính theo xe đúng cỡ trên tuyến mới).
+- (30/09) Tuyến mạng lưới tự chọn xe đúng cỡ (`tsrc:"fit"`): tiền xe mỗi điểm = min(xe đúng cỡ trên tuyến mới, xe thật + phần chênh do đổi tuyến). Dòng "Đổi cỡ xe" của điểm trong tuyến mạng lưới bị khoá (đã gồm). Gói ghi hai phần: đổi cấu trúc và xe đúng cỡ.
