@@ -73,3 +73,11 @@ Hai yêu cầu kèm theo:
 - Tuyến lớn hơn 5 điểm (tuyến gốc) không thử mọi thứ tự ghé.
 - Nút "Bật kế hoạch mạng + đổi cỡ xe": bật gói mạng lưới và mọi dòng "Đổi cỡ xe" có lời trong vùng; "Đổi cỡ xe" giờ đi cùng được với tuyến mạng lưới (điểm đó tính theo xe đúng cỡ trên tuyến mới).
 - (30/09) Tuyến mạng lưới tự chọn xe đúng cỡ (`tsrc:"fit"`): tiền xe mỗi điểm = min(xe đúng cỡ trên tuyến mới, xe thật + phần chênh do đổi tuyến). Dòng "Đổi cỡ xe" của điểm trong tuyến mạng lưới bị khoá (đã gồm). Gói ghi hai phần: đổi cấu trúc và xe đúng cỡ.
+
+## Cập nhật 30/09 (tối): rà lại COT từng seller
+- Sửa lỗi `cotsOf`: seller có giờ đóng cửa trước COT cuối bị mất COT giữa; nay giữ mọi COT có Packed trước giờ đóng cửa, thêm COT cuối = đóng cửa.
+- Lượt xe gom theo COT (mỗi chuyến gắn COT theo giờ đi, `cotIdx`) thay cho gom theo khoảng trống 2h (trước đây gộp nhầm 2 COT gần nhau).
+- COT "thường bàn giao" = COT có xe ≥ `truck.cotMin`% (mặc định 30%) số ngày có chuyến; số COT mặc định của seller = số COT thường bàn giao.
+- Số COT từng ngày (`dayN`) lấy theo chuyến thật: ngày seller không có hàng ở một COT thì không tính lượt đó (không có bàn giao → không có xe/người).
+- HN: COT2 17h/21h chỉ cho seller trong vùng cấm tải (`BAN`, đang trống — cần danh sách); còn lại 17h/19h.
+- Bảng "COT từng seller" ở bước 1: % ngày có xe theo từng COT, phút đi trễ so với Packed, số COT trung bình/ngày.
