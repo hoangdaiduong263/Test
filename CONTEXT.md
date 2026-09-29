@@ -93,3 +93,10 @@ Hai yêu cầu kèm theo:
 - Số người của nhóm chỉ tăng vì trễ do nhóm gây ra (so với cùng lịch xe khi sort không tốn thời gian); xe đã trễ sẵn thì không đẩy nhóm về người riêng.
 - Tuyến xe > 5 điểm thử thêm thứ tự ghé theo giờ xe thật tới (lượt đầu và lượt cuối), trước đây chỉ theo đường đi nên có tuyến bị đảo thứ tự (SongLo).
 - Kết quả: gốc −1.085 tr; kế hoạch mạng (xe/người, tr): North 29/63, South 171/45, HN 477/0, HCM 33/12.
+
+## Cập nhật 30/09 (khuya, 3): xe chạy sớm trước giờ đóng cửa, nhịp sort theo năng suất
+- COT cuối (giờ seller đóng cửa) là hạn cứng, không nới theo giờ xe đi hiện nay. Các COT khác vẫn nới như cũ.
+- Lượt xe có nguy cơ rời điểm sau giờ COT chuẩn thì cả lượt (mọi xe của lượt) chạy sớm hơn, tối đa `truck.shiftMax` (120) phút; mô phỏng lặp tối đa 4 lần.
+- Người riêng tại điểm: tổng đơn đã chất lên xe tới giờ t ≤ phần người kịp sort tới t. Số người = làm tròn lên người-ngày sort; năng suất như bảng Năng suất (2.000 đơn lý tưởng, trừ chute/COT/bulky), làm liên tục `lab.prodH` (7) giờ, bắt đầu từ giờ seller mở (`OPENT` theo sheet: giờ mở cửa SPC HN, checkin; không có thì min(`lab.open` 8h, xe tới sớm nhất − 60')). Nhóm chung: thời gian sort cũng theo 7 giờ làm.
+- Khi xét ghép xe, nhịp sort tính ở ngày đông (`pdPeak`).
+- Kết quả: gốc −1.118 tr; kế hoạch mạng (xe/người, tr): North 67/66, South 288/51, HN 981/0 (cấu trúc 480 + xe đúng cỡ 501), HCM 50/11.

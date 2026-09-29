@@ -28,9 +28,9 @@ function tOf(i,d){const o=getDay(i,d);if(o&&o.t!=null)return o.t;const sd=schedD
 const DEFG={
   save:{rS:669,rM:2.2,hS:632.2157,hM:1.4},
   veh:[{k:"VAN",on:1,p:500000,n:1000,b:350},{k:"1T25",on:1,p:600000,n:1300,b:450},{k:"1T9",on:1,p:790000,n:2000,b:700},{k:"5T",on:1,p:1200000,n:3700,b:1000},{k:"8T",on:1,p:1800000,n:6000,b:1800}],
-  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,simCap:3000,peakP:90,docks:1,cotMin:30,lastP:90,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
+  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,simCap:3000,peakP:90,docks:1,cotMin:30,lastP:90,shiftMax:120,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
   soc:{al:70,be:70,same:true,pSoc:1050,pay:520000,rq:true,gRs:25,gKeep:true},
-  lab:{sortWin:180,payF:520000,payB:520000,fte:1,fteM:false,paidD:26,ovh:25,minHC:1,poolN:3,tMax:4,tKm:15,cot:true,hrs:8},
+  lab:{sortWin:180,prodH:7,open:480,payF:520000,payB:520000,fte:1,fteM:false,paidD:26,ovh:25,minHC:1,poolN:3,tMax:4,tKm:15,cot:true,hrs:8},
   prod:{base:2000,hand:2000,cI:1,cS:1,cR:10,sI:100,sS:5,sR:10,spK:40,spG:90,bI:10,bS:10,bR:5,hR:50},
   truckSrc:"real",cal:{}
 };
@@ -165,6 +165,9 @@ function lastArr(i){if(i in LASTA)return LASTA[i];const s=S[i],nm=s.n.trim(),v=[
   if(!v.length)return LASTA[i]=null;v.sort((a,b)=>a-b);return LASTA[i]=v[Math.min(v.length-1,Math.floor((v.length-1)*(G.truck.lastP??90)/100))];}
 /* giờ bàn giao cuối của seller và nguồn: sheet thông tin seller > giờ đóng cửa trên deck > giờ xe tới muộn nhất */
 function closeOf(i){const nm=S[i].n.trim();if(HANDOVER[nm]!=null)return {t:HANDOVER[nm],src:"sheet"};if(CLOSE[nm]!=null)return {t:CLOSE[nm],src:"deck"};const a=lastArr(i);return a!=null?{t:a,src:"xe"}:null;}
+/* giờ seller bắt đầu làm (sheet: giờ mở cửa SPC HN, giờ checkin, "liên tục từ …"), phút từ 0h; không có thì min(G.lab.open, giờ xe tới sớm nhất − 60) */
+const OPENT={"HCMSeller- Emmié By Happy Skin":120,"HCMSeller-Fastock Cu Chi":570,"HCMSeller-Flash Cu Chi":540,"HCMSeller-Kho DA LAT Hasfarm":0,"HNSPC - Sieu thi Euro Mart":450,"HNSPC-Anh Quan Mobile":450,"HNSPC-BOO MART":450,"HNSPC-Cafe So":420,"HNSPC-Cua hang tien loi HT Mart":510,"HNSPC-HOAI THUONG SHOP":510,"HNSPC-Kiwi Store":570,"HNSPC-Land Mart":450,"HNSPC-Mini Mart":450,"HNSPC-Mon Pet Shop":450,"HNSPC-Noi that Hoa Nam":480,"HNSPC-Phong ve Bac Viet":420,"HNSPC-Phu kien dien thoai Manh Anh":450,"HNSPC-Sieu Thi Viet Anh":450,"HNSPC-Store 2T":600,"HNSPC-TL Mart":450,"HNSPC-Thuc Pham Sach KALE FARM":450,"HNSPC-Thuc pham sach Ngoc Han":450,"HNSPC-Trung tam dien tu tin hoc QH":450,"SouthSeller-B1B2 nhua Cho Lon":600};
+function openOf(i){const nm=S[i].n.trim();if(OPENT[nm]!=null)return OPENT[nm];const T=stT(i),a=T&&T.w.length?Math.min(...T.w.map(w=>w.arr)):null;return Math.min(G.lab.open??480,a!=null?a-60:1e9);}
 function cotsOf(i){const L=(S[i].R==="North"&&HYS[S[i].n.trim()]?COT_NHY:(COTS[S[i].R]||COTS.North)).map(c=>Object.assign({},c)),co=closeOf(i),cl=co&&co.t;
   if(S[i].R==="HN"&&BAN.has(S[i].n.trim()))L[1]={r:1020,p:1260,ban:1};
   if(cl!=null){const out=L.filter(c=>c.p<cl-1e-9&&!c.ban);out.push({r:cl-60,p:cl,close:1});return out;}   // COT trước giờ đóng cửa giữ nguyên; COT cuối = giờ đóng cửa
@@ -174,11 +177,11 @@ function cotIdx(i,dep){const L=cotsOf(i);for(let k=0;k<L.length;k++)if(L[k].p>=d
 /* lượt xe hiện nay thuộc COT nào: COT sớm nhất có giờ Packed không trước giờ xe đi hiện nay quá 45 phút.
    Hạn = giờ Packed, hoặc giờ xe đi hiện nay nếu hiện nay đã đi muộn hơn (không bắt phương án mới tốt hơn thực tế); đi sau mọi COT thì hạn = giờ đi hiện nay. */
 function cotOfWave(i,w){const L=cotsOf(i),d=w.dep!=null?w.dep:w.arr,k=w.k!=null?w.k:cotIdx(i,d),c=L[k];
-  const o=d>c.p?Object.assign({},c,{k,p:d,r:Math.max(c.r,d-60),lateNow:1,p0:c.p}):Object.assign({},c,{k});
+  const o=d>c.p&&!c.close?Object.assign({},c,{k,p:d,r:Math.max(c.r,d-60),lateNow:1,p0:c.p}):Object.assign({},c,{k,curLate:d>c.p?d-c.p:0});   // COT cuối = giờ seller đóng cửa: không nới
   /* seller thực tế giao cho xe trong giờ cuối trước Packed (xe thật tới sau giờ Received): nhóm người chung chỉ cần sort xong trước giờ xe đi */
   const la=w.arrL??w.arr;if(la!=null&&o.r<la)Object.assign(o,{r:o.p,rLate:1});return o;}
 /* mô phỏng: runs = [{ord (thứ tự ghé), slots}], team = {set, h} hoặc null; vol(i) đơn/ngày; sortPD(i) người-ngày sort/ngày */
-function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,hrs=(G.lab.hrs||8)*60;
+function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.prodH??7)*60;
   /* mỗi lượt chia thành n xe; xe thứ j lấy phần hàng sẵn ở mốc j/(n−1) giữa giờ xe tới đầu và cuối của lượt hiện nay, so với giờ về SOC tương ứng */
   const at=(w,f,a,b)=>w[a]==null?null:w[a]+((w[b]??w[a])-w[a])*f;
   runs.forEach(r=>r.slots.forEach(sl=>{const mem=r.ord.filter(i=>sl.m.some(x=>x.i===i));if(!mem.length)return;
@@ -189,31 +192,44 @@ function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs
      Hàng của một COT sort được từ sau lượt xe trước của điểm, nhưng không sớm hơn G.lab.sortWin phút trước giờ Packed. Xe tới mà nhóm chưa xong thì xe chờ. */
   if(tm){const tasks=[],win=G.lab.sortWin??180,open=(i,w,p)=>{const T=stT(i),ix=T?T.w.findIndex(v=>v.k===w.k):-1,pv=ix>0?T.w[ix-1].dep:-1e9;return Math.max(pv,p-win);};
     jobs.forEach(J=>J.mem.forEach(i=>{if(!tm.set.has(i))return;const x=J.sl.m.find(y=>y.i===i),c=cotOfWave(i,x.w);
-      tasks.push({J,i,dl:c.p,op:open(i,x.w,c.p),dur:sortPD(i)*x.sh/J.n*hrs/tm.h});}));
+      tasks.push({J,i,dl:c.p,op:Math.max(openOf(i),open(i,x.w,c.p)),dur:sortPD(i)*x.sh/J.n*pH/tm.h});}));
     tasks.sort((a,b)=>a.dl-b.dl||a.J.start-b.J.start||a.J.j-b.J.j);let pos=-1,free=-1e9;
     tasks.forEach(T=>{T.s0=Math.max(T.op,pos<0?T.op:free+(pos===T.i?0:legMin(pos,T.i)));T.s1=T.s0+T.dur;free=T.s1;pos=T.i;TK.set(T.J,(TK.get(T.J)||new Map()).set(T.i,T));});}
   /* số chỗ chất hàng mỗi điểm = số xe chất chồng giờ nhau thường gặp trong data (phân vị 75 theo ngày), tối thiểu G.truck.docks: xe sau chờ chỗ trống */
-  const dock={},ndOf=i=>Math.max(1,G.truck.docks||1,(stT(i)||{}).docks||1),takeDock=(i,t)=>{const q=dock[i]||(dock[i]=new Array(ndOf(i)).fill(-1e9));let k=0;q.forEach((v,x)=>{if(v<q[k])k=x;});return {k,t:Math.max(t,q[k])};};
-  jobs.forEach(J=>{let t=0,prev=-1;const st=[];
-    J.mem.forEach(i=>{const x=J.sl.m.find(y=>y.i===i),rdy=at(x.w,J.f,"arr","arrL");t=prev<0?J.start:t+legMin(prev,i);const arr=t;let s0=null,s1=null;
-      if(tm&&tm.set.has(i)){const T=TK.get(J).get(i);s0=T.s0;s1=T.s1;t=Math.max(t,s1);}
-      else t=Math.max(t,rdy);
-      const dk=takeDock(i,t),q=vol(i)*x.sh/J.n;const w0=dk.t-t;t=dk.t+dwellMin(i,q);dock[i][dk.k]=t;st.push({i,arr,s0,s1,dep:t,wait:w0,q});prev=i;});
-    const soc=t+stToSoc(prev);
+  const ndOf=i=>Math.max(1,G.truck.docks||1,(stT(i)||{}).docks||1);
+  /* người riêng tại điểm: sort + chất tối đa theo năng suất (sortPD người-ngày cho cả ngày, làm liên tục G.lab.prodH giờ, bắt đầu từ giờ seller mở):
+     tổng đơn đã chất lên xe tới giờ t không vượt phần người kịp sort tới t. Số người = làm tròn lên sortPD. */
+  const rate=i=>{const pd=sortPD(i);if(!(pd>0))return null;const hc=Math.max(G.lab.minHC||1,Math.ceil(pd-1e-9));return vol(i)/(pd*pH/hc);};   // đơn/phút
+  const runAll=XS=>{const dock={},cum={},rows=[];
+    jobs.forEach(J=>{const X=XS.get(J.sl)||0;let t=0,prev=-1;const st=[];
+      J.mem.forEach(i=>{const x=J.sl.m.find(y=>y.i===i),rdy=at(x.w,J.f,"arr","arrL")-X;t=prev<0?J.start-X:t+legMin(prev,i);const arr=t;let s0=null,s1=null,thr=null;
+        const q=vol(i)*x.sh/J.n,cq=(cum[i]||0)+q;cum[i]=cq;
+        if(tm&&tm.set.has(i)){const T=TK.get(J).get(i);s0=T.s0;s1=T.s1;t=Math.max(t,s1);}
+        else{const r=rate(i);thr=r?openOf(i)+cq/r:null;t=Math.max(t,rdy,thr??-1e9);}
+        const qq=dock[i]||(dock[i]=new Array(ndOf(i)).fill(-1e9));let k=0;qq.forEach((v,y)=>{if(v<qq[k])k=y;});const td=Math.max(t,qq[k]),w0=td-t;t=td+dwellMin(i,q);qq[k]=t;
+        st.push({i,arr,s0,s1,thr,dep:t,wait:w0,q});prev=i;});
+      rows.push({J,X,st,soc:t+stToSoc(prev)});});return rows;};
+  /* lượt xe có nguy cơ rời điểm sau giờ COT chuẩn (nhất là giờ seller đóng cửa): cho cả lượt chạy sớm hơn, tối đa G.truck.shiftMax phút */
+  const XS=new Map();let rows=runAll(XS);
+  for(let it=0;it<4;it++){const ex=new Map();rows.forEach(R=>R.st.forEach(z=>{const x=R.J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w),e=z.dep-(c.p0??c.p);ex.set(R.J.sl,Math.max(ex.get(R.J.sl)??-1e9,e));}));
+    let ch=false;ex.forEach((e,sl)=>{if(e>0.5){const cur=XS.get(sl)||0,nx=Math.min(G.truck.shiftMax??120,cur+e);if(nx>cur+0.5){XS.set(sl,nx);ch=true;}}});if(!ch)break;rows=runAll(XS);}
+  rows.forEach(({J,X,st,soc})=>{
     /* đạt khi xe rời điểm trước giờ Packed của COT; nhóm người chung còn phải sort xong trước giờ Received */
     st.forEach(z=>{const x=J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);z.soc=soc;z.cot=c;
       z.late=Math.max(z.dep-c.p,z.s1!=null&&z.s1-z.s0>=1?z.s1-c.r:-1e9);if(z.late>tol)out.ok=false;out.late=Math.max(out.late,z.late);});
-    out.rows.push({t:J.start,n:J.n,j:J.j,st,soc});});
+    out.rows.push({t:J.start-X,n:J.n,j:J.j,st,soc,shift:X});});
   return out;}
 /* xe ghép, người riêng: thử mọi thứ tự ghé (tối đa 4 điểm), giữ thứ tự trễ ít nhất */
-const RSC={};
+const RSC={},PRA={};
+/* người-ngày sort ở ngày đông của điểm (để kiểm nhịp sort của người riêng khi xét ghép xe) */
+function pdPeak(i){if(!(i in PRA)){const v=typeof BASE!=="undefined"&&BASE?ACT.map(d=>BASE.rows[i][d]).filter(r=>r&&r.vol>0&&r.prod>0):[];PRA[i]=v.length?v.reduce((a,r)=>a+r.prod,0)/v.length:G.prod.base;}return volPeak(i)/Math.max(1,PRA[i]);}
 function routeSched(g){const key=gkey(g);if(key in RSC)return RSC[key];if(g.length<2)return RSC[key]={ok:true,order:g,sim:null};
   const perms=a=>a.length<=1?[a]:a.flatMap((x,k)=>perms(a.slice(0,k).concat(a.slice(k+1))).map(p=>[x].concat(p)));let best=null;
   const byT=g.slice().sort((a,b)=>((waveTimes(a)||[1e9])[0])-((waveTimes(b)||[1e9])[0]));   // thứ tự theo giờ xe thật tới
   const wl=i=>{const w=waveTimes(i);return w?w[w.length-1]:1e9;},byL=g.slice().sort((a,b)=>wl(a)-wl(b));   // theo giờ tới của lượt cuối
   const cand=g.length<=5?perms(g.slice()):[routeOrder(g),byT,byL];   // tuyến lớn (tuyến gốc nhiều điểm): thứ tự theo đường đi hoặc theo giờ xe thật tới
   for(const o of cand){const sl=slotsOf(o);if(!sl)return RSC[key]={ok:true,order:routeOrder(g),sim:null,nodata:true};
-    const r=simRun([{ord:o,slots:sl}],null,volPeak,()=>0);if(!best||r.late<best.sim.late)best={ok:r.ok,order:o,sim:r};}
+    const r=simRun([{ord:o,slots:sl}],null,volPeak,pdPeak);if(!best||r.late<best.sim.late)best={ok:r.ok,order:o,sim:r};}
   return RSC[key]=best;}
 /* lọc nhanh trước khi mô phỏng: lượt xe đầu của hai điểm lệch quá G.truck.cotGap phút thì không ghép */
 function cotOk(i,j){const g=G.truck.cotGap;if(!(g>0))return true;const a=waveTimes(i),b=waveTimes(j);if(!a||!b)return true;return Math.abs(a[0]-b[0])<=g;}
@@ -1710,7 +1726,7 @@ const avgSort=i=>{let a=0,n=0;for(const d of ACT){const r=BASE.rows[i][d];if(r&&
 function schedHtml(sim,team,lab){if(!sim||!sim.rows.length)return `<p class="note" style="margin:0">Chưa đủ giờ xe thật để mô phỏng lịch.</p>`;const tol=G.truck.cotTol??30;
   const late=v=>{const m=Math.round(v);return `<em class="${m>tol?"neg":m>0?"warn":"pos"}">${m>0?"+"+m:m}'</em>`;};
   return `<div class="sch"><div class="sch-h">Lịch mô phỏng${lab?" · "+lab:""}${sim.rows.length>1?` · ${sim.rows.length} xe`:""}<span>số phút cạnh mỗi điểm: sớm (−) / trễ (+) so với hạn COT của điểm đó (Packed; nhóm chung còn xét Received), đỏ nếu trễ quá ${tol} phút</span></div>
-    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${z.cot.lateNow?`${hhmm(z.cot.p0)} (nới tới ${hhmm(z.cot.p)} = giờ xe đi hiện nay)`:hhmm(z.cot.p)} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
+    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}${r.shift>=1?`<small> chạy sớm ${Math.round(r.shift)}'</small>`:""}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.thr!=null&&z.thr>z.arr+1?`, chờ người sort kịp tới ${hhmm(z.thr)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${z.cot.lateNow?`${hhmm(z.cot.p0)} (nới tới ${hhmm(z.cot.p)} = giờ xe đi hiện nay)`:hhmm(z.cot.p)+(z.cot.close?" (đóng cửa)":"")} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
     ${sim.rows.length>6?`<div class="sch-r"><span>… ${sim.rows.length-6} xe khác</span></div>`:""}</div>`;}
 function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
