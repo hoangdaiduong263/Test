@@ -154,7 +154,9 @@ const COTS={HCM:[{r:780,p:840},{r:1020,p:1080},{r:1380,p:1440}],North:[{r:780,p:
 /* HN COT 2*: khu vực cấm tải (không có xe nằm tải) dùng 17h/21h thay cho COT 2 17h/19h. Điền tên seller vào đây khi có danh sách. */
 const BAN=new Set([]);
 const CLOSE={"HCMSeller-Top Gia HCM":1260,"HCMSeller-BOX ME Binh Chanh":1140,"HCMSeller-BOX ME Binh Tan":1440,"HCMSeller-BOX ME Tan Tao":1440,"South-Cum Kho Cocoon Juno":1140,"South-Cum kho An Dat":1380};   // giờ đóng cửa ngày BAU
-function cotsOf(i){const L=(COTS[S[i].R]||COTS.North).map(c=>Object.assign({},c)),cl=CLOSE[S[i].n.trim()];
+/* North gần HY (sheet "D2S HY SOC"): tháng 8 chạy một COT 19h/20h, SOC COT Align */
+const COT_NHY=[{r:1140,p:1200}];
+function cotsOf(i){const L=(S[i].R==="North"&&HYS[S[i].n.trim()]?COT_NHY:(COTS[S[i].R]||COTS.North)).map(c=>Object.assign({},c)),cl=CLOSE[S[i].n.trim()];
   if(S[i].R==="HN"&&BAN.has(S[i].n.trim()))L[1]={r:1020,p:1260,ban:1};
   if(cl!=null){const out=L.filter(c=>c.p<cl-1e-9&&!c.ban);out.push({r:cl-60,p:cl,close:1});return out;}   // COT trước giờ đóng cửa giữ nguyên; COT cuối = giờ đóng cửa
   return L;}
