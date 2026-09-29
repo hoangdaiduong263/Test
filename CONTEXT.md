@@ -65,3 +65,10 @@ Hai yêu cầu kèm theo:
 - Lượt xe hiện nay gắn vào COT sớm nhất có Packed không trước giờ xe đi quá 45 phút; hạn = max(Packed, giờ xe đi hiện nay).
 - Đạt khi xe rời mỗi điểm trước hạn Packed; nhóm người chung còn phải sort xong trước Received (`truck.cotTol` = phút được trễ, mặc định 0).
 - Kết quả (tháng 8): gốc −1.124 tr (47/368 ngày-nhóm chung phải thêm người); tối ưu mạng: North +112, South +127, HN +176, HCM +15 tr.
+
+## Cập nhật 30/09: thời gian dừng theo volume, ngày đông, chỗ chất hàng
+- Thời gian dừng một xe = phần cố định + phút/đơn × số đơn xe lấy, ước lượng Theil–Sen trên các lần dừng thật của từng điểm (`fitDwell`); thiếu data thì dùng trung vị toàn mạng (~10 phút + 5 phút/100 đơn).
+- Tuyến ghép được kiểm ở ngày đông: đơn/ngày phân vị `truck.peakP` (mặc định p90) của từng điểm; nhóm người vẫn kiểm theo đơn từng ngày.
+- Số chỗ chất hàng mỗi điểm = số xe chất chồng giờ nhau thường gặp trong data (p75 theo ngày), tối thiểu `truck.docks`; xe sau chờ chỗ trống.
+- Tuyến lớn hơn 5 điểm (tuyến gốc) không thử mọi thứ tự ghé.
+- Nút "Bật kế hoạch mạng + đổi cỡ xe": bật gói mạng lưới và mọi dòng "Đổi cỡ xe" có lời trong vùng; "Đổi cỡ xe" giờ đi cùng được với tuyến mạng lưới (điểm đó tính theo xe đúng cỡ trên tuyến mới).

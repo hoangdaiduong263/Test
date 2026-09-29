@@ -28,7 +28,7 @@ function tOf(i,d){const o=getDay(i,d);if(o&&o.t!=null)return o.t;const sd=schedD
 const DEFG={
   save:{rS:669,rM:2.2,hS:632.2157,hM:1.4},
   veh:[{k:"VAN",on:1,p:500000,n:1000,b:350},{k:"1T25",on:1,p:600000,n:1300,b:450},{k:"1T9",on:1,p:790000,n:2000,b:700},{k:"5T",on:1,p:1200000,n:3700,b:1000},{k:"8T",on:1,p:1800000,n:6000,b:1800}],
-  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,simCap:3000,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
+  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,simCap:3000,peakP:90,docks:1,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
   soc:{al:70,be:70,same:true,pSoc:1050,pay:520000,rq:true,gRs:25,gKeep:true},
   lab:{payF:520000,payB:520000,fte:1,fteM:false,paidD:26,ovh:25,minHC:1,poolN:3,tMax:4,tKm:15,cot:true,hrs:8},
   prod:{base:2000,hand:2000,cI:1,cS:1,cR:10,sI:100,sS:5,sR:10,spK:40,spG:90,bI:10,bS:10,bR:5,hR:50},
@@ -108,18 +108,30 @@ function routeKm(pts){if(!pts||pts.length<2)return 0;const key=pts.slice().sort(
    Phương án đạt khi xe rời mỗi điểm trước giờ FMLH_Packed của COT tương ứng, và nhóm chung sort xong trước FMHub_received (cho trễ G.truck.cotTol phút). */
 const STC={};let SIMK=null;
 const adoOf=i=>{let a=0,n=0;for(const d of ACT){const v=S[i].v[d]||0;if(v>0){a+=v;n++;}}return n?a/n:0;};
-function stT(i){if(i in STC)return STC[i];const s=S[i],nm=s.n.trim(),byK={},rates=[],toS=[];
+function stT(i){if(i in STC)return STC[i];const s=S[i],nm=s.n.trim(),byK={},pts=[],toS=[],conc=[];
   for(const d of ACT){const st=[];((s.tc&&s.tc[d])||[]).forEach(c=>{const t=TRP[c];if(!t)return;const P=t[5];
       P.forEach((p,k)=>{if(p[1]!==0||String(TRN[p[0]]).trim()!==nm||p[4]==null)return;const sc=P.slice(k+1).find(q=>q[1]===2&&q[4]!=null),dep=p[5]!=null?p[5]:p[4];
-        st.push({arr:p[4],dep,soc:sc?sc[4]:null,up:p[2]||0});if(p[2]>=50&&dep>p[4])rates.push((dep-p[4])/p[2]);if(sc&&sc[4]>dep)toS.push(sc[4]-dep);});});
-    if(!st.length)continue;st.sort((a,b)=>a.arr-b.arr);const W=[];st.forEach(x=>{const w=W[W.length-1];if(w&&x.arr-w.last<=120){w.dep=Math.max(w.dep,x.dep);if(x.soc!=null){w.soc=Math.max(w.soc??-1e9,x.soc);w.socF=Math.min(w.socF??1e9,x.soc);}w.n++;w.up+=x.up;w.last=x.arr;}
+        st.push({arr:p[4],dep,soc:sc?sc[4]:null,up:p[2]||0});if(p[2]>=20&&dep>p[4])pts.push([p[2],dep-p[4]]);if(sc&&sc[4]>dep)toS.push(sc[4]-dep);});});
+    if(!st.length)continue;st.sort((a,b)=>a.arr-b.arr);
+    {let mx=0;st.forEach(a=>{const c=st.filter(b=>b.arr<a.dep&&b.dep>a.arr).length;mx=Math.max(mx,c);});conc.push(mx);}   // số xe chất hàng chồng giờ nhau trong ngày
+    const W=[];st.forEach(x=>{const w=W[W.length-1];if(w&&x.arr-w.last<=120){w.dep=Math.max(w.dep,x.dep);if(x.soc!=null){w.soc=Math.max(w.soc??-1e9,x.soc);w.socF=Math.min(w.socF??1e9,x.soc);}w.n++;w.up+=x.up;w.last=x.arr;}
       else W.push({arr:x.arr,dep:x.dep,soc:x.soc,socF:x.soc,n:1,up:x.up,last:x.arr});});(byK[W.length]=byK[W.length]||[]).push(W);}
   const ks=Object.keys(byK).sort((a,b)=>byK[b].length-byK[a].length);if(!ks.length)return STC[i]=null;const L=byK[ks[0]],mdk=(k,f)=>{const v=L.map(w=>w[k][f]).filter(x=>x!=null);return v.length?med(v):null;};
-  return STC[i]={w:L[0].map((_,k)=>({arr:mdk(k,"arr"),arrL:mdk(k,"last"),dep:mdk(k,"dep"),soc:mdk(k,"soc"),socF:mdk(k,"socF"),n:mdk(k,"n"),up:mdk(k,"up")})),rate:rates.length?med(rates):null,toSoc:toS.length?med(toS):null};}
+  return STC[i]={w:L[0].map((_,k)=>({arr:mdk(k,"arr"),arrL:mdk(k,"last"),dep:mdk(k,"dep"),soc:mdk(k,"soc"),socF:mdk(k,"socF"),n:mdk(k,"n"),up:mdk(k,"up")})),dw:fitDwell(pts),toSoc:toS.length?med(toS):null,
+    docks:conc.length?conc.slice().sort((a,b)=>a-b)[Math.floor((conc.length-1)*0.75)]:1};}
+/* thời gian dừng một xe = phần cố định (vào bãi, giấy tờ, niêm phong) + phút/đơn × số đơn xe lấy.
+   Ước lượng bằng hồi quy trung vị (Theil–Sen) trên các lần dừng thật của điểm: ít nhạy với vài lần xe chờ lâu bất thường.
+   Cần ≥ 6 lần dừng với số đơn khác nhau đủ rộng; không đủ thì dùng số chung toàn mạng. */
+function fitDwell(P){if(P.length<6)return null;const xs=P.map(p=>p[0]);if(Math.max(...xs)<1.5*Math.min(...xs))return null;
+  const sl=[];for(let a=0;a<P.length;a++)for(let b=a+1;b<P.length;b++){const dx=P[b][0]-P[a][0];if(Math.abs(dx)>=20)sl.push((P[b][1]-P[a][1])/dx);}
+  if(!sl.length)return null;const rate=Math.max(0,med(sl)),fix=Math.min(90,Math.max(0,med(P.map(p=>p[1]-rate*p[0]))));return {fix,rate,n:P.length};}
 /* tốc độ chất hàng và tốc độ xe chung (trung vị toàn mạng) cho điểm thiếu data */
-function simK(){if(SIMK)return SIMK;const r=[],v=[];S.forEach((s,i)=>{const t=stT(i);if(!t)return;if(t.rate!=null)r.push(t.rate);const sc=(s.soc||[])[0],km=sc&&kmTo(i,sc);if(t.toSoc>0&&km)v.push(km/t.toSoc);});
-  return SIMK={rate:r.length?med(r):0.05,spd:v.length?Math.min(1.2,Math.max(0.2,med(v))):0.5};}
-const stRate=i=>{const t=stT(i);return t&&t.rate!=null?t.rate:simK().rate;};
+function simK(){if(SIMK)return SIMK;const r=[],f=[],v=[];S.forEach((s,i)=>{const t=stT(i);if(!t)return;if(t.dw){r.push(t.dw.rate);f.push(t.dw.fix);}const sc=(s.soc||[])[0],km=sc&&kmTo(i,sc);if(t.toSoc>0&&km)v.push(km/t.toSoc);});
+  return SIMK={rate:r.length?med(r):0.05,fix:f.length?med(f):15,spd:v.length?Math.min(1.2,Math.max(0.2,med(v))):0.5};}
+const stDw=i=>{const t=stT(i);return t&&t.dw?t.dw:{fix:simK().fix,rate:simK().rate};};
+const dwellMin=(i,q)=>{const d=stDw(i);return d.fix+d.rate*q;};
+/* đơn/ngày của ngày đông (phân vị G.truck.peakP trên các ngày có hàng) để kiểm tuyến ghép: tuyến phải đạt COT cả ngày đông */
+const volPeak=i=>{const a=ACT.map(d=>S[i].v[d]||0).filter(v=>v>0).sort((x,y)=>x-y);if(!a.length)return 0;const p=Math.min(100,Math.max(50,G.truck.peakP??90));return a[Math.min(a.length-1,Math.round((a.length-1)*p/100))];};
 const stToSoc=i=>{const t=stT(i);if(t&&t.toSoc!=null)return t.toSoc;const sc=(S[i].soc||[])[0],km=sc&&kmTo(i,sc);return km?km/simK().spd:45;};
 const legMin=(i,j)=>{const km=kmPt(i,j);return km==null?20:5+km/simK().spd;};
 function waveTimes(i){const t=stT(i);return t?t.w.map(w=>w.arr):null;}
@@ -148,11 +160,13 @@ function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs
     const Q=sl.m.reduce((a,x)=>a+vol(x.i)*x.sh,0),n=Math.max(1,Math.ceil(Q/(G.truck.simCap||3000)));
     for(let j=0;j<n;j++){const f=n>1?j/(n-1):0;jobs.push({sl,mem,n,j,f,start:at(sl.m.find(x=>x.i===mem[0]).w,f,"arr","arrL")});}}));
   jobs.sort((a,b)=>a.start-b.start);const tm=team?{set:team.set,h:team.h,pos:-1,free:-1e9}:null;
+  /* số chỗ chất hàng mỗi điểm = số xe chất chồng giờ nhau thường gặp trong data (phân vị 75 theo ngày), tối thiểu G.truck.docks: xe sau chờ chỗ trống */
+  const dock={},ndOf=i=>Math.max(1,G.truck.docks||1,(stT(i)||{}).docks||1),takeDock=(i,t)=>{const q=dock[i]||(dock[i]=new Array(ndOf(i)).fill(-1e9));let k=0;q.forEach((v,x)=>{if(v<q[k])k=x;});return {k,t:Math.max(t,q[k])};};
   jobs.forEach(J=>{let t=0,prev=-1;const st=[];
     J.mem.forEach(i=>{const x=J.sl.m.find(y=>y.i===i),rdy=at(x.w,J.f,"arr","arrL");t=prev<0?J.start:t+legMin(prev,i);const arr=t;let s0=null,s1=null;
       if(tm&&tm.set.has(i)){s0=Math.max(t,tm.pos<0?t:tm.free+legMin(tm.pos,i));s1=s0+sortPD(i)*x.sh/J.n*hrs/tm.h;t=s1;tm.free=s1;tm.pos=i;}
       else t=Math.max(t,rdy);
-      t+=Math.max(5,stRate(i)*vol(i)*x.sh/J.n);st.push({i,arr,s0,s1,dep:t});prev=i;});
+      const dk=takeDock(i,t),q=vol(i)*x.sh/J.n;const w0=dk.t-t;t=dk.t+dwellMin(i,q);dock[i][dk.k]=t;st.push({i,arr,s0,s1,dep:t,wait:w0,q});prev=i;});
     const soc=t+stToSoc(prev);
     /* đạt khi xe rời điểm trước giờ Packed của COT; nhóm người chung còn phải sort xong trước giờ Received */
     st.forEach(z=>{const x=J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);z.soc=soc;z.cot=c;
@@ -163,8 +177,9 @@ function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs
 const RSC={};
 function routeSched(g){const key=gkey(g);if(key in RSC)return RSC[key];if(g.length<2)return RSC[key]={ok:true,order:g,sim:null};
   const perms=a=>a.length<=1?[a]:a.flatMap((x,k)=>perms(a.slice(0,k).concat(a.slice(k+1))).map(p=>[x].concat(p)));let best=null;
-  for(const o of perms(g.slice())){const sl=slotsOf(o);if(!sl)return RSC[key]={ok:true,order:routeOrder(g),sim:null,nodata:true};
-    const r=simRun([{ord:o,slots:sl}],null,adoOf,()=>0);if(!best||r.late<best.sim.late)best={ok:r.ok,order:o,sim:r};}
+  const cand=g.length<=5?perms(g.slice()):[routeOrder(g)];   // tuyến lớn (tuyến gốc nhiều điểm): chỉ thử thứ tự theo đường đi
+  for(const o of cand){const sl=slotsOf(o);if(!sl)return RSC[key]={ok:true,order:routeOrder(g),sim:null,nodata:true};
+    const r=simRun([{ord:o,slots:sl}],null,volPeak,()=>0);if(!best||r.late<best.sim.late)best={ok:r.ok,order:o,sim:r};}
   return RSC[key]=best;}
 /* lọc nhanh trước khi mô phỏng: lượt xe đầu của hai điểm lệch quá G.truck.cotGap phút thì không ghép */
 function cotOk(i,j){const g=G.truck.cotGap;if(!(g>0))return true;const a=waveTimes(i),b=waveTimes(j);if(!a||!b)return true;return Math.abs(a[0]-b[0])<=g;}
@@ -815,7 +830,7 @@ function conflictsOf(a){const out=[];
     const truckRepl=k=>k==="ghep"||k==="ke"||k==="net",labRepl=k=>k==="team"||k==="nett";
     if(labRepl(a.k)&&labRepl(b.k))out.push(b.id);
     if(truckRepl(a.k)&&truckRepl(b.k))out.push(b.id);
-    else if(truckRepl(a.k)&&b.k==="size")out.push(b.id);          // ghép/ké đã tự chọn xe cho cả chuyến
+    else if(truckRepl(a.k)&&a.k!=="net"&&b.k==="size")out.push(b.id);          // ghép/ké đã tự chọn xe cho cả chuyến; tuyến mạng lưới thì vẫn đổi cỡ xe được
     else if(a.k==="ke"&&b.k==="md")out.push(b.id);                 // ké xe FLM không có "1 xe trả nhiều SOC"
     else if(a.k===b.k&&(a.k==="ch"||a.k==="mt"))out.push(b.id);});
   return out;}
@@ -825,7 +840,7 @@ function relLabel(b,pts){const sh=b.pts.find(x=>pts.includes(x));if(b.k==="net"|
 function lockOf(a){const on=isOn(a.id);
   const bs=activeActs().filter(b=>b.id!==a.id&&b.pts.some(i=>a.pts.includes(i)));
   for(const b of bs){
-    if(a.k==="size"&&(b.k==="ghep"||b.k==="ke"||b.k==="net"))return `Đã gồm trong dòng đang bật (${relLabel(b,a.pts)}): ${b.k!=="ke"?"ghép đã chọn lại loại và số xe cho cả chuyến":"ké xe FLM không dùng xe riêng"}.`;
+    if(a.k==="size"&&(b.k==="ghep"||b.k==="ke"))return `Đã gồm trong dòng đang bật (${relLabel(b,a.pts)}): ${b.k!=="ke"?"ghép đã chọn lại loại và số xe cho cả chuyến":"ké xe FLM không dùng xe riêng"}.`;
     if(a.k==="md"&&b.k==="ke")return `Không đi cùng dòng đang bật (${relLabel(b,a.pts)}): ké xe FLM không có 1 xe trả nhiều SOC.`;
     if(!on&&(a.k==="ghep"||a.k==="ke"||a.k==="net")&&(b.k==="ghep"||b.k==="ke"||b.k==="net"))return `${relLabel(b,a.pts)}: mỗi điểm chỉ đi một kiểu xe. Tắt dòng đó nếu muốn chọn dòng này.`;}
   return null;}
@@ -968,7 +983,7 @@ function buildSug(){
   const rec=new Set(),inNetT=new Set(),inNetL=new Set();
   NP.forEach(P=>{P.tp.forEach(p=>{rec.add(p.id);p.pts.forEach(i=>inNetT.add(i));});P.lp.forEach(p=>{rec.add(p.id);p.pts.forEach(i=>inNetL.add(i));});});
   S.forEach((s,i)=>{const P=RES.cls[i]&&RES.cls[i].plan;if(!P)return;
-    if(!inNetT.has(i)){if(P.truck.k==="size")rec.add(actId.one("size",i));
+    {if(P.truck.k==="size")rec.add(actId.one("size",i));
       else if(P.truck.k==="md"){rec.add(actId.one("size",i));rec.add(actId.one("md",i));}}
     if(P.ops.gCh&&P.ops.ov.ch)rec.add(actId.lvl("ch",i,P.ops.ov.ch));});
   list.forEach(a=>a.rec=rec.has(a.id));
@@ -1147,7 +1162,7 @@ function actsTouching(i){return OUT?OUT.acts.filter(a=>a.pts.includes(i)):[];}
 /* ---------- config panels ---------- */
 const NUMCFG={
   cfgSave:[["save","rS","Rider, một đơn hàng nhỏ","đ","Artifact"],["save","rM","Rider, hàng to tốn gấp","lần","Artifact"],["save","hS","Hub, một đơn hàng nhỏ","đ","Artifact"],["save","hM","Hub, hàng to tốn gấp","lần","Artifact"]],
-  cfgTruck:[["truck","fill","Lấp đầy xe tối đa","%","Giả định"],["truck","ihF","Chuyến xe in-house: tính bằng % giá thuê theo chuyến","%","Giả định"],["truck","stopSur","Phụ phí mỗi điểm lấy thêm (ghép xe)","% giá chuyến","Giả định"],["truck","dropSur","Phụ phí mỗi SOC trả thêm (1 xe nhiều SOC)","% giá chuyến","Giả định"],["truck","keF","Ké FM/LM: trả theo phần chỗ chiếm","%","Giả định"],["truck","keStop","Ké FM/LM: phí một điểm dừng","% giá chuyến","Giả định"],["truck","gKm","Ghép xe: chỉ đề xuất ghép điểm cách nhau tối đa (0 = không giới hạn)","km","Tọa độ sheet Station"],["truck","stops","Tối ưu mạng: số điểm lấy hàng tối đa trên một chuyến","điểm","Giả định"],["truck","kmP","Xe ghép: tiền mỗi km đi vòng để lấy thêm điểm (0 = không tính)","đ/km","Giả định"],["truck","cotTol","Lịch mô phỏng: cho phép trễ so với giờ Packed/Received của COT","phút","Deck Sellers direct to SOC"],["truck","cotGap","Lọc nhanh: lượt xe đầu của hai điểm lệch quá thì không xét ghép","phút","Data linehaul (giờ xe tới)"],["truck","simCap","Lịch mô phỏng: số đơn một xe chở mỗi lượt (để tính số xe chạy song song)","đơn","Giả định"]],
+  cfgTruck:[["truck","fill","Lấp đầy xe tối đa","%","Giả định"],["truck","ihF","Chuyến xe in-house: tính bằng % giá thuê theo chuyến","%","Giả định"],["truck","stopSur","Phụ phí mỗi điểm lấy thêm (ghép xe)","% giá chuyến","Giả định"],["truck","dropSur","Phụ phí mỗi SOC trả thêm (1 xe nhiều SOC)","% giá chuyến","Giả định"],["truck","keF","Ké FM/LM: trả theo phần chỗ chiếm","%","Giả định"],["truck","keStop","Ké FM/LM: phí một điểm dừng","% giá chuyến","Giả định"],["truck","gKm","Ghép xe: chỉ đề xuất ghép điểm cách nhau tối đa (0 = không giới hạn)","km","Tọa độ sheet Station"],["truck","stops","Tối ưu mạng: số điểm lấy hàng tối đa trên một chuyến","điểm","Giả định"],["truck","kmP","Xe ghép: tiền mỗi km đi vòng để lấy thêm điểm (0 = không tính)","đ/km","Giả định"],["truck","cotTol","Lịch mô phỏng: cho phép trễ so với giờ Packed/Received của COT","phút","Deck Sellers direct to SOC"],["truck","cotGap","Lọc nhanh: lượt xe đầu của hai điểm lệch quá thì không xét ghép","phút","Data linehaul (giờ xe tới)"],["truck","simCap","Lịch mô phỏng: số đơn một xe chở mỗi lượt (để tính số xe của lượt)","đơn","Giả định"],["truck","peakP","Lịch mô phỏng: kiểm tuyến ghép ở ngày đông (phân vị đơn/ngày của từng điểm; 50 = ngày thường)","%","Giả định"],["truck","docks","Lịch mô phỏng: số xe chất hàng cùng lúc tại một điểm, tối thiểu (data cho thấy nhiều hơn thì dùng data)","xe","Data linehaul"]],
   cfgLab:[["lab","payF","Lương FTE một ngày","đ","Artifact"],["lab","payB","Lương BPO một ngày (gốc có mức 350k)","đ","Artifact"],["lab","fte","Trong mỗi đội, số người đầu là FTE","người","Giả định"],["lab","paidD","Ngày công FTE/tháng (khi trả cả tháng)","ngày","Giả định"],["lab","ovh","Dùng chung người: thời gian đi lại giữa các điểm","%","Giả định"],["lab","minHC","Người tối thiểu mỗi điểm mỗi ngày chạy","người","Artifact"],["lab","poolN","Gốc: FM Hub có từ bấy nhiêu điểm D2S trở lên thì các điểm dùng chung 1 nhóm người (0 = tắt)","điểm","Giả định"],["lab","tMax","Tối ưu mạng: số điểm tối đa một nhóm người đi vòng","điểm","Giả định"],["lab","tKm","Tối ưu mạng: điểm cùng Hub dùng chung người khi cách nhau tối đa (0 = không giới hạn)","km","Tọa độ sheet Station"],["lab","hrs","Số giờ làm của một người một ngày","giờ","Giả định"]],
   cfgSoc:[["soc","al","Phần hàng phải chia lại ở SOC (khi bật tính)","%","Artifact"],["soc","be","Trong đó phải chia tay","%","Artifact"],["soc","pSoc","Năng suất người ở SOC (khi không dùng chung)","đơn/ngày","Artifact"],["soc","pay","Tiền một người ở SOC một ngày","đ","Artifact"],["soc","gRs","Điểm giữa: SOC sort lại tối đa (phần đơn của điểm)","%","Giới hạn vận hành"]]
 };
@@ -1639,10 +1654,10 @@ function nvMini(g,c,L,Pb){const W=340,H=200,pad=34,gs=new Set(g);
   return `<div class="nvc-map"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bản đồ tuyến">${e}${n}</svg></div>`;}
 /* lịch mô phỏng: mỗi xe một dòng — giờ tới/đi từng điểm, giờ về SOC so với hiện nay */
 const avgSort=i=>{let a=0,n=0;for(const d of ACT){const r=BASE.rows[i][d];if(r&&r.vol>0&&r.prod>0){a+=r.sv/r.prod;n++;}}return n?a/n:0;};
-function schedHtml(sim,team){if(!sim||!sim.rows.length)return `<p class="note" style="margin:0">Chưa đủ giờ xe thật để mô phỏng lịch.</p>`;const tol=G.truck.cotTol??30;
+function schedHtml(sim,team,lab){if(!sim||!sim.rows.length)return `<p class="note" style="margin:0">Chưa đủ giờ xe thật để mô phỏng lịch.</p>`;const tol=G.truck.cotTol??30;
   const late=v=>{const m=Math.round(v);return `<em class="${m>tol?"neg":m>0?"warn":"pos"}">${m>0?"+"+m:m}'</em>`;};
-  return `<div class="sch"><div class="sch-h">Lịch mô phỏng${sim.rows.length>1?` · ${sim.rows.length} xe`:""}<span>số phút cạnh mỗi điểm: sớm (−) / trễ (+) so với hạn COT của điểm đó (Packed; nhóm chung còn xét Received), đỏ nếu trễ quá ${tol} phút</span></div>
-    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}, đi ${hhmm(z.dep)} · hạn ${hhmm(z.cot.p)} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
+  return `<div class="sch"><div class="sch-h">Lịch mô phỏng${lab?" · "+lab:""}${sim.rows.length>1?` · ${sim.rows.length} xe`:""}<span>số phút cạnh mỗi điểm: sớm (−) / trễ (+) so với hạn COT của điểm đó (Packed; nhóm chung còn xét Received), đỏ nếu trễ quá ${tol} phút</span></div>
+    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${hhmm(z.cot.p)} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
     ${sim.rows.length>6?`<div class="sch-r"><span>… ${sim.rows.length-6} xe khác</span></div>`:""}</div>`;}
 function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
@@ -1660,7 +1675,7 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
       ${nvWhyNeg(x,news,Pb,L)}${nvMini(g,c,L,Pb)}
       <ol class="nvc-stops" style="--c:${c}">${ord.map(i=>`<li data-pt="${i}"><b>${esc(shortN(S[i].n))}</b><span>${f0(nvAdo(i))} đơn · ${esc(from(i))}${waveTimes(i)?` · hiện nay xe tới ${waveTimes(i).map(hhmm).join(", ")}`:""}</span><em class="${cls(gi(i))}">${sgT(gi(i))}</em></li>`).join("")}
         ${soc?`<li class="soc"><b>${esc(soc)}</b></li>`:""}</ol>
-      ${rs?schedHtml(rs.sim,false):L==="xe"?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay.</p>`:""}
+      ${rs?schedHtml(rs.sim,false,`ngày đông (p${G.truck.peakP??90}): ${f0(g.reduce((a,i)=>a+volPeak(i),0))} đơn`):L==="xe"?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay.</p>`:""}
 </article>`;};
   return `<div class="nvc-grid">${shown.map(card).join("")}</div>
     ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} ${w.toLowerCase()}</button></div>`:""}
@@ -1714,7 +1729,7 @@ function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st);
       <div class="tm-arrow" aria-hidden="true">↓ một nhóm đi vòng ${g.length} điểm, cộng ${G.lab.ovh}% thời gian đi lại</div>
       <div class="tm-blk after" style="--c:${x.c}"><h5>Sau</h5><ul><li><span class="tm-n">${esc(g.slice().sort((a,b)=>((waveTimes(a)||[1e9])[0])-((waveTimes(b)||[1e9])[0])).map(i=>shortN(S[i].n)).join(" → "))}<small>nhóm sort khi xe đã tới${G.lab.cot!==false?", đã kiểm giờ về SOC":""}</small></span>${nvPeople(ha)}<em>${f1(ha)}</em></li></ul>
         <div class="tm-sum">${f1(hb)} → <b>${f1(ha)}</b> người/ngày${hb>ha?` · bớt ${f1(hb-ha)}`:""}</div></div>
-      ${tsim?schedHtml(tsim,true):""}</article>`;};
+      ${tsim?schedHtml(tsim,true,"ngày trung bình"):""}</article>`;};
   return `<div class="nvc-grid">${news.slice(0,N).map(card).join("")}</div>
     ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} nhóm</button></div>`:""}`;}
 function netViz(){const st=nvState();if(!st)return "";const {R,Rs,P,sc,L}=st;
@@ -1738,7 +1753,7 @@ function netCard(){const Rs=REG.filter(R=>ui.reg==="all"||R===ui.reg),q=ui.q3.to
     <p>Mỗi vùng là một mạng. Bộ tối ưu được cắt tuyến đang chạy, lập tuyến tới ${G.truck.stops} điểm, gom người đi vòng tới ${L.tMax} điểm, và chỉ giữ thay đổi làm cả vùng lời hơn. ${info("net")}</p>
     ${netViz()}
     <div class="card"><div class="tablewrap"><table class="data"><thead><tr><th>Vùng</th><th>Tuyến xe (kể cả đi riêng): gốc → mới</th><th>Gói tuyến</th><th>Xe: tiết kiệm (tr)</th><th>Nhóm người đi vòng: gốc → mới</th><th>Gói người</th><th>Người: tiết kiệm (tr)</th><th>Bật cả kế hoạch, tính lại cả mạng</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="row" style="margin:10px 0 0"><button type="button" class="pri" data-netall="1">Bật cả kế hoạch mạng${Rs.length===1?" vùng "+Rs[0]:""}</button><span class="mini" style="white-space:normal">Cột cuối tính lại toàn bộ bằng cùng công thức với bước 4, nên có thể lệch nhẹ so với tổng các gói.</span></div></div>
+      <div class="row" style="margin:10px 0 0"><button type="button" class="pri" data-netall="1">Bật kế hoạch mạng + đổi cỡ xe${Rs.length===1?" vùng "+Rs[0]:""}</button><span class="mini" style="white-space:normal">Cột cuối tính lại toàn bộ bằng cùng công thức với bước 4, nên có thể lệch nhẹ so với tổng các gói.</span></div></div>
     ${aGroup("net","Tuyến xe theo mạng lưới · bật từng gói","Mỗi dòng là một gói: tuyến mới cùng tuyến đang chạy bị cắt.",tl,{closed:1})}
     ${aGroup("nett","Nhóm người theo mạng lưới · bật từng gói","Nhóm người đi vòng thiết kế cho cả vùng.",ll,{closed:1})}</div>`;}
 function renderV3(){
@@ -2921,7 +2936,10 @@ document.addEventListener("click",e=>{
     if(d.netpk){ui.netL=d.netk==="nett"?"nguoi":"xe";const st=nvState(),pk=st&&(ui.netL==="xe"?st.P.tp:st.P.lp).find(p=>p.id===d.netpk),x=pk&&nvNews(st).find(n=>pk.gs.some(g=>gkey(g)===gkey(n.g)));
       if(x)ui.nvN=Math.max(ui.nvN||6,x.j+1);const box=$("nvBox");if(box)box.outerHTML=netViz();const el=x&&$("nvc-"+x.j);if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.add("flash");}return;}
     const box=$("nvBox");if(box)box.outerHTML=netViz();return;}
-  if(t.closest("[data-netall]")){const ids=REG.filter(R=>ui.reg==="all"||R===ui.reg).map(netPlan).flatMap(P=>P.tp.concat(P.lp).map(p=>p.id));ids.forEach(id=>setAct(id,true));toast(`Đã bật ${ids.length} gói mạng lưới.`);scnSoon();return;}
+  if(t.closest("[data-netall]")){const Rs=REG.filter(R=>ui.reg==="all"||R===ui.reg),ids=Rs.map(netPlan).flatMap(P=>P.tp.concat(P.lp).map(p=>p.id));
+    /* thêm đổi cỡ xe cho mọi điểm có lời (kể cả điểm nằm trong tuyến mạng lưới: tính theo xe đúng cỡ trên tuyến mới) */
+    const sz=sug().list.filter(a=>a.k==="size"&&a.g>2e5&&a.pts.some(i=>Rs.includes(S[i].R))).map(a=>a.id);ids.concat(sz).forEach(id=>setAct(id,true));
+    toast(`Đã bật ${ids.length} gói mạng lưới và ${sz.length} điểm đổi cỡ xe.`);scnSoon();return;}
   if(t.closest("[data-clear]")){askConfirm("Tắt mọi điều chỉnh đang bật? Chỉnh tay giữ nguyên.",()=>{SCN.on={};saveScn();scnSoon();},"Tắt hết");return;}
   const src=t.closest("[data-src]");if(src){G.truckSrc=src.dataset.src;saveCfg();refreshAll();return;}
   const rsb=t.closest("[data-reset]");if(rsb){const v=rsb.dataset.reset;
