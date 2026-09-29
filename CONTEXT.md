@@ -118,3 +118,9 @@ Hai yêu cầu kèm theo:
 - Lịch nhóm lập tham lam theo giờ xe dự kiến (chạy thử không có nhóm): luôn làm việc có xe tới sớm nhất; trong lúc chờ xe, nếu kịp đi sort trước điểm khác rồi quay về trước khi xe tới thì đi (sort trước cả vòng, rồi đi một vòng chất xe). Xe tới muộn hơn dự kiến thì lịch nhóm phía sau lùi theo.
 - Popup: "Một ngày của nhóm người" liệt kê sort / chờ xe / chất xe / đi đường theo giờ; hàng "Nhóm người" trên dòng thời gian có khối đậm (sort) và khối nhạt (chất xe).
 - Kết quả: gốc −1.300 tr (North −84 tr: nhóm phải có mặt khi xe tới nên cần thêm người); kế hoạch mạng (xe/người, tr): North 67/103, South 288/55, HN 981/0, HCM 50/8.
+
+## Cập nhật 30/09: xe dùng cùng cửa sổ giờ với người
+- Xe không còn neo vào giờ tới thật tháng 8: hàng của một COT lấy được từ `openW` (sau lượt xe trước của điểm, sớm nhất `lab.sortWin` phút trước Packed, không trước giờ seller mở) — cùng cửa sổ với nhóm người sort.
+- Mỗi xe được kéo tới đúng lúc hàng sẵn (đã sort xong / người riêng sort kịp / nhóm có mặt); xe tới sớm mà phải chờ ở mọi điểm thì lùi xe lại (`PL` theo từng xe, lặp tối đa 6 lần cùng với việc cho chạy sớm khi trễ hạn).
+- Popup nhóm: mô phỏng ngày trung bình với số người nhỏ nhất đủ kịp giờ; nếu không kịp dù tăng người thì ghi rõ điểm vướng và nói model tính người riêng những ngày đó.
+- Kết quả: gốc −1.251 tr; kế hoạch mạng (xe/người, tr): North 81/86, South 244/43, HN 899/0, HCM 97/8.
