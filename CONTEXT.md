@@ -124,3 +124,6 @@ Hai yêu cầu kèm theo:
 - Mỗi xe được kéo tới đúng lúc hàng sẵn (đã sort xong / người riêng sort kịp / nhóm có mặt); xe tới sớm mà phải chờ ở mọi điểm thì lùi xe lại (`PL` theo từng xe, lặp tối đa 6 lần cùng với việc cho chạy sớm khi trễ hạn).
 - Popup nhóm: mô phỏng ngày trung bình với số người nhỏ nhất đủ kịp giờ; nếu không kịp dù tăng người thì ghi rõ điểm vướng và nói model tính người riêng những ngày đó.
 - Kết quả: gốc −1.251 tr; kế hoạch mạng (xe/người, tr): North 81/86, South 244/43, HN 899/0, HCM 97/8.
+
+## Cập nhật 30/09: so người "trước → sau" đúng phạm vi
+- Thẻ/popup nhóm người trước đây lấy cả số người của nhóm cũ (kể cả điểm không vào nhóm mới) để so với nhóm mới. Nay "trước" = phần người của các điểm trong nhóm mới, chia theo đơn (`nvShare`); khung "Trước" ghi rõ nhóm cũ gồm ai, bao nhiêu đơn/người, và phần của các điểm này.

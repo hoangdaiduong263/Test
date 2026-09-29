@@ -1832,7 +1832,7 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
   const vT=v=>String(v).replace(/\d+(?:[.,]\d+)?×/g,"").trim()||"–";
   const vB=[...new Set((xe?Pb.filter(b=>b.some(i=>g.includes(i))):[]).map(b=>vT(vehMix(b).v)))].join(", ")||"–",vA=xe?vT(vehMix(g).v):"";
   const LB=netPlan(S[g[0]].R).L0,teamOf=i=>LB.find(h=>h.includes(i))||[i];
-  const hB=xe?[...new Set(g.map(i=>gkey(teamOf(i))))].reduce((a,k)=>a+nvHc(k.split(",").map(Number)),0):Pb.filter(b=>b.some(i=>g.includes(i))).reduce((a,b)=>a+nvHc(b),0),hA=xe?hB:nvHc(g);
+  const hB=xe?[...new Set(g.map(i=>gkey(teamOf(i))))].reduce((a,k)=>a+nvHc(k.split(",").map(Number)),0):g.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0),hA=xe?hB:nvHc(g);
   const cotK=new Map();g.forEach(i=>{const T=stT(i),L=cotsOf(i);if(T)T.w.forEach(w=>{const p=L[w.k].p,o=cotK.get(w.k)||[1e9,-1e9];cotK.set(w.k,[Math.min(o[0],p),Math.max(o[1],p)]);});});
   const cotN=cotK.size,cotTx=[...cotK.entries()].sort((a,b)=>a[0]-b[0]).map(([k,[a,b]])=>a===b?hhmm(a):hhmm(a)+"–"+hhmm(b)).join(" · ");
   const kpi=(lab,a,b,note)=>`<div class="mk"><span>${lab}</span><b>${a}${b!=null&&b!==a?` <i>→</i> ${b}`:""}</b>${note?`<small>${note}</small>`:""}</div>`;
@@ -1859,7 +1859,8 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
     body:`<div class="nvd">${xe?"":teamExplain(g,ord,hB,hA,Pb,sim)}<div class="mk-row">${kp.join("")}</div>${tbl}${xe?"":teamDay(sim,ord)}${plan}</div>`};}
 /* nhóm người: giải thích bằng lời cho người mới — ai dùng chung, nhóm làm gì, xe phối hợp ra sao */
 function teamExplain(g,ord,hB,hA,Pb,sim){const hub=(S[g[0]].h||"").replace(/ Hub$/,""),befs=Pb.filter(b=>b.some(i=>g.includes(i)));
-  const n=sim&&sim.h?sim.h:Math.max(1,Math.round(hA)),bef=befs.map(b=>b.length>1?`${b.map(i=>shortN(S[i].n)).join(" + ")} đã dùng chung ${f1(nvHc(b))} người`:`${shortN(S[b[0]].n)} có ${f1(nvHc(b))} người riêng`).join("; ");
+  const n=sim&&sim.h?sim.h:Math.max(1,Math.round(hA)),bef=befs.map(b=>{if(b.length===1)return `${shortN(S[b[0]].n)} có ${f1(nvHc(b))} người riêng`;const inG=b.filter(i=>g.includes(i)),part=inG.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0);
+    return `${b.map(i=>shortN(S[i].n)).join(" + ")} dùng chung ${f1(nvHc(b))} người`+(inG.length<b.length?` (phần của ${inG.map(i=>shortN(S[i].n)).join(" + ")} ≈ ${f1(part)} người; các điểm còn lại chuyển sang cách khác trong kế hoạch)`:"");}).join("; ");
   return `<div class="nvd-ex"><b>Nhóm này làm gì?</b><ol>
     <li><b>${n} người</b> của FM Hub <b>${esc(hub)}</b> dùng chung cho ${g.length} điểm: ${ord.map((i,k)=>`<span class="nvd-pt">${k+1}</span> ${esc(shortN(S[i].n))}`).join(", ")}. Bình quân ${f1(hB)} → <b>${f1(hA)}</b> người/ngày (ngày ít hàng cần ít người hơn; lịch dưới đây là ngày trung bình với ${n} người).</li>
     <li>Mỗi ngày nhóm đi vòng theo thứ tự xe tới: tới một điểm → <b>sort</b> hàng của COT → chờ xe tới và <b>chất hàng lên xe</b> → xe rời điểm thì nhóm mới đi sang điểm kế tiếp.</li>
@@ -1967,13 +1968,15 @@ function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=
 function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st);
   if(!news.length)return `<p class="note">Không có nhóm người nào đổi trong phạm vi này.</p>`;
   const N=ui.nvN||6;
-  const card=x=>{const g=x.g,befs=Pb.filter(b=>b.some(i=>g.includes(i))),hub=S[g[0]].h||"(chưa gắn hub)",hb=befs.reduce((a,b)=>a+nvHc(b),0),ha=nvHc(g);
+  const card=x=>{const g=x.g,befs=Pb.filter(b=>b.some(i=>g.includes(i))),hub=S[g[0]].h||"(chưa gắn hub)",hb=g.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0),ha=nvHc(g);   // trước: chỉ phần người của các điểm trong nhóm mới (chia theo đơn), không lấy cả nhóm cũ
     const tsim=teamSim(g);
-    const bRow=b=>`<li><span class="tm-n">${b.length>1?`nhóm ${esc(b.map(i=>shortN(S[i].n)).join(" + "))}`:esc(shortN(S[b[0]].n))}<small>${b.length>1?"đang dùng chung người":"người riêng"} · ${f0(b.reduce((a,i)=>a+nvAdo(i),0))} đơn/ngày${b.length===1&&waveTimes(b[0])?` · xe tới ${waveTimes(b[0]).map(hhmm).join(", ")}`:""}</small></span>${nvPeople(nvHc(b))}<em>${f1(nvHc(b))}</em></li>`;
+    const bRow=b=>{const inG=b.filter(i=>g.includes(i)),out=b.filter(i=>!g.includes(i)),part=inG.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0),full=nvHc(b),ado=b.reduce((a,i)=>a+nvAdo(i),0),adoIn=inG.reduce((a,i)=>a+nvAdo(i),0);
+      if(b.length===1)return `<li><span class="tm-n">${esc(shortN(S[b[0]].n))}<small>người riêng · ${f0(ado)} đơn/ngày</small></span>${nvPeople(full)}<em>${f1(full)}</em></li>`;
+      return `<li><span class="tm-n">${out.length?`${esc(inG.map(i=>shortN(S[i].n)).join(" + "))} <span class="tm-in">trong nhóm cũ ${b.length} điểm</span>`:`nhóm ${esc(b.map(i=>shortN(S[i].n)).join(" + "))}`}<small>${out.length?`nhóm cũ cùng ${esc(out.map(i=>shortN(S[i].n)).join(", "))}: ${f0(ado)} đơn/ngày, ${f1(full)} người; phần của ${inG.length>1?"các điểm này":"điểm này"} (${f0(adoIn)} đơn) ≈ ${f1(part)} người`:`đang dùng chung người · ${f0(ado)} đơn/ngày`}</small></span>${nvPeople(part)}<em>${f1(part)}</em></li>`;};
     const why=nvWhyNeg(x,news,Pb,"nguoi");
     return `<article class="nvc tm" id="nvc-${x.j}"><header><i class="nvc-sw" style="background:${x.c}"></i><div class="nvc-t"><b>Nhóm ${x.j+1} · ${esc(hub.replace(/ Hub$/,""))}</b><span>${g.length} điểm cùng FM Hub · ${f0(g.reduce((a,i)=>a+nvAdo(i),0))} đơn/ngày</span></div>
       <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>tr/kỳ</small></b></header>
-      ${why}<div class="tm-blk"><h5>Trước</h5><ul>${befs.map(bRow).join("")}</ul><div class="tm-sum">Cộng ${f1(hb)} người/ngày</div></div>
+      ${why}<div class="tm-blk"><h5>Trước</h5><ul>${befs.map(bRow).join("")}</ul><div class="tm-sum">Phần người của ${g.length} điểm này: ${f1(hb)} người/ngày</div></div>
       <div class="tm-arrow" aria-hidden="true">↓ một nhóm đi vòng ${g.length} điểm, cộng ${G.lab.ovh}% thời gian đi lại</div>
       <div class="tm-blk after" style="--c:${x.c}"><h5>Sau</h5><ul><li><span class="tm-n">${esc(g.slice().sort((a,b)=>((waveTimes(a)||[1e9])[0])-((waveTimes(b)||[1e9])[0])).map(i=>shortN(S[i].n)).join(" → "))}<small>nhóm đi vòng theo lịch riêng, xe chờ nếu nhóm chưa xong${G.lab.cot!==false?", đã kiểm giờ về SOC":""}</small></span>${nvPeople(ha)}<em>${f1(ha)}</em></li></ul>
         <div class="tm-sum">${f1(hb)} → <b>${f1(ha)}</b> người/ngày${hb>ha?` · bớt ${f1(hb-ha)}`:""}</div></div>
