@@ -1845,14 +1845,14 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
   const tbl=`<div class="tablewrap"><table class="data nvd-t"><thead><tr><th>#</th><th class="l">Điểm</th><th>Đơn/ngày</th><th>COT có hàng (Packed)</th><th>Bàn giao cuối</th><th class="l">Người hiện nay</th><th class="l">Xe hiện nay</th><th>Lời</th></tr></thead><tbody>
     ${ord.map((i,k)=>{const gi=(D.pks||[]).reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);return `<tr><td class="num">${k+1}</td><td class="l rowname">${esc(S[i].n.trim())}</td><td class="num">${f0(nvAdo(i))}</td><td class="num">${cotsTxt(i)}</td><td class="num">${ho(i)}</td><td class="l">${people(i)}</td><td class="l">${truckNow(i)}</td><td class="num ${cls(gi)}">${D.pks?sgT(gi):"–"}</td></tr>`;}).join("")}</tbody></table></div>
     <p class="note" style="margin:6px 0 0">* COT cuối = giờ seller đóng cửa (hạn cứng). Bàn giao cuối lấy từ sheet thông tin seller, deck, hoặc giờ xe tới muộn nhất trong ngày.</p>`;
-  const sim=xe?(real?null:routeSched(g).sim):teamSim(g);
+  const sim=xe?routeSched(g).sim:teamSim(g);
   let plan="";if(sim&&sim.rows.length){const tol=G.truck.cotTol??30,grp=new Map();sim.rows.forEach(r=>{const k=r.st[0].cot.k;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(r);});let n0=0;
     plan=[...grp.values()].sort((a,b)=>a[0].t-b[0].t).map(rows=>{const z0=rows[0].st[0],cc=z0.cot,Q=rows.reduce((a,r)=>a+r.st.reduce((b,z)=>b+z.q,0),0),w=Math.max(...rows.flatMap(r=>r.st.map(z=>z.late))),sh=Math.max(0,...rows.map(r=>r.shift||0));
       const st=w>tol?["neg","trễ nhất +"+Math.round(w)+"'"]:w>0?["warn","sát hạn +"+Math.round(w)+"'"]:["pos","dư ít nhất "+Math.round(-w)+"'"];
       const ps=rows.flatMap(r=>r.st.map(z=>z.cot.p0??z.cot.p)),pa=Math.min(...ps),pb=Math.max(...ps);
       const h=`<section class="nvd-cot"><div class="nvd-ch"><b>COT ${cc.k+1} · ${pa===pb?`hạn ${hhmm(pa)}${cc.close?" (đóng cửa)":""}`:`hạn từng điểm ${hhmm(pa)}–${hhmm(pb)}`}</b><span>${rows.length} xe · ${f0(Q)} đơn · về SOC ${hhmm(Math.min(...rows.map(r=>r.soc)))}–${hhmm(Math.max(...rows.map(r=>r.soc)))}</span><span class="${st[0]}">${st[1]}</span>${sh>=1?`<span>chạy sớm ${Math.round(sh)}'</span>`:""}</div>
         ${schedHtml({rows},!xe,null,{W:780,bare:true,n0,ord})}</section>`;n0+=rows.length;return h;}).join("");
-    plan=`<h4 class="nvd-h">Kế hoạch linehaul · ${xe?`ngày đông (p${G.truck.peakP??90})`:"ngày trung bình"}${soc?` → ${esc(soc)}`:""}</h4>${plan}${schLegend(!xe)}<p class="note" style="margin:4px 0 0">Rê chuột vào từng khối để xem giờ tới/đi, số đơn chất, thời gian chờ và hạn.</p>`;}
+    plan=`<h4 class="nvd-h">Kế hoạch linehaul · ${xe?`ngày đông (p${G.truck.peakP??90})`:"ngày trung bình"}${soc?` → ${esc(soc)}`:""}</h4>${real?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật. Lịch dưới đây là giờ đề xuất theo cửa sổ giờ mới (xe tới khi hàng sẵn, chạy sớm nếu cần); tiền xe vẫn tính theo chuyến thật.</p>`:""}${plan}${schLegend(!xe)}<p class="note" style="margin:4px 0 0">Rê chuột vào từng khối để xem giờ tới/đi, số đơn chất, thời gian chờ và hạn.</p>`;}
   else plan=`<h4 class="nvd-h">Kế hoạch linehaul</h4><p class="note">${real?"Các điểm này đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay (hiện nay xe tới: "+ord.map(i=>esc(shortN(S[i].n))+" "+(waveTimes(i)||[]).map(hhmm).join(", ")).join("; ")+").":"Chưa đủ giờ xe thật để mô phỏng."}</p>`;
   return {title:`<i class="nvc-sw" style="background:${c};display:inline-block;width:6px;height:18px;border-radius:3px;vertical-align:-3px;margin-right:8px"></i>${xe?"Tuyến":"Nhóm"} ${j+1} <b class="${cls(x.v)}" style="font-size:15px;margin-left:8px">${sgT(x.v)} tr/kỳ</b>`,
     sub:`${esc(ord.map(i=>shortN(S[i].n)).join(" → "))}${soc?` → ${esc(soc.replace(/ Mega SOC| SOC/,""))}`:""}`,
@@ -1918,13 +1918,13 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
   const card=x=>{const g=x.g,j=x.j,c=x.c,ord=L==="xe"?(routeSched(g).order||routeOrder(g)):g,soc=L==="xe"?socMain(g):null,pk=pks.find(p=>p.pts.some(i=>g.includes(i)));
     const ado=g.reduce((a,i)=>a+nvAdo(i),0),dk=L==="xe"?routeKm(g):0;
     const from=i=>{const b=Pb.find(h=>h.includes(i));return !b||b.length===1?(L==="xe"?"trước đi riêng":"trước người riêng"):"trước cùng "+b.filter(y=>y!==i).map(y=>shortN(S[y].n)).join(", ");};
-    const rs=L==="xe"&&!realTogether(g)?routeSched(g):null;
+    const rs=L==="xe"?routeSched(g):null;
     return `<article class="nvc" id="nvc-${j}"><header><i class="nvc-sw" style="background:${c}"></i><div class="nvc-t"><b>${w} ${j+1}</b><span>${g.length} điểm · ${f0(ado)} đơn/ngày${L==="xe"?` · ${f1(nvTrips(g))} chuyến/ngày${dk>0?` · đi vòng ${f1(dk)} km`:""}`:` · ${f1(nvHc(g))} người/ngày`}</span></div>
       <b class="nvc-g ${cls(x.v)}">${sgT(x.v)}<small>${x.pk&&news.filter(n=>n.pk===x.pk).length>1?`cả gói ${sgT(x.pk.g)}`:"tr/kỳ"}</small></b></header>
       ${nvWhyNeg(x,news,Pb,L)}${nvMini(g,c,L,Pb)}
       <ol class="nvc-stops" style="--c:${c}">${ord.map(i=>`<li data-pt="${i}"><b>${esc(shortN(S[i].n))}</b><span>${f0(nvAdo(i))} đơn · ${esc(from(i))}${waveTimes(i)?` · hiện nay xe tới ${waveTimes(i).map(hhmm).join(", ")}`:""}</span><em class="${cls(gi(i))}">${sgT(gi(i))}</em></li>`).join("")}
         ${soc?`<li class="soc"><b>${esc(soc)}</b></li>`:""}</ol>
-      ${nvSchedBrief(rs&&rs.sim,L==="xe"&&!rs)}<button type="button" class="nvc-more" data-nvd="xe|${j}">Chi tiết & kế hoạch linehaul →</button>
+      ${nvSchedBrief(rs&&rs.sim,false)}<button type="button" class="nvc-more" data-nvd="xe|${j}">Chi tiết & kế hoạch linehaul →</button>
 </article>`;};
   NVD.xe={};news.forEach(x=>NVD.xe[x.j]={x,Pb,pks,soc:null});
   return `<div class="nvc-grid">${shown.map(card).join("")}</div>
