@@ -43,3 +43,12 @@ Hai yêu cầu kèm theo:
 - Cặp ghép từng điểm (`ghep`) giờ tính cả điểm bị bỏ lại trên tuyến đang chạy (`pairNet`).
 - Chưa kiểm: khung giờ lấy hàng, đường đi thực tế.
 - Trực quan (bước 3, mục 0): tóm tắt mỗi tuyến/nhóm một dòng (chuyến/ngày hoặc người/ngày trước → sau), thẻ từng tuyến (bản đồ nhỏ, số thứ tự lấy hàng, rê chuột xem tên), thẻ nhóm người theo FM Hub (hình người trước → sau), dumbbell chỉ số cả vùng, cầu lãi/lỗ theo gói. Đã bỏ bản đồ toàn cảnh vì rối.
+
+## Cập nhật 29/09
+- **Hai bộ trang**: trang chủ có 2 thẻ, A = New Seller & ADO Thresholds (tab Seller mới, Ngưỡng ADO), B = Optimization Opportunities (bước 1–4). Luôn mở vào trang chủ.
+- **COT / giờ bàn giao**: Volume Tracker chưa tách đơn theo sàn/mốc COT (Shopee FHR: đơn trước 14h bàn giao trước 23:59 D0, sau 14h trước 23:59 D+1; NSS: trước 15h lấy 23:59 D0). Model dùng giờ xe thật tới điểm (file linehaul) làm hạn: `waveTimes(i)`.
+  - Xe ghép: giờ xe tới các điểm lệch ≤ `truck.cotGap` (90 phút), và đi vòng + dừng (`truck.dwell` 20 phút/điểm, tốc độ `lab.spd`) phải gói trong khoảng đó.
+  - Nhóm người đi vòng (`poolHc`): đi lần lượt theo giờ xe tới, bắt đầu `lab.st` giờ, mỗi người `lab.hrs` giờ/ngày; không kịp thì thêm người, tới mức bằng tổng người riêng.
+- **Bước 4** có "Mạng lưới sau điều chỉnh": điểm xếp theo xe ghép (từng tuyến) / xe riêng / ké FLM / xe hub trả, và nhóm đi vòng / người riêng; đánh dấu điểm đổi so với gốc.
+- **Báo cáo Linehaul** (artifact riêng, data tháng 8): seller lỗ do xe, nguyên nhân (xe to hơn cần, thừa chuyến, sàn chuyến do SOC × COT, nhiều adhoc).
+- **Occupancy của BI**: sheet "Occu Seller" = TO lên ÷ tổng sức chứa danh nghĩa các chuyến ghé điểm (1T9 2.000, 5T 3.700, 8T 6.000, 1T25 1.300, VAN 1.000); khớp các dòng đã đối chiếu. Sheet "Occu SPC" chưa khớp cách này, cần BI xác nhận định nghĩa. Connector Drive chỉ đọc được dòng mẫu của hai sheet.
