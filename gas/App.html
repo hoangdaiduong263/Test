@@ -174,7 +174,7 @@ function cotIdx(i,dep){const L=cotsOf(i);for(let k=0;k<L.length;k++)if(L[k].p>=d
 /* lượt xe hiện nay thuộc COT nào: COT sớm nhất có giờ Packed không trước giờ xe đi hiện nay quá 45 phút.
    Hạn = giờ Packed, hoặc giờ xe đi hiện nay nếu hiện nay đã đi muộn hơn (không bắt phương án mới tốt hơn thực tế); đi sau mọi COT thì hạn = giờ đi hiện nay. */
 function cotOfWave(i,w){const L=cotsOf(i),d=w.dep!=null?w.dep:w.arr,k=w.k!=null?w.k:cotIdx(i,d),c=L[k];
-  const o=d>c.p?Object.assign({},c,{k,p:d,r:Math.max(c.r,d-60),lateNow:1}):Object.assign({},c,{k});
+  const o=d>c.p?Object.assign({},c,{k,p:d,r:Math.max(c.r,d-60),lateNow:1,p0:c.p}):Object.assign({},c,{k});
   /* seller thực tế giao cho xe trong giờ cuối trước Packed (xe thật tới sau giờ Received): nhóm người chung chỉ cần sort xong trước giờ xe đi */
   const la=w.arrL??w.arr;if(la!=null&&o.r<la)Object.assign(o,{r:o.p,rLate:1});return o;}
 /* mô phỏng: runs = [{ord (thứ tự ghé), slots}], team = {set, h} hoặc null; vol(i) đơn/ngày; sortPD(i) người-ngày sort/ngày */
@@ -1710,7 +1710,7 @@ const avgSort=i=>{let a=0,n=0;for(const d of ACT){const r=BASE.rows[i][d];if(r&&
 function schedHtml(sim,team,lab){if(!sim||!sim.rows.length)return `<p class="note" style="margin:0">Chưa đủ giờ xe thật để mô phỏng lịch.</p>`;const tol=G.truck.cotTol??30;
   const late=v=>{const m=Math.round(v);return `<em class="${m>tol?"neg":m>0?"warn":"pos"}">${m>0?"+"+m:m}'</em>`;};
   return `<div class="sch"><div class="sch-h">Lịch mô phỏng${lab?" · "+lab:""}${sim.rows.length>1?` · ${sim.rows.length} xe`:""}<span>số phút cạnh mỗi điểm: sớm (−) / trễ (+) so với hạn COT của điểm đó (Packed; nhóm chung còn xét Received), đỏ nếu trễ quá ${tol} phút</span></div>
-    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${hhmm(z.cot.p)} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
+    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${z.cot.lateNow?`${hhmm(z.cot.p0)} (nới tới ${hhmm(z.cot.p)} = giờ xe đi hiện nay)`:hhmm(z.cot.p)} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
     ${sim.rows.length>6?`<div class="sch-r"><span>… ${sim.rows.length-6} xe khác</span></div>`:""}</div>`;}
 function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
