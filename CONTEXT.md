@@ -127,3 +127,4 @@ Hai yêu cầu kèm theo:
 
 ## Cập nhật 30/09: so người "trước → sau" đúng phạm vi
 - Thẻ/popup nhóm người trước đây lấy cả số người của nhóm cũ (kể cả điểm không vào nhóm mới) để so với nhóm mới. Nay "trước" = phần người của các điểm trong nhóm mới, chia theo đơn (`nvShare`); khung "Trước" ghi rõ nhóm cũ gồm ai, bao nhiêu đơn/người, và phần của các điểm này.
+- (30/09) Xe phải chờ ở một điểm (nhóm người chưa sort/chưa tới) thì cho xe tới muộn hơn đúng khoảng chờ, miễn các điểm ghé trước vẫn kịp hạn; chỉ giữ thay đổi nếu không làm trễ thêm (bộ xếp lịch nhóm là tham lam). Gốc −1.259 tr; kế hoạch mạng (xe/người, tr): North 81/76, South 244/43, HN 899/0, HCM 97/8.

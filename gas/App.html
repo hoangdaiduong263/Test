@@ -230,8 +230,11 @@ function simRun(runs,team,vol,sortPD){const out={ok:true,late:-1e9,rows:[]},jobs
   for(let it=0;it<6;it++){let pch=false;
     /* xe phải chờ ở mọi điểm của chuyến (hàng chưa sort xong) thì cho xe tới muộn hơn; hàng sẵn sớm hơn thì kéo xe tới sớm (giữ cửa sổ giờ) */
     /* xe phải chờ ở một điểm: cho xe tới muộn hơn đúng bằng khoảng chờ đó, miễn các điểm ghé trước vẫn kịp hạn (điểm sau không đổi vì khoảng chờ hấp thụ) */
-    rows.forEach(R=>{let best=0,sl=1e9;R.st.forEach(z=>{const w=z.ls-z.arr;best=Math.max(best,Math.min(w,sl));const x=R.J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);sl=Math.min(sl,c.p-z.dep);});
-      if(best>1){PL.set(R.J,(PL.get(R.J)||0)-best);pch=true;}});
+    const lateOf=rs=>Math.max(-1e9,...rs.flatMap(R=>R.st.map(z=>{const x=R.J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);return z.dep-c.p;})));
+    {const snap=new Map(PL),l0=lateOf(rows);let any=false;
+      rows.forEach(R=>{let best=0,sl=1e9;R.st.forEach(z=>{const w=z.ls-z.arr;best=Math.max(best,Math.min(w,sl));const x=R.J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);sl=Math.min(sl,c.p-z.dep);});
+        if(best>1){PL.set(R.J,(PL.get(R.J)||0)-best);any=true;}});
+      if(any){const TP2=plan(XS),r2=runAll(XS,TP2);if(lateOf(r2)<=Math.max(l0,0)+0.5){TP=TP2;rows=r2;}else{PL.clear();snap.forEach((v,k)=>PL.set(k,v));}}}
     rows.forEach(R=>{if(R.st.every(z=>z.ls-z.arr<=1)){const g2=Math.min(...R.st.map(z=>{const x=R.J.sl.m.find(y=>y.i===z.i);return z.arr-Math.max(openW(z.i,x.w,cotOfWave(z.i,x.w).p),z.s1??-1e9,z.ta??-1e9,z.thr??-1e9);}));
       if(g2>1&&it<3){PL.set(R.J,(PL.get(R.J)||0)+g2);pch=true;}}});
     if(pch){TP=plan(XS);rows=runAll(XS,TP);}
