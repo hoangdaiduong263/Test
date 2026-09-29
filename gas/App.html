@@ -1723,11 +1723,51 @@ function nvMini(g,c,L,Pb){const W=340,H=200,pad=34,gs=new Set(g);
   return `<div class="nvc-map"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bản đồ tuyến">${e}${n}</svg></div>`;}
 /* lịch mô phỏng: mỗi xe một dòng — giờ tới/đi từng điểm, giờ về SOC so với hiện nay */
 const avgSort=i=>{let a=0,n=0;for(const d of ACT){const r=BASE.rows[i][d];if(r&&r.vol>0&&r.prod>0){a+=r.sv/r.prod;n++;}}return n?a/n:0;};
+/* lịch mô phỏng dạng dòng thời gian: mỗi hàng một điểm (thứ tự ghé), trục ngang là giờ; mỗi lần xe ghé là một khối có số xe,
+   nối các điểm của cùng một xe bằng nét mảnh; vạch đứng = hạn COT của điểm, vùng gạch = sau giờ seller đóng cửa. Chi tiết khi rê chuột. */
 function schedHtml(sim,team,lab){if(!sim||!sim.rows.length)return `<p class="note" style="margin:0">Chưa đủ giờ xe thật để mô phỏng lịch.</p>`;const tol=G.truck.cotTol??30;
-  const late=v=>{const m=Math.round(v);return `<em class="${m>tol?"neg":m>0?"warn":"pos"}">${m>0?"+"+m:m}'</em>`;};
-  return `<div class="sch"><div class="sch-h">Lịch mô phỏng${lab?" · "+lab:""}${sim.rows.length>1?` · ${sim.rows.length} xe`:""}<span>số phút cạnh mỗi điểm: sớm (−) / trễ (+) so với hạn COT của điểm đó (Packed; nhóm chung còn xét Received), đỏ nếu trễ quá ${tol} phút</span></div>
-    ${sim.rows.slice(0,6).map((r,k)=>`<div class="sch-r"><b>Xe ${k+1}${r.shift>=1?`<small> chạy sớm ${Math.round(r.shift)}'</small>`:""}</b><span>${r.st.map(z=>`${esc(shortN(S[z.i].n).slice(0,18))}: tới ${hhmm(z.arr)}${z.s0!=null&&z.s1-z.s0>=1?`, sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:""}${z.thr!=null&&z.thr>z.arr+1?`, chờ người sort kịp tới ${hhmm(z.thr)}`:""}${z.wait>=1?`, chờ chỗ ${Math.round(z.wait)}'`:""}, chất ${f0(z.q)} đơn, đi ${hhmm(z.dep)} · hạn ${z.cot.lateNow?`${hhmm(z.cot.p0)} (nới tới ${hhmm(z.cot.p)} = giờ xe đi hiện nay)`:hhmm(z.cot.p)+(z.cot.close?" (đóng cửa)":"")} ${late(z.late)}`).join("<br>")}<br>về SOC ${hhmm(r.soc)}</span></div>`).join("")}
-    ${sim.rows.length>6?`<div class="sch-r"><span>… ${sim.rows.length-6} xe khác</span></div>`:""}</div>`;}
+  const rows=sim.rows,pts=[];rows.forEach(r=>r.st.forEach(z=>{if(!pts.includes(z.i))pts.push(z.i);}));
+  const all=rows.flatMap(r=>r.st.flatMap(z=>[z.arr,z.dep,z.s0,z.thr!=null&&z.thr>z.arr?z.thr:null]).concat([r.soc])).filter(v=>v!=null&&isFinite(v));
+  const cotT=rows.flatMap(r=>r.st.map(z=>z.cot.p0??z.cot.p));
+  /* trục giờ gãy: khoảng không có xe dài hơn 60 phút được thu lại thành một khe nhỏ (≈), để các cụm xe đủ rộng */
+  const iv=all.concat(cotT).map(t=>[t-25,t+25]).sort((a,b)=>a[0]-b[0]),seg=[];iv.forEach(v=>{const l=seg[seg.length-1];if(l&&v[0]<=l[1]+60)l[1]=Math.max(l[1],v[1]);else seg.push(v.slice());});
+  const t0=seg[0][0],t1=seg[seg.length-1][1],W=340,LW=86,PR=8,RH=22,TOP=16,GW=14,act=seg.reduce((a,v)=>a+v[1]-v[0],0),k0=(W-LW-PR-GW*(seg.length-1))/act;
+  const x=t=>{let px=LW;for(let q=0;q<seg.length;q++){const [a,b2]=seg[q];if(t<=b2||q===seg.length-1)return px+(Math.min(Math.max(t,a),b2)-a)*k0;px+=(b2-a)*k0+GW;}return px;};
+  /* các lần ghé chồng giờ ở cùng một điểm xếp thành làn nhỏ trong hàng */
+  const LH=13,lane=new Map(),nL=pts.map(()=>1);pts.forEach((i,k)=>{const ends=[];rows.flatMap((r,n)=>r.st.filter(z=>z.i===i).map(z=>({z,a:x(z.arr),b:Math.max(x(z.dep),x(z.arr)+12)}))).sort((u,v)=>u.a-v.a).forEach(v=>{let l=ends.findIndex(e=>e<v.a-2);if(l<0){l=ends.length;ends.push(0);}ends[l]=v.b;lane.set(v.z,l);});nL[k]=Math.max(1,ends.length);});
+  const rh=k=>Math.max(RH,nL[k]*LH+6),yTop=k=>TOP+pts.slice(0,k).reduce((a,_,q)=>a+rh(q),0),yOf=k=>k<pts.length?yTop(k)+rh(k)/2:yTop(pts.length)+RH/2,f=v=>v.toFixed(1);
+  const yL=z=>{const k=pts.indexOf(z.i);return yTop(k)+3+(lane.get(z)||0)*LH+LH/2;},H=yTop(pts.length)+RH+4;
+  const col=z=>z.late>tol?"var(--loss)":z.late>0?"var(--warn)":"var(--seg-truck)";
+  let g="";
+  // giờ
+  const hh=t=>{const m=Math.round(t)%1440;return String(Math.floor(m/60)).padStart(2,"0")+(m%60?":"+String(m%60).padStart(2,"0"):"h");};
+  seg.forEach((v,q)=>{const pxw=(v[1]-v[0])*k0,stp=pxw/((v[1]-v[0])/60)<34?120:60;let first=true;
+    for(let t=Math.ceil(v[0]/stp)*stp;t<=v[1];t+=stp){g+=`<line x1="${f(x(t))}" y1="${TOP-2}" x2="${f(x(t))}" y2="${H-4}" style="stroke:var(--line);stroke-width:1"/><text x="${f(x(t))}" y="10" text-anchor="middle" class="sch-ax">${hh(t)}</text>`;first=false;}
+    if(first)g+=`<text x="${f(x((v[0]+v[1])/2))}" y="10" text-anchor="middle" class="sch-ax">${hh((v[0]+v[1])/2)}</text>`;
+    if(q<seg.length-1){const gx=x(v[1])+GW/2;g+=`<text x="${f(gx)}" y="${f(H/2+4)}" text-anchor="middle" class="sch-gap">≈</text>`;}});
+  // mỗi hàng: tên, vùng sau giờ đóng cửa, vạch COT
+  pts.forEach((i,k)=>{const y=yOf(k),h2=rh(k)/2,cots=[...new Map(rows.flatMap(r=>r.st.filter(z=>z.i===i).map(z=>[z.cot.p0??z.cot.p,z.cot]))).values()],cl=cots.find(c=>c.close);
+    if(k)g+=`<line x1="0" y1="${f(y-h2)}" x2="${W-PR}" y2="${f(y-h2)}" style="stroke:var(--line-2);stroke-width:1"/>`;
+    g+=`<text x="0" y="${f(y+3.5)}" class="sch-nm">${esc(shortN(S[i].n).slice(0,14))}</text>`;
+    if(cl&&x(cl.p)<W-PR)g+=`<rect x="${f(x(cl.p))}" y="${f(y-h2+2)}" width="${f(W-PR-x(cl.p))}" height="${f(2*h2-4)}" fill="url(#schX)"/>`;
+    cots.forEach(c=>{const p=c.p0??c.p;g+=`<line x1="${f(x(p))}" y1="${f(y-h2+1)}" x2="${f(x(p))}" y2="${f(y+h2-1)}" style="stroke:var(--ink);stroke-width:1.5"/>`;});});
+  const ys=yOf(pts.length);g+=`<text x="0" y="${f(ys+3.5)}" class="sch-nm" style="font-weight:600">Về SOC</text>`;
+  // xe: nét nối, rồi khối từng lần ghé
+  rows.forEach((r,n)=>{let d=`M${f(x(r.st[0].arr))},${f(yL(r.st[0]))}`;
+    r.st.forEach(z=>{const y=yL(z);d+=` L${f(x(z.arr))},${f(y)} L${f(x(z.dep))},${f(y)}`;});d+=` L${f(x(r.soc))},${f(ys)}`;
+    g+=`<path d="${d}" style="fill:none;stroke:var(--muted);stroke-width:1;opacity:.55"/>`;
+    g+=`<g data-tt="${esc(`<b>Xe ${n+1}</b> về SOC ${hhmm(r.soc)}${r.shift>=1?`<br>chạy sớm ${Math.round(r.shift)}' so với giờ xe hiện nay`:""}`)}"><circle cx="${f(x(r.soc))}" cy="${f(ys)}" r="4" style="fill:var(--ink);stroke:var(--panel);stroke-width:1.5"/></g>`;
+    r.st.forEach(z=>{const y=yL(z),a=x(z.arr),b=Math.max(x(z.dep),a+12),c=z.cot,m=Math.round(z.late);
+      const tt=`<b>${esc(S[z.i].n.trim())}</b> · xe ${n+1}<br>tới ${hhmm(z.arr)} → đi ${hhmm(z.dep)} · chất ${f0(z.q)} đơn`
+        +(z.s0!=null&&z.s1-z.s0>=1?`<br>nhóm sort ${hhmm(z.s0)}–${hhmm(z.s1)}`:"")+(z.thr!=null&&z.thr>z.arr+1?`<br>chờ người sort kịp tới ${hhmm(z.thr)}`:"")+(z.wait>=1?`<br>chờ chỗ chất ${Math.round(z.wait)}'`:"")
+        +`<br>hạn ${hhmm(c.p0??c.p)}${c.close?" (đóng cửa)":""}${c.lateNow?`, nới tới ${hhmm(c.p)} (giờ xe đi hiện nay)`:""} · <b>${m>0?"trễ "+m:"sớm "+(-m)}'</b>`;
+      if(z.s0!=null&&z.s1-z.s0>=1)g+=`<rect x="${f(x(z.s0))}" y="${f(y+4.5)}" width="${f(Math.max(2,x(z.s1)-x(z.s0)))}" height="2" rx="1.5" style="fill:var(--seg-seller)"/>`;
+      g+=`<g data-tt="${esc(tt)}" style="cursor:default"><rect x="${f(a-2)}" y="${f(y-LH/2)}" width="${f(b-a+4)}" height="${LH}" fill="transparent"/><rect x="${f(a)}" y="${f(y-5.5)}" width="${f(b-a)}" height="11" rx="3" style="fill:${col(z)};stroke:var(--panel);stroke-width:1"/><text x="${f((a+b)/2)}" y="${f(y+3.2)}" text-anchor="middle" class="sch-no">${n+1}</text></g>`;});});
+  const worst=Math.max(...rows.flatMap(r=>r.st.map(z=>z.late))),sh=Math.max(0,...rows.map(r=>r.shift||0));
+  const st=worst>tol?["neg","trễ nhất +"+Math.round(worst)+"'"]:worst>0?["warn","sát hạn +"+Math.round(worst)+"'"]:["pos","kịp hạn, dư ít nhất "+Math.round(-worst)+"'"];
+  return `<div class="sch"><div class="sch-h">${lab?esc(lab):"Lịch mô phỏng"}<span class="sch-k"><b>${rows.length}</b> xe</span><span class="sch-k ${st[0]}">${st[1]}</span>${sh>=1?`<span class="sch-k">chạy sớm tới ${Math.round(sh)}'</span>`:""}</div>
+    <svg viewBox="0 0 ${W} ${H}" class="sch-svg" role="img" aria-label="Lịch xe mô phỏng"><defs><pattern id="schX" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" style="stroke:var(--muted);stroke-width:1.2;opacity:.45"/></pattern></defs>${g}</svg>
+    <div class="sch-lg"><span><i class="b"></i>xe ghé (số xe)</span><span><i class="c"></i>hạn COT</span><span><i class="x"></i>sau giờ đóng cửa</span>${team?`<span><i class="t"></i>nhóm sort</span>`:""}<span><i class="w"></i>sát hạn</span><span>≈ bỏ bớt giờ không có xe</span><span><i class="l"></i>trễ</span></div></div>`;}
 function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
   const news=nvNews(st);

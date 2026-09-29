@@ -100,3 +100,6 @@ Hai yêu cầu kèm theo:
 - Người riêng tại điểm: tổng đơn đã chất lên xe tới giờ t ≤ phần người kịp sort tới t. Số người = làm tròn lên người-ngày sort; năng suất như bảng Năng suất (2.000 đơn lý tưởng, trừ chute/COT/bulky), làm liên tục `lab.prodH` (7) giờ, bắt đầu từ giờ seller mở (`OPENT` theo sheet: giờ mở cửa SPC HN, checkin; không có thì min(`lab.open` 8h, xe tới sớm nhất − 60')). Nhóm chung: thời gian sort cũng theo 7 giờ làm.
 - Khi xét ghép xe, nhịp sort tính ở ngày đông (`pdPeak`).
 - Kết quả: gốc −1.118 tr; kế hoạch mạng (xe/người, tr): North 67/66, South 288/51, HN 981/0 (cấu trúc 480 + xe đúng cỡ 501), HCM 50/11.
+
+## Cập nhật 30/09: lịch mô phỏng dạng dòng thời gian
+- `schedHtml` vẽ SVG thay cho chữ: mỗi hàng một điểm (thứ tự ghé) + hàng "Về SOC", trục ngang là giờ (khoảng không có xe > 60' thu thành khe ≈), mỗi lần xe ghé là khối có số xe (xanh = kịp, cam = sát hạn, đỏ = trễ), nét mảnh nối các điểm của một xe, vạch đứng = hạn COT, vùng gạch = sau giờ đóng cửa, thanh xanh lá = nhóm sort. Lần ghé chồng giờ xếp thành làn nhỏ. Chi tiết (giờ, số đơn, chờ, hạn) khi rê chuột.
