@@ -103,3 +103,7 @@ Hai yêu cầu kèm theo:
 
 ## Cập nhật 30/09: lịch mô phỏng dạng dòng thời gian
 - `schedHtml` vẽ SVG thay cho chữ: mỗi hàng một điểm (thứ tự ghé) + hàng "Về SOC", trục ngang là giờ (khoảng không có xe > 60' thu thành khe ≈), mỗi lần xe ghé là khối có số xe (xanh = kịp, cam = sát hạn, đỏ = trễ), nét mảnh nối các điểm của một xe, vạch đứng = hạn COT, vùng gạch = sau giờ đóng cửa, thanh xanh lá = nhóm sort. Lần ghé chồng giờ xếp thành làn nhỏ. Chi tiết (giờ, số đơn, chờ, hạn) khi rê chuột.
+
+## Cập nhật 30/09: chi tiết tuyến/nhóm trong popup
+- Thẻ tuyến/nhóm chỉ còn 1 dòng tóm tắt lịch (số xe, số lượt COT, kịp/trễ, chạy sớm) và nút "Chi tiết & kế hoạch linehaul" (`data-nvd`), mở popup qua hệ popup sẵn có (`MR.nvd` → `nvDetail`).
+- Popup: ô chỉ số trước → sau (đơn/ngày, chuyến xe/ngày, loại xe, số COT có hàng, người lên hàng, km đi vòng; nhóm người: người/ngày, hub), bảng từng điểm (COT có hàng, giờ bàn giao cuối + nguồn, người hiện nay riêng/chung, xe hiện nay riêng/ghép + loại xe + chuyến/ngày, lời), rồi kế hoạch linehaul tách theo từng COT, mỗi COT một dòng thời gian khung rộng (`schedHtml(...,{W:780,bare:true})`).
