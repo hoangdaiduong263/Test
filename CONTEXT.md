@@ -59,3 +59,9 @@ Hai yêu cầu kèm theo:
 - Đạt khi mọi điểm về SOC không trễ quá `truck.cotTol` (mặc định 30 phút) so với hiện nay. Xe ghép thử mọi thứ tự ghé (≤ 4 điểm). Điểm đang đi chung chuyến thật thì lấy data thật làm căn cứ, không mô phỏng.
 - Tuyến ghép chạy theo số lượt của điểm nhiều lượt nhất; lượt của điểm khác gắn vào lượt gần giờ nhất (2, 3 COT được mô phỏng từng lượt).
 - Hệ quả: gốc lỗ thêm ~210 tr vì các hub dùng chung người (≥ 3 điểm) phải thêm người để giữ giờ về SOC; lời từ ghép xe giảm mạnh (HN: 0 ở mức 30 phút, +131 tr ở 60 phút, +287 tr ở 90 phút).
+
+## Cập nhật 29/09 (tối): COT chính thức (deck "Sellers direct to SOC", slide 13–14)
+- Mỗi COT: FMHub_received (FTE nhận/sort xong) và FMLH_Packed (giao linehaul). HCM 13/14h, 17/18h, 23/24h; North & Central 13/14h, 21h30/22h30 (North gần HY chỉ COT 2); South 13/14h, 20h30/21h30; HN 13/14h, 17/19h (hoặc 17/21h vùng cấm tải), 23/24h. COT cuối: Packed = giờ seller đóng cửa, Received = đóng cửa − 1h (có giờ đóng cửa BAU của 6 seller HCM/South).
+- Lượt xe hiện nay gắn vào COT sớm nhất có Packed không trước giờ xe đi quá 45 phút; hạn = max(Packed, giờ xe đi hiện nay).
+- Đạt khi xe rời mỗi điểm trước hạn Packed; nhóm người chung còn phải sort xong trước Received (`truck.cotTol` = phút được trễ, mặc định 0).
+- Kết quả (tháng 8): gốc −1.124 tr (47/368 ngày-nhóm chung phải thêm người); tối ưu mạng: North +112, South +127, HN +176, HCM +15 tr.
