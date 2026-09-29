@@ -1,7 +1,7 @@
 <div id="boot" style="padding:24px;font:15px system-ui">Đang tải…</div>
 <div id="app" hidden>
 <header class="bar"><div class="bar-in">
-  <div class="brand"><b>D2S</b><span>mô phỏng lãi/lỗ</span></div>
+  <button type="button" class="brand" data-go="home" aria-label="Về trang chủ"><b>D2S</b><span>mô phỏng lãi/lỗ</span></button>
   <div class="grp"><span class="lbl">Kỳ</span><input class="inp" type="date" id="rFrom" aria-label="Từ ngày"><span class="lbl">→</span><input class="inp" type="date" id="rTo" aria-label="Đến ngày">
     <div class="seg" id="rPreset"><button type="button" data-p="month">Tháng này</button><button type="button" data-p="prev">Tháng trước</button><button type="button" data-p="all">Tất cả</button></div></div>
   <div class="grp"><span class="lbl">Vùng</span><div class="seg" id="regSeg"></div></div>
@@ -12,9 +12,10 @@
 
 <nav class="stepnav" id="stepNav" aria-label="Các bước">
   <div class="stepnav-in">
+    <button type="button" data-go="home" class="homebtn"><span class="st">← Trang chủ</span></button>
+    <span class="navsep" aria-hidden="true"></span>
     <button type="button" data-v="new" class="tool"><span class="st">Seller mới</span></button>
     <button type="button" data-v="thr" class="tool"><span class="st">Ngưỡng ADO</span></button>
-    <span class="navsep" aria-hidden="true"></span>
     <button type="button" data-v="1"><span class="sn">1</span><span class="st">Kỳ &amp; dữ liệu</span></button>
     <button type="button" data-v="2"><span class="sn">2</span><span class="st">Gốc: không đổi gì</span></button>
     <button type="button" data-v="3"><span class="sn">3</span><span class="st">Chọn điều chỉnh</span></button>
@@ -24,6 +25,20 @@
 <div class="strip" id="strip"></div>
 
 <main class="wrap">
+  <section class="view" id="v-home" hidden>
+    <h2 class="home-h">Chọn công cụ</h2>
+    <p class="lead">Hai câu hỏi khác nhau: nhận seller mới thế nào cho có lời, và mạng D2S đang chạy tối ưu thêm được bao nhiêu.</p>
+    <div class="home-cards">
+      <article class="hcard"><div class="hcard-top"><span class="hcard-ic">A</span><div><h3>New Seller &amp; ADO Thresholds</h3>
+        <p>Điền hồ sơ seller sắp nhận, xem kế hoạch xe và người cho ba loại ngày, lãi/lỗ và ngưỡng ADO hoà vốn. Ngưỡng ADO hợp lý cho từng vùng và điều kiện đi kèm.</p></div></div>
+        <div class="chips"><span class="chip-s">Seller mới</span><span class="chip-s">Ngưỡng ADO theo vùng</span><span class="chip-s">Hoà vốn</span></div>
+        <div class="hcard-foot"><span class="live">Live</span><button type="button" class="go-btn" data-go="new">Truy cập →</button></div></article>
+      <article class="hcard"><div class="hcard-top"><span class="hcard-ic">B</span><div><h3>Optimization Opportunities</h3>
+        <p>Lãi/lỗ từng điểm D2S đang chạy, các điều chỉnh xe và người (kể cả tối ưu toàn mạng: ghép tuyến, nhóm người trong Hub), và mạng lưới sau điều chỉnh.</p></div></div>
+        <div class="chips"><span class="chip-s">Kỳ &amp; dữ liệu → Kết quả</span><span class="chip-s">Tối ưu toàn mạng</span><span class="chip-s">Mạng sau điều chỉnh</span></div>
+        <div class="hcard-foot"><span class="live">Live</span><button type="button" class="go-btn" data-go="1">Truy cập →</button></div></article>
+    </div>
+  </section>
   <section class="view" id="v-1" hidden></section>
   <section class="view" id="v-2" hidden></section>
   <section class="view" id="v-3" hidden></section>

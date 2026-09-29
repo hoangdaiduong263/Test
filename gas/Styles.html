@@ -706,3 +706,49 @@ ul.thflag li{font-size:12.5px;color:var(--warn);background:var(--warn-fill);bord
 .nvs-r.in{box-shadow:inset 2px 0 0 var(--line);border-radius:0 5px 5px 0}
 </style>
 <style>.nvs-v small{display:block;font-size:10.5px;color:var(--muted)}</style>
+<style>
+/* ---------- trang chủ: hai bộ trang ---------- */
+:root{--go:#E8491D;--go-ink:#fff;--live:#1E9E5A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--go:#F0643F;--live:#4CC38A}}
+:root[data-theme="dark"]{--go:#F0643F;--live:#4CC38A}
+button.brand{background:none;border:0;padding:0;cursor:pointer;color:inherit;font:inherit}
+button.brand:hover b{color:var(--go)}
+body[data-suite="home"] .bar .grp{display:none}
+.stepnav .homebtn{font-weight:500;color:var(--muted)}
+.home-h{font-size:22px!important;margin:8px 0 4px!important}
+.home-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,380px));gap:16px;margin-top:18px}
+.hcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;display:flex;flex-direction:column;gap:14px}
+.hcard-top{display:flex;gap:12px;align-items:flex-start}
+.hcard-ic{flex:none;width:34px;height:34px;border-radius:8px;background:var(--mark-soft);color:var(--mark);font:700 13px var(--sans);display:flex;align-items:center;justify-content:center}
+.hcard h3{font-size:16px;margin:4px 0 6px}
+.hcard p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+.hcard .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip-s{font-size:11.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:2px 9px;background:var(--panel-2)}
+.hcard-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line-2);padding-top:12px}
+.live{font-size:13px;font-weight:600;color:var(--live);display:inline-flex;align-items:center;gap:6px}
+.live::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--live)}
+.go-btn{font:600 13.5px var(--sans);background:var(--go);color:var(--go-ink);border:0;border-radius:8px;padding:9px 16px;cursor:pointer}
+.go-btn:hover{filter:brightness(1.06)}.go-btn:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+@media (max-width:420px){.home-cards{grid-template-columns:minmax(0,1fr)}}
+</style>
+<style>
+/* ---------- mạng lưới sau điều chỉnh ---------- */
+.an-lanes{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+.an-lanes.two{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+@media (max-width:900px){.an-lanes,.an-lanes.two{grid-template-columns:minmax(0,1fr)}}
+.an-lane{background:var(--panel-2);border:1px solid var(--line-2);border-radius:9px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.an-lh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}.an-lh b{font-size:13px}.an-lh span{font-size:11.5px;color:var(--muted)}
+.an-lh em{font-style:normal;font-family:var(--mono);font-weight:600}.an-lh em.up{color:var(--mark)}.an-lh em.dn{color:var(--ink-2)}
+.an-route{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:7px;padding:7px 9px}
+.an-route.nw{box-shadow:0 0 0 1px var(--c)}
+.an-rh{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:5px}.an-rh b{font-size:12px}.an-rh span{font-size:11px;color:var(--muted)}
+.an-seq{display:flex;flex-wrap:wrap;align-items:center;gap:4px 0}
+.an-seq.tm{gap:4px}
+.an-ln{width:14px;height:2px;background:var(--c);flex:none}
+.an-chips{display:flex;flex-wrap:wrap;gap:4px}
+.an-chip{position:relative;font:500 11.5px var(--sans);border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:12px;padding:2px 9px;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-chip:hover{border-color:var(--mark)}
+.an-chip.ch{border:1.6px solid var(--ink);font-weight:600;padding-right:14px}
+.an-chip.ch i{position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--go)}
+.an-empty{margin:0;font-size:12px;color:var(--muted)}
+</style>
