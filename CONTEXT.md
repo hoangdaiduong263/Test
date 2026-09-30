@@ -159,3 +159,11 @@ Hai yêu cầu kèm theo:
 ## Cập nhật 30/09: hiện trạng trước điều chỉnh trong popup
 - Đầu mỗi popup tuyến/nhóm (`nvBefore`): mọi điểm liên quan = điểm của plan + điểm đang đi chung xe/chung người với chúng. Liệt kê tuyến xe hiện nay (X1…: các điểm, loại xe, chuyến/ngày, giờ xe thật tới T8) và nhóm người hiện nay (N1…: hub, người/ngày, từng điểm + đơn), rồi bảng từng điểm: xe trước / người trước → xe sau / người sau (giữ nguyên, tuyến/nhóm mới gồm ai, hay đi riêng). Điểm ngoài plan nhưng bị ảnh hưởng ghi rõ.
 - Bảng từng điểm của plan ghi tên các điểm đang chung người / ghép xe thay cho "chung 6 điểm".
+
+## Cập nhật 30/09: mô phỏng lịch không gò 1 cỡ xe + giá theo km của nhà xe
+- Mô phỏng lịch (`simRun`) bỏ `simCap` (3.000 đơn/xe cố định): mỗi lượt xe chọn tổ hợp xe rẻ nhất theo `fleet()` (VAN/1T25/1T9/5T/8T theo giá vùng, lấp đầy, tỉ lệ hàng cồng kềnh); mỗi xe của lượt mang loại xe (`J.veh`) và phần đơn (`J.fr` = sức chứa xe / tổng sức chứa lượt). Tooltip và tiêu đề khung COT trong popup ghi loại xe (vd. "2 xe: 2×1T9").
+- Giá theo km (bảng "Intra Region by KM" của nhà xe, trung vị các bên, `G.kmT`; `truck.kmMode`, `truck.cityKm` = 30):
+  - Điểm/tuyến có điểm xa SOC hơn 30 km (km 1 chiều): giá xe = max(giá chuyến nội thành theo vùng, giá cơ bản theo bậc km + đ/km × km).
+  - Tuyến nhiều điểm: cộng đ/km của loại xe (1T9 5.000, 5T 7.600, 8T 12.000; VAN/1T25 quy theo 1T9 × tỉ lệ giá chuyến) × km đi vòng để ghé thêm điểm. Bỏ giả định +10% mỗi điểm và 10.000 đ/km đi vòng.
+  - `tripKm(pts)` → `{d0: km 1 chiều từ điểm xa nhất về SOC chính, dt: km đi vòng}` (cache TKM); đặt `PR_K` ở mọi nơi gọi `truckCost`.
+- Kết quả: gốc −961 tr; kế hoạch mạng (xe/người, tr): North 126/90, South 123/41, HN 894/0, HCM 129/8 (tắt giá km: North 83/99, South 112/41, HN 1.047/0, HCM 120/8). HN giảm vì các tuyến ghép đang chạy cũng không còn bị cộng 10%/điểm → gốc để so rẻ hơn.
