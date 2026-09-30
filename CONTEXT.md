@@ -167,3 +167,9 @@ Hai yêu cầu kèm theo:
   - Tuyến nhiều điểm: cộng đ/km của loại xe (1T9 5.000, 5T 7.600, 8T 12.000; VAN/1T25 quy theo 1T9 × tỉ lệ giá chuyến) × km đi vòng để ghé thêm điểm. Bỏ giả định +10% mỗi điểm và 10.000 đ/km đi vòng.
   - `tripKm(pts)` → `{d0: km 1 chiều từ điểm xa nhất về SOC chính, dt: km đi vòng}` (cache TKM); đặt `PR_K` ở mọi nơi gọi `truckCost`.
 - Kết quả: gốc −961 tr; kế hoạch mạng (xe/người, tr): North 126/90, South 123/41, HN 894/0, HCM 129/8 (tắt giá km: North 83/99, South 112/41, HN 1.047/0, HCM 120/8). HN giảm vì các tuyến ghép đang chạy cũng không còn bị cộng 10%/điểm → gốc để so rẻ hơn.
+
+## Cập nhật 30/09: chỉnh người hàng loạt + khóa người riêng
+- Modal "Chỉnh người hàng loạt" (`MR.bulkp`, nút ở đầu khối kế hoạch mạng, trong "Hiện trạng trước điều chỉnh" và trong "Chia người trong Hub"): chọn nhiều điểm của vùng (tick từng điểm, tick cả hub, hoặc dán danh sách tên — khớp theo chuỗi con, báo tên không tìm thấy), rồi một thao tác cho tất cả, tính lại một lần (`bulkApply`):
+  - Hiện trạng: người riêng / chung nhóm A/B/C (nhóm trong cùng FM Hub của từng điểm) / bỏ chỉnh tay. Chế độ "Sửa cho đúng thực tế" → vào gốc (đổi cả "Hiện trạng trước điều chỉnh"); "Thử thay đổi" → vào kịch bản.
+  - 🔒 Khóa người riêng trong kế hoạch (`G.lkeep` theo tên điểm, lưu cấu hình): `netLOk` không ghép điểm khóa; điểm khóa đang chung người được tách khỏi nhóm trước khi tìm kiếm.
+- Hub editor có thêm cột "Giữ người riêng"; ví dụ khóa GGGVIETNAM + mojistore: North người 90 → 65 tr.
