@@ -143,3 +143,9 @@ Hai yêu cầu kèm theo:
 - Kế hoạch mạng chỉ nhận nhóm người mới kịp giờ ở ngày trung bình (`teamOk` trong `netSearch`).
 - Kết quả: gốc −950 tr; kế hoạch mạng (xe/người, tr): North 81/64, South 103/43, HN 998/0, HCM 136/7.
 - Giới hạn: nhóm người được mô hình là một khối đi chung; hub lớn (vd. Thủ Đức 13 người, 7 điểm) không mô hình được việc chia người đứng tại các điểm lớn.
+
+## Cập nhật 30/09: chỉnh tay giờ xe tới + plan dễ thực hiện
+- Chỉnh tay giờ xe tới cho từng lượt xe của bất kỳ tuyến/nhóm nào: trong popup, mỗi khung COT có ô "Xe tới <điểm đầu>" (`G.tov[gkey(tuyến)|k]`, lưu trong cấu hình); nút "Tự động" bỏ chỉnh. Lượt chỉnh tay giữ cố định (không kéo sớm/lùi), model tính lại lịch người, tiền chờ, đạt/trễ.
+- `lab.oneVisit` (mặc định bật): nhóm người sort xong ở điểm nào thì ở lại chất xe luôn rồi mới đi điểm kế — không đi sort trước điểm khác rồi quay lại.
+- Xe có nhóm người được kéo tới sớm theo lúc hàng sẵn ở điểm đầu; xe được chờ nhóm ở điểm sau (có tính tiền chờ), bước lùi xe bỏ qua khoảng chờ không tránh được này.
+- Kết quả: gốc −937 tr; kế hoạch mạng (xe/người, tr): North 83/89, South 103/42, HN 998/0, HCM 136/7.
