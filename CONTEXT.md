@@ -149,3 +149,9 @@ Hai yêu cầu kèm theo:
 - `lab.oneVisit` (mặc định bật): nhóm người sort xong ở điểm nào thì ở lại chất xe luôn rồi mới đi điểm kế — không đi sort trước điểm khác rồi quay lại.
 - Xe có nhóm người được kéo tới sớm theo lúc hàng sẵn ở điểm đầu; xe được chờ nhóm ở điểm sau (có tính tiền chờ), bước lùi xe bỏ qua khoảng chờ không tránh được này.
 - Kết quả: gốc −937 tr; kế hoạch mạng (xe/người, tr): North 83/89, South 103/42, HN 998/0, HCM 136/7.
+
+## Cập nhật 30/09: tối ưu thời gian tải (kết quả không đổi)
+- Mở trang chỉ tính một lần (trước đây tính 2 lần: lúc khởi động và sau khi nạp trạng thái đã lưu) — `initStore` (GAS) / đuôi artifact chỉ bật trạng thái "đang tính".
+- Cache: `cotsOf` (COTC), `cotOfWave` (gắn trên lượt), `openOf` (OPC), danh sách xe theo vùng (VLC), số người nhóm theo nhóm+ngày+số liệu (POOLM); trong mỗi `simRun` nhớ sẵn điểm trong lượt, cửa sổ sort, năng suất, đơn. `computeBase` chỉ xóa kế hoạch mạng sau khi tính gốc (giữ cache mô phỏng). Tất cả xóa trong `netReset` khi đổi cấu hình.
+- Thẻ ngưỡng ADO ở bước 2 và bước 3: chỉ tính vùng đang xem (`thrOne`), hiện "đang tính…" rồi điền sau khi trang đã hiện.
+- Đo (headless): mở trang 10,1 s → 1,8 s; bước 2: 4,7 s → ~0,05 s (thẻ ngưỡng điền sau ~1–3 s); bước 3 / kế hoạch mạng: ~32 s → ~3,4 s.
