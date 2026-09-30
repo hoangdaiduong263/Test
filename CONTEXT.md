@@ -223,3 +223,11 @@ Giờ có hàng / giờ người có mặt:
 - Ô giờ `type=time` bắn "change" ngay khi gõ xong phần giờ → app tính lại và vẽ lại popup giữa lúc gõ, ghi đè phần đang gõ. Trình duyệt dạng 12h (AM/PM) còn giữ PM cũ: gõ 0930 thành 21:30. Nay: ô chữ 24h (`.tin`, `parseHM`: "930", "09:30", "9h30", "21"), bấm vào ô thì xóa để gõ mới (giờ cũ hiện mờ), chỉ áp khi Enter hoặc rời ô (`timeCommit`); giờ không đổi thì không biến thành chỉnh tay; giờ sai định dạng thì trả lại giờ cũ.
 - Popup tuyến/nhóm trước đây nhớ theo vị trí thẻ (`NVD[kind][j]`): chỉnh giờ → kế hoạch tính lại, thứ tự thẻ đổi → popup trống hoặc nhảy sang tuyến khác. Nay nhớ theo các điểm (`m.key = gkey(g)`); nếu kế hoạch mới không còn tuyến/nhóm đó thì vẫn hiện lịch của nó theo giờ đã chỉnh, kèm cảnh báo.
 - Ô "Có hàng từ" hiện giờ anh nhập; nếu model phải dùng giờ muộn hơn (sau lượt xe trước rời) thì ghi "áp dụng HH:MM".
+
+## Cập nhật 30/09: "giờ có hàng" quyết định giờ sort (cho cả người riêng)
+- Trước đây người riêng sort liên tục từ giờ mở cửa; "có hàng từ" (mặc định 3h trước Packed) chỉ chặn giờ xe chất → popup hiện "có hàng 13:43" nhưng "sort 08:00" (vô lý), và tuyến Hukan → TiemTraRumi → Nguyen Lieu → Unie được kéo xe tới 13:43 (sớm 152') chỉ nhờ giả định đó.
+- Nay: giờ có hàng của một COT = giờ bắt đầu sort được, cho cả người riêng lẫn nhóm; xe chỉ chất sau khi sort xong.
+- Mặc định (khi chưa nhập giờ thật, `lab.rdyData`): theo data của chính điểm = giờ xe thật tới lượt đó − thời gian người riêng sort phần đơn của lượt (đơn điểm × tỉ lệ lượt theo đơn xe thật lấy), không trước giờ mở cửa / xe lượt trước rời. `lab.rdyWin` (mặc định 0 = tắt) thay `lab.sortWin`: nếu đặt thì thêm mốc "sớm nhất X phút trước Packed".
+- Kiểm với data thật (160 điểm, lượt hiện nay): theo data điểm khớp 141/160 (báo trễ 26, thực tế 29), giờ xe rời lệch trung vị −9' (tuyệt đối 19'); từ giờ mở cửa: 129/160 nhưng xe rời sớm hơn thực tế 215'; 3h trước Packed: 109/160 (báo trễ 60).
+- Kết quả: gốc −317 (North −98: nhóm người Hub cần thêm người vì không sort được từ sáng); kế hoạch North 43/64, South 128/45, HN 403/0, HCM 177/8 → sau kế hoạch +552. Nhiều tuyến ghép trước đây chỉ khả thi nhờ giả định 3h bị loại (HN 916 → 403).
+- Độ nhạy: từ giờ mở cửa → +1.509; 3h trước Packed → +50. Giờ có hàng là yếu tố lớn nhất hiện nay.
