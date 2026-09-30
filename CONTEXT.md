@@ -218,3 +218,8 @@ Giờ có hàng / giờ người có mặt:
 - 19 điểm đổi. Lớn nhất: **HNSPC_56 Thôn Đường Đa 22.292 → 814.982 đơn/tháng** (~26k/ngày; khớp số đơn xe thật lấy ~26.473/ngày trong file linehaul, nên số cũ mới là số sai). 6 điểm HN khác lệch ±1–23 đơn; còn lại chỉnh hàng to.
 - Tổng đơn T8: 5.378.568 → 6.171.285. Gốc −949 → **−220** (HN −603 → +126; Thôn Đường Đa −84 → +645: tiết kiệm 1.064, xe 95, người 324 ≈ 20 người/ngày). Kế hoạch: North 127/56, South 157/43, HN 916/0, HCM 183/8 → sau kế hoạch +1.270.
 - Đo lại ảnh hưởng từng thành phần trên số mới (trang checkpoint `docs/checkpoint_2026-09-30.html`).
+
+## Cập nhật 30/09: sửa lỗi chỉnh giờ có hàng / giờ xe tới trong popup
+- Ô giờ `type=time` bắn "change" ngay khi gõ xong phần giờ → app tính lại và vẽ lại popup giữa lúc gõ, ghi đè phần đang gõ. Trình duyệt dạng 12h (AM/PM) còn giữ PM cũ: gõ 0930 thành 21:30. Nay: ô chữ 24h (`.tin`, `parseHM`: "930", "09:30", "9h30", "21"), bấm vào ô thì xóa để gõ mới (giờ cũ hiện mờ), chỉ áp khi Enter hoặc rời ô (`timeCommit`); giờ không đổi thì không biến thành chỉnh tay; giờ sai định dạng thì trả lại giờ cũ.
+- Popup tuyến/nhóm trước đây nhớ theo vị trí thẻ (`NVD[kind][j]`): chỉnh giờ → kế hoạch tính lại, thứ tự thẻ đổi → popup trống hoặc nhảy sang tuyến khác. Nay nhớ theo các điểm (`m.key = gkey(g)`); nếu kế hoạch mới không còn tuyến/nhóm đó thì vẫn hiện lịch của nó theo giờ đã chỉnh, kèm cảnh báo.
+- Ô "Có hàng từ" hiện giờ anh nhập; nếu model phải dùng giờ muộn hơn (sau lượt xe trước rời) thì ghi "áp dụng HH:MM".

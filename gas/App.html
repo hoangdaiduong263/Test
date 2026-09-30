@@ -1938,15 +1938,16 @@ function stopTimes(rows,n0){const L=[];rows.forEach((r,n)=>r.st.forEach(z=>L.pus
   const tt=v=>v==null||!isFinite(v)?"–":hhmm(v);
   const tr=L.map(({n,z})=>{const nm=S[z.i].n.trim(),key=nm+"|"+z.cot.k,ov=(G.rdyOv||{})[key]!=null,team=z.s0!=null;
     const ss=team?z.s0:(z.thr!=null&&z.rate?z.thr-z.q/z.rate:null),se=team?z.s1:z.thr,pres=team?z.tar:null,late=z.late;
-    const inp=`<input type="time" class="inp sm" data-rdy="${esc(key)}" value="${tt(z.rdy)}" aria-label="Giờ có hàng ${esc(nm)} COT ${z.cot.k+1}"${ov?' style="border-bottom:1.5px solid var(--warn)"':""}>${ov?`<button type="button" class="ghost sm" data-rdyx="${esc(key)}" title="Trả về giờ tự tính">↺</button>`:""}`;
+    const ovv=ov?G.rdyOv[key]:null,shown=ov?ovv:z.rdy,sv=tt(shown),v0=/^\d\d:\d\d$/.test(sv)?+sv.slice(0,2)*60+ +sv.slice(3):"";
+    const inp=`<input type="text" inputmode="numeric" maxlength="5" placeholder="hh:mm" class="inp sm tin" data-rdy="${esc(key)}" data-v0="${v0}" value="${/^\d\d:\d\d$/.test(sv)?sv:""}" aria-label="Giờ có hàng ${esc(nm)} COT ${z.cot.k+1}" title="Gõ giờ rồi nhấn Enter (hoặc bấm ra ngoài) để áp dụng"${ov?' style="border-bottom:1.5px solid var(--warn)"':""}>${ov?`<button type="button" class="ghost sm" data-rdyx="${esc(key)}" title="Trả về giờ tự tính">↺</button>`:""}${ov&&z.rdy>ovv+0.5?`<small>áp dụng ${tt(z.rdy)} (sau xe lượt trước)</small>`:""}`;
     return `<tr><td class="num">${n+1}</td><td class="l rowname">${esc(shortN(nm))}</td><td class="num">${f0(z.q)}</td><td class="num">${inp}</td>
       <td class="num">${team?`${tt(pres)}<small>nhóm tới</small>`:`<span class="muted">đúng giờ</span><small>người riêng</small>`}</td>
       <td class="num">${ss!=null?`${tt(ss)}–${tt(se)}`:"–"}</td><td class="num">${tt(z.arr)}</td><td class="num">${tt(z.ls)}${z.ls-z.arr>1?`<small>chờ ${Math.round(z.ls-z.arr)}'</small>`:""}</td><td class="num">${tt(z.dep)}</td>
       <td class="num">${tt(z.cot.p0??z.cot.p)}</td><td class="num ${late>0.5?"neg":"pos"}">${late>0.5?"+"+Math.round(late)+"'":"dư "+Math.round(-late)+"'"}</td></tr>`;}).join("");
   return `<details class="nvd-st"${L.length<=8?" open":""}><summary>Giờ từng điểm (${L.length} lần dừng) — đầu vào: giờ có hàng, giờ người có mặt</summary>
     <div class="tablewrap"><table class="data nvd-t"><thead><tr><th>Xe</th><th class="l">Điểm</th><th>Đơn</th><th data-tt="Lúc hàng của COT này có để sort và chất. Tự tính: sau lượt xe trước của điểm, sớm nhất ${G.lab.sortWin??180}' trước giờ Packed, không trước giờ seller mở — áp cho nhóm người chung và cho giờ chất xe; người riêng sort liên tục từ giờ mở cửa / lượt xe trước (khớp data thật hơn). Nhập giờ thật vào ô → áp cho cả sort (người riêng lẫn nhóm) và chất xe của điểm × COT này.">Có hàng từ ✎</th><th>Người có mặt</th><th>Sort</th><th>Xe tới</th><th>Chất</th><th>Rời</th><th>Hạn</th><th>±</th></tr></thead><tbody>${tr}</tbody></table></div>
-    <p class="note" style="margin:4px 0 0">Sort bắt đầu = muộn hơn giữa <b>giờ có hàng</b> và <b>giờ người có mặt</b> (người riêng coi như có mặt đúng giờ; nhóm chung = lúc nhóm tới điểm). Xe chất khi hàng đã sort xong và người có mặt.</p></details>`;}
-function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,Pb}=D,g=x.g,c=x.c,xe=kind==="xe";
+    <p class="note" style="margin:4px 0 0">Sửa giờ: gõ xong nhấn <b>Enter</b> (hoặc bấm ra ngoài ô) để tính lại. Sort bắt đầu = muộn hơn giữa <b>giờ có hàng</b> và <b>giờ người có mặt</b> (người riêng coi như có mặt đúng giờ; nhóm chung = lúc nhóm tới điểm). Xe chất khi hàng đã sort xong và người có mặt.</p></details>`;}
+function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;const {x,Pb}=D,g=x.g,c=x.c,xe=kind==="xe";
   const ord=xe?(routeSched(g).order||routeOrder(g)):g.slice().sort((a,b)=>((waveTimes(a)||[1e9])[0])-((waveTimes(b)||[1e9])[0]));
   const ado=g.reduce((a,i)=>a+nvAdo(i),0),soc=xe?socMain(g):null,dk=xe?routeKm(g):0,real=xe&&realTogether(g);
   const tBefore=g.reduce((a,i)=>a+nvShare(i,xe?Pb:(netPlan(S[g[0]].R).T0),"xe"),0),tAfter=xe?nvTrips(g):tBefore;
@@ -1972,7 +1973,7 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
       const st=w>tol?["neg","trễ nhất +"+Math.round(w)+"'"]:w>0?["warn","sát hạn +"+Math.round(w)+"'"]:["pos","dư ít nhất "+Math.round(-w)+"'"];
       const ps=rows.flatMap(r=>r.st.map(z=>z.cot.p0??z.cot.p)),pa=Math.min(...ps),pb=Math.max(...ps);
       const rks=[...new Map(rows.map(r=>[r.rk,r])).values()].map(r=>{const nm=r.st.map(z=>shortN(S[z.i].n)).join(" → "),v=hhmm(r.st[0].arr);
-        return `<label class="tov">${r.fix?"<b>chỉnh tay</b> · ":""}Xe tới ${esc(shortN(S[r.st[0].i].n))}${r.st.length>1?` <small>(${esc(nm)})</small>`:""} <input type="time" class="inp sm" data-tov="${esc(r.rk)}" value="${v.length===5?v:"00:00"}" aria-label="Giờ xe tới ${esc(nm)}">${r.fix?`<button type="button" class="ghost sm" data-tovx="${esc(r.rk)}">Tự động</button>`:""}</label>`;}).join("");
+        return `<label class="tov">${r.fix?"<b>chỉnh tay</b> · ":""}Xe tới ${esc(shortN(S[r.st[0].i].n))}${r.st.length>1?` <small>(${esc(nm)})</small>`:""} <input type="text" inputmode="numeric" maxlength="5" placeholder="hh:mm" class="inp sm tin" data-tov="${esc(r.rk)}" data-v0="${v.length===5?+v.slice(0,2)*60+ +v.slice(3):""}" value="${v.length===5?v:"00:00"}" aria-label="Giờ xe tới ${esc(nm)}" title="Gõ giờ rồi nhấn Enter (hoặc bấm ra ngoài) để áp dụng">${r.fix?`<button type="button" class="ghost sm" data-tovx="${esc(r.rk)}">Tự động</button>`:""}</label>`;}).join("");
       const h=`<section class="nvd-cot"><div class="nvd-ch"><b>COT ${cc.k+1} · ${pa===pb?`hạn ${hhmm(pa)}${cc.close?" (đóng cửa)":""}`:`hạn từng điểm ${hhmm(pa)}–${hhmm(pb)}`}</b><span>${rows.length} xe${rows.some(r=>r.veh)?`: ${esc(Object.entries(rows.reduce((m,r)=>{if(r.veh)m[r.veh]=(m[r.veh]||0)+1;return m;},{})).map(([k,c])=>(c>1?c+"×":"")+k).join(" + "))}`:""} · ${f0(Q)} đơn · về SOC ${hhmm(Math.min(...rows.map(r=>r.soc)))}–${hhmm(Math.max(...rows.map(r=>r.soc)))}</span><span class="${st[0]}">${st[1]}</span>${sh>=1?`<span>chạy sớm ${Math.round(sh)}'</span>`:""}</div>
         <div class="tov-row">${rks}</div>${schedHtml({rows},!xe,null,{W:780,bare:true,n0,ord})}${stopTimes(rows,n0)}</section>`;n0+=rows.length;return h;}).join("");
     plan=`<h4 class="nvd-h">Kế hoạch linehaul · ${xe?`ngày đông (p${G.truck.peakP??90})`:"ngày trung bình"}${soc?` → ${esc(soc)}`:""}</h4>${real?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật. Lịch dưới đây là giờ đề xuất theo cửa sổ giờ mới (xe tới khi hàng sẵn, chạy sớm nếu cần); tiền xe vẫn tính theo chuyến thật.</p>`:""}${plan}${schLegend(!xe)}<p class="note" style="margin:4px 0 0">Rê chuột vào từng khối để xem giờ tới/đi, số đơn chất, thời gian chờ và hạn.</p>`;}
@@ -2002,7 +2003,12 @@ function teamDay(sim,ord){if(!sim||!sim.rows.length)return "";const ev=teamEvent
     else{const w=Math.max(0,e.a-e.z.arr);out.push(`<li class="x"><time>${hhmm(e.a)}–${hhmm(e.b)}</time><span>${no(e.i)} Xe ${e.n+1} tới lúc ${hhmm(e.z.arr)}, nhóm <b>chất ${f0(e.z.q)} đơn lên xe</b>, xe rời ${hhmm(e.b)}${w>=1?` · <em>xe chờ nhóm ${Math.round(w)}'</em>`:""}</span></li>`);}
     prev=e;});
   return `<h4 class="nvd-h">Một ngày của nhóm người (ngày trung bình)</h4><ol class="nvd-day">${out.join("")}</ol>`;}
-MR.nvd=m=>nvDetail(m.kind,m.j)||{title:"",body:""};
+/* popup nhớ tuyến/nhóm theo các điểm (không theo vị trí thẻ): sau khi chỉnh, kế hoạch tính lại và thứ tự thẻ đổi */
+MR.nvd=m=>{const L=NVD[m.kind]||{};let D=m.key?Object.values(L).find(d=>gkey(d.x.g)===m.key):L[m.j];let gone=false;
+  if(D)m.D=D;else if(m.D){D=m.D;gone=true;}
+  const r=D?nvDetail(m.kind,null,D):null;if(!r)return {title:"",body:`<p class="note">Không còn dữ liệu cho mục này.</p>`};
+  if(gone)r.body=`<p class="nvd-warn">Sau lần chỉnh vừa rồi, kế hoạch tối ưu không còn chọn ${m.kind==="xe"?"tuyến":"nhóm"} này (model chọn cách khác tốt hơn). Lịch dưới đây vẫn tính cho ${m.kind==="xe"?"tuyến":"nhóm"} này theo giờ đã chỉnh để anh so.</p>`+r.body;
+  return r;};
 /* ================= CHỈNH TAY NHÓM NGƯỜI TRONG MỘT FM HUB =================
    Chọn nhóm cho từng điểm (Riêng / A / B / C) và ghi đè từng ngày (bấm ô để đổi: theo điểm → riêng → A → B → C).
    Nhóm A dùng mã nhóm mặc định của hub (như gốc), B/C là nhóm thứ hai/ba trong cùng hub. */
@@ -2095,12 +2101,25 @@ function hubCycleDay(i,d){const mode=ui.em,Lr=mode==="r"?(OV[i]||{}):((OV[i]&&OV
   const seq=[null,"-",hubGCode(h,"A"),hubGCode(h,"B"),hubGCode(h,"C")],k=seq.indexOf(o.team!=null?o.team:null);setDayOv(i,d,"team",seq[(k+1)%seq.length],mode);}
 function hubReset(R,h){const mode=ui.em;S.forEach((s,i)=>{if(s.R!==R||(s.h||"")!==h)return;const L=layer(i,mode);let ch=false;if(L.s.team!=null){delete L.s.team;ch=true;}
   Object.keys(L.d).forEach(d=>{if(L.d[d].team!=null){delete L.d[d].team;if(!Object.keys(L.d[d]).length)delete L.d[d];ch=true;}});if(ch)saveSeller(i);});mode==="r"?refreshAll():scnSoon();}
-document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.tov!=null){const [h,m]=String(t.value||"").split(":").map(Number);if(isFinite(h)&&isFinite(m)){G.tov=G.tov||{};G.tov[t.dataset.tov]=h*60+m;saveCfg();refreshAll();}return;}
+/* ô giờ (xe tới / có hàng): chỉ áp khi nhấn Enter hoặc rời ô — ô giờ bắn "change" ngay khi gõ xong phần giờ, tính lại giữa chừng sẽ ghi đè phần đang gõ */
+/* giờ 24h gõ tay: "930", "0930", "9:30", "9h30", "21" → phút trong ngày; sai định dạng → null */
+function parseHM(x){const s=String(x||"").trim().toLowerCase().replace(/\s/g,"");if(!s)return null;let h,m;
+  const a=s.match(/^(\d{1,2})[:h.](\d{0,2})$/);if(a){h=+a[1];m=a[2]?+a[2]:0;}else if(/^\d{1,4}$/.test(s)){if(s.length<=2){h=+s;m=0;}else{h=+s.slice(0,s.length-2);m=+s.slice(-2);}}else return null;
+  return h>=0&&h<=23&&m>=0&&m<=59?h*60+m:null;}
+function timeCommit(t){if(!t||!t.dataset)return;const key=t.dataset.tov!=null?"tov":t.dataset.rdy!=null?"rdyOv":null;if(!key)return;const k=t.dataset.tov!=null?t.dataset.tov:t.dataset.rdy;
+  const v=parseHM(t.value);if(v==null){if(t.dataset.v0)t.value=String(Math.floor(+t.dataset.v0/60)).padStart(2,"0")+":"+String(+t.dataset.v0%60).padStart(2,"0");return;}
+  t.value=String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0");G[key]=G[key]||{};
+  if(t.dataset.v0===String(v))return;   /* không đổi so với giờ đang hiện: không biến giờ tự tính thành chỉnh tay */
+  t.dataset.v0=String(v);G[key][k]=v;saveCfg();refreshAll();}
+document.addEventListener("focusout",e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null))timeCommit(t);});
+document.addEventListener("focusin",e=>{const t=e.target;if(t&&t.classList&&t.classList.contains("tin")&&t.value){t.placeholder=t.value;t.value="";}});   /* bấm vào ô: xóa để gõ mới, giờ cũ hiện mờ; để trống thì trả lại giờ cũ */
+document.addEventListener("keydown",e=>{const t=e.target;if(e.key==="Enter"&&t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null)){e.preventDefault();t.blur();}});
+document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.tov!=null)return;
   if(t.dataset&&t.dataset.bsel!=null){const sel=ui.bsel||(ui.bsel={});if(t.checked)sel[t.dataset.bsel]=1;else delete sel[t.dataset.bsel];renderModals();return;}
   if(t.dataset&&t.dataset.bselg!=null){const sel=ui.bsel||(ui.bsel={}),m=MS[MS.length-1],[h,g]=t.dataset.bselg.split("|"),X=OUT?OUT.X:BASE;S.forEach((s,i)=>{if(s.R===(m&&m.R)&&(s.h||"")===h&&BASE.tot[i].vol>0&&hubGOf(h,X.set[i].team)===g){if(t.checked)sel[i]=1;else delete sel[i];}});renderModals();return;}
   if(t.dataset&&t.dataset.bonly!=null){ui.bonly=t.checked;renderModals();return;}
   if(t.dataset&&t.dataset.bselh!=null){const sel=ui.bsel||(ui.bsel={}),m=MS[MS.length-1];S.forEach((s,i)=>{if(s.R===(m&&m.R)&&(s.h||"")===t.dataset.bselh&&BASE.tot[i].vol>0){if(t.checked)sel[i]=1;else delete sel[i];}});renderModals();return;}
-  if(t.dataset&&t.dataset.rdy!=null){const [h,m]=String(t.value||"").split(":").map(Number);if(isFinite(h)&&isFinite(m)){G.rdyOv=G.rdyOv||{};G.rdyOv[t.dataset.rdy]=h*60+m;saveCfg();refreshAll();}return;}
+  if(t.dataset&&t.dataset.rdy!=null)return;
   if(t.dataset&&t.dataset.lkeep!=null){const n=S[+t.dataset.lkeep].n.trim();G.lkeep=G.lkeep||{};if(t.checked)G.lkeep[n]=1;else delete G.lkeep[n];saveCfg();refreshAll();return;}
   if(t.dataset&&t.dataset.hubsel!=null){if(t.value!=="•")hubSetSeller(+t.dataset.hubsel,t.value);}});
 /* ================= KẾ HOẠCH NGƯỜI & NĂNG LỰC TẠI TỪNG ĐIỂM (bằng chứng khả thi của tuyến) =================
@@ -3461,7 +3480,7 @@ document.addEventListener("click",e=>{
   const bun=t.closest("[data-bunsel]");if(bun){delete (ui.bsel||{})[bun.dataset.bunsel];renderModals();return;}
   const bcl=t.closest("[data-bclr]");if(bcl){ui.bsel={};ui.bmsg="";renderModals();return;}
   const hbr=t.closest("[data-hubreset]");if(hbr){const [R,h]=hbr.dataset.hubreset.split("|");hubReset(R,h);return;}
-  const nvd=t.closest("[data-nvd]");if(nvd){const [k,jj]=nvd.dataset.nvd.split("|");openModal({k:"nvd",kind:k,j:+jj});return;}
+  const nvd=t.closest("[data-nvd]");if(nvd){const [k,jj]=nvd.dataset.nvd.split("|"),D=(NVD[k]||{})[+jj];openModal({k:"nvd",kind:k,j:+jj,key:D?gkey(D.x.g):null,D});return;}
   const tvx=t.closest("[data-tovx]");if(tvx){if(G.tov)delete G.tov[tvx.dataset.tovx];saveCfg();refreshAll();return;}
   if(t.closest("[data-nvmore]")){ui.nvN=(ui.nvN||6)+6;const box=$("nvBox");if(box)box.outerHTML=netViz();return;}
   const nvb=t.closest("[data-netr],[data-netl],[data-netpk]");if(nvb&&!nvb.disabled){const d=nvb.dataset;
