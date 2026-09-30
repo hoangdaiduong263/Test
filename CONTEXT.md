@@ -231,3 +231,8 @@ Giờ có hàng / giờ người có mặt:
 - Kiểm với data thật (160 điểm, lượt hiện nay): theo data điểm khớp 141/160 (báo trễ 26, thực tế 29), giờ xe rời lệch trung vị −9' (tuyệt đối 19'); từ giờ mở cửa: 129/160 nhưng xe rời sớm hơn thực tế 215'; 3h trước Packed: 109/160 (báo trễ 60).
 - Kết quả: gốc −317 (North −98: nhóm người Hub cần thêm người vì không sort được từ sáng); kế hoạch North 43/64, South 128/45, HN 403/0, HCM 177/8 → sau kế hoạch +552. Nhiều tuyến ghép trước đây chỉ khả thi nhờ giả định 3h bị loại (HN 916 → 403).
 - Độ nhạy: từ giờ mở cửa → +1.509; 3h trước Packed → +50. Giờ có hàng là yếu tố lớn nhất hiện nay.
+
+## Cập nhật 30/09: bảng nhập "Giờ có hàng của seller"
+- Nút "Giờ có hàng của seller →" ở đầu khối kế hoạch mạng (và link trong bảng "Giờ từng điểm" của popup tuyến): bảng mọi điểm của vùng × COT (`MR.rdyed`), mỗi ô là giờ bắt đầu ra hàng của COT đó; ô nhập tay viền cam (ưu tiên), ô thường = tự tính từ data (`rdyAuto`: giờ xe thật tới − thời gian sort lượt đó, ngày thường). Lọc theo tên; ↺ trả về tự tính; xóa hết giờ nhập của vùng.
+- Dán từ Sheets/Excel (`rdPaste`): mỗi dòng `tên điểm ⇥ giờ COT1 ⇥ giờ COT2…` hoặc `tên điểm ⇥ số COT ⇥ giờ`; tên khớp một phần; báo tên không tìm thấy / giờ sai. "Chép bảng ra" (`rdCopy`) chép TSV giờ hiện dùng để sửa trong Sheets rồi dán lại.
+- Giờ nhập lưu trong cấu hình (`G.rdyOv`, theo tên điểm × COT) nên giữ nguyên khi nạp data tháng mới; dùng cho kế hoạch tương lai khi seller đổi giờ ra hàng.

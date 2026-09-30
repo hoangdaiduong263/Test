@@ -1948,6 +1948,7 @@ function stopTimes(rows,n0){const L=[];rows.forEach((r,n)=>r.st.forEach(z=>L.pus
       <td class="num">${ss!=null?`${tt(ss)}–${tt(se)}`:"–"}</td><td class="num">${tt(z.arr)}</td><td class="num">${tt(z.ls)}${z.ls-z.arr>1?`<small>chờ ${Math.round(z.ls-z.arr)}'</small>`:""}</td><td class="num">${tt(z.dep)}</td>
       <td class="num">${tt(z.cot.p0??z.cot.p)}</td><td class="num ${late>0.5?"neg":"pos"}">${late>0.5?"+"+Math.round(late)+"'":"dư "+Math.round(-late)+"'"}</td></tr>`;}).join("");
   return `<details class="nvd-st"${L.length<=8?" open":""}><summary>Giờ từng điểm (${L.length} lần dừng) — đầu vào: giờ có hàng, giờ người có mặt</summary>
+    <p class="mini" style="margin:4px 0"><button type="button" class="linkish" data-rdyed="${esc(S[L[0].z.i].R)}">Nhập giờ có hàng cho nhiều seller cùng lúc →</button></p>
     <div class="tablewrap"><table class="data nvd-t"><thead><tr><th>Xe</th><th class="l">Điểm</th><th>Đơn</th><th data-tt="Lúc hàng của COT này có để sort — quyết định giờ bắt đầu sort (người riêng lẫn nhóm chung); xe chỉ chất sau khi sort xong. Tự tính: ${G.lab.rdyWin>0?`sớm nhất ${G.lab.rdyWin}' trước Packed, `:""}từ giờ seller mở cửa, hoặc từ lúc xe lượt trước rời điểm. Nhập giờ thật vào ô (lưu theo điểm × COT).">Có hàng từ ✎</th><th>Người có mặt</th><th>Sort</th><th>Xe tới</th><th>Chất</th><th>Rời</th><th>Hạn</th><th>±</th></tr></thead><tbody>${tr}</tbody></table></div>
     <p class="note" style="margin:4px 0 0">Sửa giờ: gõ xong nhấn <b>Enter</b> (hoặc bấm ra ngoài ô) để tính lại. Sort bắt đầu = muộn hơn giữa <b>giờ có hàng</b> và <b>giờ người có mặt</b> (người riêng coi như có mặt đúng giờ; nhóm chung = lúc nhóm tới điểm). Xe chất khi hàng đã sort xong và người có mặt.</p></details>`;}
 function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;const {x,Pb}=D,g=x.g,c=x.c,xe=kind==="xe";
@@ -2087,7 +2088,45 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
       <span class="bk-tools"><button type="button" class="linkish" data-ball="1">mở tất cả</button> · <button type="button" class="linkish" data-ball="0">thu gọn tất cả</button> · <label class="bk-only"><input type="checkbox" data-bonly="1"${ui.bonly?" checked":""}> chỉ hiện điểm đã chọn</label></span></h5>
       <div class="bk-tree">${hubs.map(hubBlock).join("")||`<p class="note">Không có điểm.</p>`}</div></section></div>`;
   return {title:"Chỉnh người hàng loạt",sub:`${R} · ${pts.length} điểm · ${hubs.length} hub · ${mode==="r"?"sửa cho đúng thực tế (vào gốc)":"thử thay đổi (vào kịch bản)"}`,body,size:""};};
-document.addEventListener("input",e=>{if(e.target&&e.target.id==="bpaste")ui.bpaste=e.target.value;if(e.target&&e.target.id==="bhub")ui.bhub=e.target.value;});
+document.addEventListener("input",e=>{if(e.target&&e.target.id==="rdpaste")ui.rdpaste=e.target.value;if(e.target&&e.target.id==="rdq"){ui.rdq=e.target.value;clearTimeout(window.__rdq);window.__rdq=setTimeout(()=>{renderModals();const x=$("rdq");if(x){x.focus();x.setSelectionRange(x.value.length,x.value.length);}},250);}if(e.target&&e.target.id==="bpaste")ui.bpaste=e.target.value;if(e.target&&e.target.id==="bhub")ui.bhub=e.target.value;});
+/* ============ GIỜ CÓ HÀNG CỦA SELLER (nhập theo điểm × COT) ============
+   Giờ nhập tay (G.rdyOv["tên điểm|COT"]) được ưu tiên hơn giờ tự tính từ data quá khứ; dùng cho kế hoạch tương lai khi seller đổi giờ ra hàng. */
+const hmS=v=>v==null||!isFinite(v)?"":String(Math.floor(v/60)%24).padStart(2,"0")+":"+String(Math.round(v)%60).padStart(2,"0");
+function rdyAuto(i,k){const T=stT(i),L=cotsOf(i),c=L[k];if(!c)return null;const ix=T?T.w.findIndex(v=>v.k===k):-1,w=ix>=0?T.w[ix]:null,pv=ix>0?T.w[ix-1].dep:-1e9;
+  const win=G.lab.rdyWin>0?G.lab.rdyWin:1e9;let dd=-1e9;
+  if(G.lab.rdyData!==false&&w&&w.arr!=null){const pd=avgSort(i),ado=adoOf(i),hc=Math.max(G.lab.minHC||1,Math.ceil(pd-1e-9)),pH=(G.lab.prodH??7)*60,rate=pd>0?ado/(pd*pH/hc):0;
+    const su=T.w.reduce((a,v)=>a+(v.up||0),0),sh=su>0?(w.up||0)/su:1/T.w.length;if(rate>0)dd=w.arr-ado*sh/rate;}
+  return Math.max(openOf(i),pv,c.p-win,dd);}
+MR.rdyed=m=>{const R=m.R,q=(ui.rdq||"").toLowerCase().trim(),ov=G.rdyOv||{};
+  const pts=S.map((_,i)=>i).filter(i=>S[i].R===R&&BASE.tot[i].vol>0&&(!q||S[i].n.toLowerCase().includes(q))).sort((a,b)=>adoOf(b)-adoOf(a));
+  const nC=Math.max(1,...pts.map(i=>cotsOf(i).length)),nOv=S.filter(s=>s.R===R).reduce((a,s)=>a+Object.keys(ov).filter(k=>k.startsWith(s.n.trim()+"|")).length,0);
+  const cell=(i,k)=>{const c=cotsOf(i)[k];if(!c)return `<td></td>`;const key=S[i].n.trim()+"|"+k,has=ov[key]!=null,au=rdyAuto(i,k),v=has?ov[key]:au,sv=hmS(v);
+    return `<td class="rd-c${has?" ov":""}"><span class="rd-h">hạn ${hhmm(c.p)}${c.close?" · đóng cửa":""}</span><input type="text" inputmode="numeric" maxlength="5" placeholder="hh:mm" class="inp sm tin" data-rdy="${esc(key)}" data-v0="${has?Math.round(ov[key]):Math.round(au)}" value="${sv}" aria-label="Giờ có hàng ${esc(S[i].n.trim())} COT ${k+1}">${has?`<button type="button" class="ghost sm" data-rdyx="${esc(key)}" title="Trả về giờ tự tính (${hmS(au)})">↺</button><small>tự tính ${hmS(au)}</small>`:`<small>tự tính theo data</small>`}</td>`;};
+  const body=`<div class="nvd bk">
+    <p class="note" style="margin:0">Giờ seller <b>bắt đầu ra hàng</b> cho từng COT = lúc hàng của COT đó sort được. Ô chữ đậm viền cam là giờ anh nhập (được ưu tiên); ô chữ thường là giờ <b>tự tính từ data tháng 8</b> (giờ xe thật tới − thời gian sort lượt đó). Gõ giờ 24h rồi Enter. Giờ nhập được lưu và dùng cho mọi lần tính sau, kể cả khi nạp data tháng mới.</p>
+    <section class="bk-step"><h5><span class="bk-n">1</span>Dán nhiều seller một lần (từ Google Sheets / Excel)</h5>
+      <p class="mini" style="margin:0;white-space:normal">Mỗi dòng một seller: <code>tên điểm ⇥ giờ COT1 ⇥ giờ COT2 …</code> (ô trống = giữ nguyên), hoặc <code>tên điểm ⇥ số COT ⇥ giờ</code>. Tên chỉ cần một phần, vd. <code>Hukan⇥15:00</code>.</p>
+      <textarea class="inp" id="rdpaste" rows="3" placeholder="Hukan DuyTien	15:00&#10;TiemTraRumi	2	16:00">${esc(ui.rdpaste||"")}</textarea>
+      <div class="row" style="gap:8px"><button type="button" class="ghost sm" data-rdpaste="1">Áp dụng danh sách</button><button type="button" class="ghost sm" data-rdcopy="1">Chép bảng ra (để sửa trong Sheets)</button><button type="button" class="ghost sm" data-rdclr="${esc(R)}"${nOv?"":" disabled"}>Xóa hết giờ nhập của ${esc(R)} (${nOv})</button></div>
+      ${ui.rdmsg?`<p class="mini" style="margin:0;white-space:normal">${ui.rdmsg}</p>`:""}</section>
+    <section class="bk-step"><h5><span class="bk-n">2</span>Bảng giờ có hàng · ${esc(R)} <span class="bk-tools"><input class="inp sm" id="rdq" placeholder="lọc tên điểm" value="${esc(ui.rdq||"")}" style="max-width:none;width:170px;text-align:left"></span></h5>
+      <div class="tablewrap"><table class="data nvd-t rd-t"><thead><tr><th class="l">Điểm</th><th>Đơn/ngày</th>${Array.from({length:nC},(_,k)=>`<th>COT ${k+1}</th>`).join("")}</tr></thead><tbody>
+      ${pts.map(i=>`<tr><td class="l rowname">${esc(shortN(S[i].n))}<small>${esc((S[i].h||"").replace(/ Hub$/,""))}</small></td><td class="num">${f0(adoOf(i))}</td>${Array.from({length:nC},(_,k)=>cell(i,k)).join("")}</tr>`).join("")||`<tr><td colspan="${nC+2}" class="note">Không có điểm khớp.</td></tr>`}
+      </tbody></table></div></section></div>`;
+  return {title:"Giờ có hàng của seller",sub:`${R} · ${pts.length} điểm · ${nOv} giờ đã nhập`,body,size:""};};
+function rdPaste(R){const el=$("rdpaste"),txt=el?el.value:"";ui.rdpaste=txt;const ov=G.rdyOv=G.rdyOv||{};let n=0;const miss=[],bad=[];
+  txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach(l=>{const t=l.split(/\t|;|,(?=\s*\d)/).map(x=>x.trim());const nm=t[0].toLowerCase();if(!nm)return;
+    const hit=S.map((_,i)=>i).filter(i=>S[i].R===R&&S[i].n.toLowerCase().includes(nm));if(!hit.length){miss.push(t[0]);return;}
+    const i=hit.sort((a,b)=>adoOf(b)-adoOf(a))[0],L=cotsOf(i),rest=t.slice(1);
+    const put=(k,x)=>{if(!x)return;const v=parseHM(x);if(v==null||!L[k]){bad.push(t[0]+" COT"+(k+1)+" "+x);return;}ov[S[i].n.trim()+"|"+k]=v;n++;};
+    if(rest.length===2&&/^\d$/.test(rest[0])&&parseHM(rest[1])!=null)put(+rest[0]-1,rest[1]);else rest.forEach((x,k)=>put(k,x));});
+  ui.rdmsg=`Đã nhập ${n} giờ.`+(miss.length?` <span class="neg">Không tìm thấy: ${esc(miss.join(", "))}</span>`:"")+(bad.length?` <span class="neg">Bỏ qua (giờ sai / không có COT đó): ${esc(bad.join("; "))}</span>`:"");
+  if(n){saveCfg();refreshAll();}else renderModals();}
+function rdCopy(R){const pts=S.map((_,i)=>i).filter(i=>S[i].R===R&&BASE.tot[i].vol>0).sort((a,b)=>adoOf(b)-adoOf(a)),ov=G.rdyOv||{};
+  const nC=Math.max(1,...pts.map(i=>cotsOf(i).length));const head=["Điểm",...Array.from({length:nC},(_,k)=>"COT"+(k+1))].join("\t");
+  const rows=pts.map(i=>[S[i].n.trim(),...Array.from({length:nC},(_,k)=>{if(!cotsOf(i)[k])return "";const key=S[i].n.trim()+"|"+k;return hmS(ov[key]!=null?ov[key]:rdyAuto(i,k));})].join("\t"));
+  const txt=[head,...rows].join("\n");const done=m=>{ui.rdmsg=m;renderModals();};
+  try{navigator.clipboard.writeText(txt).then(()=>done(`Đã chép ${pts.length} dòng — dán vào Google Sheets, sửa giờ, rồi chép lại vào ô ở bước 1.`),()=>{ui.rdpaste=txt;done("Trình duyệt không cho chép tự động: bảng đã đặt vào ô ở bước 1, chọn hết và chép tay.");});}catch(e){ui.rdpaste=txt;done("Bảng đã đặt vào ô ở bước 1, chọn hết và chép tay.");}}
 function bulkApply(act,R){const sel=Object.keys(ui.bsel||{}).map(Number).filter(i=>S[i]&&S[i].R===R);if(!sel.length)return;
   if(act==="hub"||act==="hubx"){const h=act==="hub"?String(($("bhub")||{}).value||"").trim():"";if(act==="hub"&&!h)return;G.hubOv=G.hubOv||{};sel.forEach(i=>{const n=S[i].n.trim();if(h)G.hubOv[n]=h;else delete G.hubOv[n];});saveCfg();refreshAll();return;}
   if(act==="lock"||act==="unlock"){G.lkeep=G.lkeep||{};sel.forEach(i=>{const n=S[i].n.trim();if(act==="lock")G.lkeep[n]=1;else delete G.lkeep[n];});saveCfg();refreshAll();return;}
@@ -2260,7 +2299,7 @@ function netViz(){const st=nvState();if(!st)return "";const {R,Rs,P,sc,L}=st;
   const seg=(key,val,opts)=>`<div class="seg" role="group">${opts.map(([k,l])=>`<button type="button" data-${key}="${k}" aria-pressed="${val===k}">${l}</button>`).join("")}</div>`;
   const nT=P.T1.filter(g=>g.length>1).length,nC=P.T0.filter(g=>g.length>1&&!P.T1.some(h=>gkey(h)===gkey(g))).length;
   return `<div class="card nv" id="nvBox">
-    <div class="nv-head">${ui.reg==="all"?seg("netr",R,Rs.map(x=>[x,x])):`<b class="nv-r">${R}</b>`}${seg("netl",L,[["xe","Tuyến xe"],["nguoi","Nhóm người"]])}<button type="button" class="ghost sm" data-bulkp="${esc(R)}">Chỉnh người hàng loạt →</button>
+    <div class="nv-head">${ui.reg==="all"?seg("netr",R,Rs.map(x=>[x,x])):`<b class="nv-r">${R}</b>`}${seg("netl",L,[["xe","Tuyến xe"],["nguoi","Nhóm người"]])}<button type="button" class="ghost sm" data-bulkp="${esc(R)}">Chỉnh người hàng loạt →</button><button type="button" class="ghost sm" data-rdyed="${esc(R)}">Giờ có hàng của seller →</button>
       <span class="mini" style="white-space:normal">${sc.q?`Lọc "${esc(ui.q3)}": ${sc.hit.length} điểm khớp + ${sc.pts.length-sc.hit.length} điểm đi chung`:L==="xe"?`${sc.pts.length} điểm · cắt ${nC} tuyến đang chạy, còn ${nT} tuyến ghép`:`chỉ gom người trong cùng một FM Hub`}</span></div>
     ${nvSummary(st)}
     ${L==="xe"?nvCards(st):nvTeamCards(st)}
@@ -3475,6 +3514,10 @@ document.addEventListener("click",e=>{
   const hbe=t.closest("[data-hubed]");if(hbe){const [R,h]=hbe.dataset.hubed.split("|");openModal({k:"hubed",R,h});return;}
   const hbd=t.closest("[data-hubday]");if(hbd){const [i,d]=hbd.dataset.hubday.split(":").map(Number);hubCycleDay(i,d);return;}
   const rdx=t.closest("[data-rdyx]");if(rdx){if(G.rdyOv)delete G.rdyOv[rdx.dataset.rdyx];saveCfg();refreshAll();return;}
+  const rde=t.closest("[data-rdyed]");if(rde){ui.rdmsg="";openModal({k:"rdyed",R:rde.dataset.rdyed});return;}
+  const rdp=t.closest("[data-rdpaste]");if(rdp){const m=MS[MS.length-1];if(m&&m.k==="rdyed")rdPaste(m.R);return;}
+  const rdc=t.closest("[data-rdcopy]");if(rdc){const m=MS[MS.length-1];if(m&&m.k==="rdyed")rdCopy(m.R);return;}
+  const rdl=t.closest("[data-rdclr]");if(rdl){const R=rdl.dataset.rdclr,ov=G.rdyOv||{};S.forEach(s=>{if(s.R!==R)return;Object.keys(ov).forEach(k=>{if(k.startsWith(s.n.trim()+"|"))delete ov[k];});});ui.rdmsg="Đã xóa giờ nhập của "+esc(R)+".";saveCfg();refreshAll();return;}
   const bpo=t.closest("[data-bulkp]");if(bpo){ui.bmsg="";openModal({k:"bulkp",R:bpo.dataset.bulkp});return;}
   const bac=t.closest("[data-bact]");if(bac){const m=MS[MS.length-1];if(m&&m.k==="bulkp")bulkApply(bac.dataset.bact,m.R);return;}
   const bps=t.closest("[data-bpaste]");if(bps){const m=MS[MS.length-1];if(m&&m.k==="bulkp")bulkPaste(m.R);return;}
