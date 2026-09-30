@@ -188,3 +188,8 @@ Hai yêu cầu kèm theo:
 - `stT`: COT của seller chỉ giữ khi có xe ≥ `cotMin` % số ngày **và** trung vị đơn/lượt ≥ `truck.cotMinQ` (mặc định 10 đơn) hoặc ≥ 5% đơn/ngày của điểm. Trước đây xe sáng ghé TranHa / Hoang Minh Huan 74–77% số ngày nhưng trung vị 0 đơn vẫn được tính là COT 1 → lịch mô phỏng có lượt chất 1–2 đơn.
 - Ảnh hưởng: Hoang Minh Huan, TranHa (North: chỉ còn COT 2), Bibo Mart (HCM: bỏ COT 2, 0 đơn). Kết quả không đổi (gốc −961; North 126/90, South 123/41, HN 894/0, HCM 129/8).
 - Số trong ô trên biểu đồ lịch: ô xe = số thứ tự xe trong COT; ô "Nhóm người" = thứ tự điểm nhóm ghé (không phải số đơn; số đơn xem tooltip).
+
+## Cập nhật 30/09: sửa thứ tự việc của nhóm người
+- Lỗi: lịch nhóm chọn việc theo giờ xe tới. Khi xe của COT sau bị kéo/lùi sớm (vd. xe COT 2 tới TRUE CARE 12:37 dù hàng chỉ sort được từ 14:22), nhóm chọn việc đó trước, đứng chờ tới 14:22, sort + chất xong mới sang sociollavn → xe COT 1 ở sociollavn chờ từ 12:41 tới 16:08 (trễ +199').
+- Sửa (`simRun` → `plan`): xếp lịch nhóm theo 2 cách — theo giờ xe tới, và theo lúc việc làm được thật = max(giờ xe tới, lúc hàng sort xong sớm nhất) — giữ cách có tổng phút trễ ít hơn. sociollavn: nhóm sort 11:00, xe COT 1 rời 12:51–13:01 (hạn 14:00).
+- Kết quả toàn mạng không đổi (gốc −961; North 126/90, South 123/41, HN 894/0, HCM 129/8).

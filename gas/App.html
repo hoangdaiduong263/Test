@@ -243,11 +243,13 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
   /* lịch nhóm người (tham lam theo thời gian): biết giờ xe dự kiến tới từng điểm (chạy thử không có nhóm),
      nhóm luôn làm việc có xe tới sớm nhất; trong lúc chờ xe ở một điểm, nếu kịp đi sort trước điểm khác rồi quay về trước khi xe tới thì đi.
      Mỗi điểm: sort xong mới được chất; chất hàng khi xe tới (nhóm phải có mặt), xe rời thì nhóm đi tiếp. */
-  const plan=XS=>{if(!tm)return null;const eta=runAll(XS,null),T=[];
+  const plan1=(XS,byR)=>{if(!tm)return null;const eta=runAll(XS,null),T=[];
     eta.forEach(R=>R.st.forEach(z=>{if(!tm.set.has(z.i))return;const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);
       T.push({J:R.J,i:z.i,eta:z.arr,p:c.p,op:openW(z.i,x.w,c.p),dur:sortPD(z.i)*x.sh*R.J.fr*pH/tm.h,ld:dwellMin(z.i,z.q),done:false,sorted:false});}));
     let now=-1e9,pos=-1;const mv=i=>pos<0||pos===i?0:legMin(pos,i),doSort=u=>{const a=now+mv(u.i);u.s0=Math.max(a,u.op);u.s1=u.s0+u.dur;now=u.s1;pos=u.i;u.sorted=true;};
-    for(let guard=0;guard<4*T.length+5;guard++){const L=T.filter(u=>!u.done).sort((a,b)=>a.eta-b.eta);if(!L.length)break;const nx=L[0];
+    /* thứ tự việc của nhóm: theo lúc việc làm được thật = max(giờ xe tới, lúc hàng sort xong sớm nhất) — xe tới sớm hơn cửa sổ sort (vd. xe COT sau được kéo sớm) không được chen trước điểm có xe đang chờ */
+    const rdy=u=>byR?Math.max(u.eta,u.op+u.dur):u.eta;
+    for(let guard=0;guard<4*T.length+5;guard++){const L=T.filter(u=>!u.done).sort((a,b)=>rdy(a)-rdy(b)||a.p-b.p);if(!L.length)break;const nx=L[0];
       if(!nx.sorted){doSort(nx);continue;}
       /* lúc chờ xe: xét lần lượt mọi điểm chưa sort (xe tới sớm trước), làm điểm đầu tiên kịp sort xong và quay về trước khi xe tới */
       /* G.lab.oneVisit (mặc định bật): nhóm sort xong ở điểm nào thì ở lại chất xe luôn, không đi sort trước điểm khác rồi quay lại (dễ thực hiện hơn) */
@@ -255,6 +257,9 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
       if(other){doSort(other);continue;}
       nx.at=now+mv(nx.i);now=Math.max(nx.at,nx.eta)+nx.ld;nx.le=now;pos=nx.i;nx.done=true;}
     const M=new Map();T.forEach(u=>{if(u.s0==null){u.s0=u.s1=u.at??u.eta;}if(u.at==null)u.at=u.s1;if(u.le==null)u.le=Math.max(u.at,u.eta)+u.ld;if(!M.has(u.J))M.set(u.J,new Map());M.get(u.J).set(u.i,u);});return M;};
+  /* xếp lịch nhóm theo 2 cách (theo giờ xe tới / theo lúc việc làm được), giữ cách ít trễ hơn (tổng phút trễ so với hạn COT, rồi trễ lớn nhất) */
+  const lateSum=rs=>{let s=0,m=-1e9;rs.forEach(R=>R.st.forEach(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w),e=Math.max(z.dep-c.p,z.s1!=null&&z.s1-z.s0>=1?z.s1-c.r:-1e9);if(e>0)s+=e;m=Math.max(m,e);}));return [s,m];};
+  const plan=XS=>{if(!tm)return null;const A=plan1(XS,false),B=plan1(XS,true),la=lateSum(runAll(XS,A)),lb=lateSum(runAll(XS,B));return (lb[0]<la[0]-0.5||(Math.abs(lb[0]-la[0])<=0.5&&lb[1]<la[1]))?B:A;};
   /* lượt xe có nguy cơ rời điểm sau giờ COT chuẩn (nhất là giờ seller đóng cửa): cho cả lượt chạy sớm hơn, tối đa G.truck.shiftMax phút */
   const XS=new Map();let TP=plan(XS),rows=runAll(XS,TP);
   for(let it=0;it<(quick?0:6);it++){let pch=false;
