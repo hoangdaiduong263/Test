@@ -136,3 +136,10 @@ Hai yêu cầu kèm theo:
 - Phí xe chờ nhóm người: `truck.waitH` 100.000 đ/giờ, tối đa `truck.waitCap` 600.000 đ/điểm/ngày (phí chờ xe 2T trong hợp đồng).
 - Kết quả: gốc −955 tr (giá vùng +326 tr so với trước); kế hoạch mạng (xe/người, tr): North 81/64, South 103/43, HN 1.337/0, HCM 197/8. Không có thuê ca: HN 962, HCM 91, South 109.
 - Chưa mô phỏng giờ cấm tải.
+
+## Cập nhật 30/09: kế hoạch người & năng lực từng điểm (bằng chứng khả thi của tuyến ghép)
+- Popup tuyến xe có phần "Kế hoạch người & năng lực tại từng điểm": số người riêng, ca làm, năng suất (đơn/người/giờ); biểu đồ lũy kế đơn đã sort xong so với đơn xe lấy đi; mỗi lượt xe: hàng sẵn lúc nào, dư/chờ bao lâu, thời gian chất; căn cứ chất xe = công thức đo từ các lần dừng thật + 3 lần dừng thật có số đơn gần nhất (`realStops`).
+- Người riêng sort lần lượt từng lượt; hàng của một lượt chỉ có sau lượt xe trước của điểm (hoặc từ giờ mở cửa) — trước đây coi hàng cả ngày có sẵn từ sáng.
+- Kế hoạch mạng chỉ nhận nhóm người mới kịp giờ ở ngày trung bình (`teamOk` trong `netSearch`).
+- Kết quả: gốc −950 tr; kế hoạch mạng (xe/người, tr): North 81/64, South 103/43, HN 998/0, HCM 136/7.
+- Giới hạn: nhóm người được mô hình là một khối đi chung; hub lớn (vd. Thủ Đức 13 người, 7 điểm) không mô hình được việc chia người đứng tại các điểm lớn.
