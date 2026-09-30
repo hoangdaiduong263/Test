@@ -183,3 +183,8 @@ Hai yêu cầu kèm theo:
 - Hub đóng/mở (▸/▾), "mở tất cả / thu gọn tất cả", "chỉ hiện điểm đã chọn"; hub có điểm đang chọn tự mở. Ô tick ở cấp hub và nhóm (chọn cả cấp; chọn một phần thì hiện nửa tick).
 - Mỗi điểm: đơn/ngày, người/ngày, thẻ 🔒 khóa / hub chỉnh tay / nhóm chỉnh tay, và kế hoạch mạng ("giữ nguyên" hoặc "→ nhóm mới N điểm / người riêng", in đậm khi đổi).
 - Thẻ tần suất chạy ở mỗi điểm (theo cấu hình chạy D2S của điểm `set.on` = [BAU, Mini CP, CP]): **Daily** (chạy cả ngày BAU), **Mini/CP** (chỉ Mini CP + CP), **CP** (chỉ CP), "Không chạy"; tooltip ghi số ngày có hàng theo loại ngày. Dòng hub đếm số điểm theo tần suất.
+
+## Cập nhật 30/09: bỏ COT xe ghé mà không lấy hàng
+- `stT`: COT của seller chỉ giữ khi có xe ≥ `cotMin` % số ngày **và** trung vị đơn/lượt ≥ `truck.cotMinQ` (mặc định 10 đơn) hoặc ≥ 5% đơn/ngày của điểm. Trước đây xe sáng ghé TranHa / Hoang Minh Huan 74–77% số ngày nhưng trung vị 0 đơn vẫn được tính là COT 1 → lịch mô phỏng có lượt chất 1–2 đơn.
+- Ảnh hưởng: Hoang Minh Huan, TranHa (North: chỉ còn COT 2), Bibo Mart (HCM: bỏ COT 2, 0 đơn). Kết quả không đổi (gốc −961; North 126/90, South 123/41, HN 894/0, HCM 129/8).
+- Số trong ô trên biểu đồ lịch: ô xe = số thứ tự xe trong COT; ô "Nhóm người" = thứ tự điểm nhóm ghé (không phải số đơn; số đơn xem tooltip).
