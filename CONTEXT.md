@@ -212,3 +212,9 @@ Giờ có hàng / giờ người có mặt:
 - Vận hành xác nhận: xe được yêu cầu tới lúc nào thì điều tới lúc đó. `truck.onCall` (mặc định bật): bỏ giới hạn chạy sớm `shiftMax` 120'; xe tới điểm đầu đúng lúc bắt đầu chất (bỏ chờ ở điểm đầu, chính xác vì giờ chất/rời/các điểm sau không đổi); bước lùi giờ xe áp cả cho điểm người riêng; bước kiểm từng xe khi lùi giờ: tối đa 12 vòng trả lại riêng xe bị trễ thêm.
 - Chia hàng cho xe dùng sức chở thật (không ép bằng tổng đơn), điểm lớn xếp trước, ưu tiên xe còn đủ chỗ cho cả điểm → ít tách điểm (vd. Anh Quan 2.790 đơn lên trọn 1 xe, không còn 87 đơn lên xe Cafe So phải chờ Cafe So sort xong).
 - Kết quả: gốc −949 (bớt tiền xe chờ); North 127/56, South 157/43, HN 894/0, HCM 183/8. Không còn đề xuất mới nào trễ; còn cờ ở 6 tuyến/nhóm hiện trạng (3 tuyến HN trễ ngày đông do người riêng sort chưa kịp; 3 nhóm người hiện nay).
+
+## Cập nhật 30/09: volume tháng 8 mới (sheet Detail [Semi] / Bulky [Semi])
+- Đọc qua Drive (xuất cả file dạng HTML zip, vì connector chỉ xuất CSV tab đầu và xlsx quá giới hạn): 198 điểm × 31 ngày, đơn (Detail [Semi]) và hàng to (Bulky [Semi]); ghi đè `S[].v`/`S[].b` trong gói dữ liệu của artifact (dòng `const D=` của bản gốc). Bản GAS đọc sheet trực tiếp.
+- 19 điểm đổi. Lớn nhất: **HNSPC_56 Thôn Đường Đa 22.292 → 814.982 đơn/tháng** (~26k/ngày; khớp số đơn xe thật lấy ~26.473/ngày trong file linehaul, nên số cũ mới là số sai). 6 điểm HN khác lệch ±1–23 đơn; còn lại chỉnh hàng to.
+- Tổng đơn T8: 5.378.568 → 6.171.285. Gốc −949 → **−220** (HN −603 → +126; Thôn Đường Đa −84 → +645: tiết kiệm 1.064, xe 95, người 324 ≈ 20 người/ngày). Kế hoạch: North 127/56, South 157/43, HN 916/0, HCM 183/8 → sau kế hoạch +1.270.
+- Đo lại ảnh hưởng từng thành phần trên số mới (trang checkpoint `docs/checkpoint_2026-09-30.html`).
