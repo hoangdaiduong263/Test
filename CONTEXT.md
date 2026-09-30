@@ -173,3 +173,7 @@ Hai yêu cầu kèm theo:
   - Hiện trạng: người riêng / chung nhóm A/B/C (nhóm trong cùng FM Hub của từng điểm) / bỏ chỉnh tay. Chế độ "Sửa cho đúng thực tế" → vào gốc (đổi cả "Hiện trạng trước điều chỉnh"); "Thử thay đổi" → vào kịch bản.
   - 🔒 Khóa người riêng trong kế hoạch (`G.lkeep` theo tên điểm, lưu cấu hình): `netLOk` không ghép điểm khóa; điểm khóa đang chung người được tách khỏi nhóm trước khi tìm kiếm.
 - Hub editor có thêm cột "Giữ người riêng"; ví dụ khóa GGGVIETNAM + mojistore: North người 90 → 65 tr.
+
+## Cập nhật 30/09: đổi FM Hub cover
+- Hub cover chỉnh tay ưu tiên hơn sheet "1. SPC to SOC" và data (`applyHubMap`, `hSrc="tay"`): `HUBFIX` trong code (đính chính từ vận hành) + `G.hubOv` (đổi trong "Chỉnh người hàng loạt": chọn điểm → "Đổi FM Hub cover", hoặc "Trả hub theo dữ liệu").
+- HCMSeller-Shop Me Ca Heo: 50-HCM Thu Duc/Hiep Binh Phuoc → **51-HCM Thu Duc/Binh Chieu Hub**. Trong data chưa có điểm nào khác ở hub 51 nên điểm này dùng người riêng (4,7 tr cả kỳ); hub 50 còn 7 điểm. Gốc −961 → −962 tr; kế hoạch mạng không đổi (HCM 129/8).
