@@ -1,0 +1,241 @@
+<title>D2S Planner Checkpoint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; mindmap overview → branch grid → impact bars → history → open inputs */
+:root{
+  --bg:#f5f6f4; --panel:#ffffff; --panel-2:#eef0ec; --ink:#1d2421; --ink-2:#4a544f; --muted:#76807a; --line:#d9ddd8;
+  --truck:#2f5fa7; --truck-soft:#e3ebf7; --people:#2c7a5b; --people-soft:#dff0e7; --assume:#b3701a; --assume-soft:#f6ead6;
+  --sim:#6b4fa0; --sim-soft:#ece6f5; --pos:#23784f; --neg:#b3402f;
+  --display:"Be Vietnam Pro",system-ui,sans-serif; --body:"Be Vietnam Pro",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141816; --panel:#1c211e; --panel-2:#232a26; --ink:#e7ebe8; --ink-2:#b7c0bb; --muted:#8b958f; --line:#333b37;
+  --truck:#7ea6e6; --truck-soft:#1f2c40; --people:#6cc49c; --people-soft:#1b3129; --assume:#e0a552; --assume-soft:#3a2d18;
+  --sim:#b39ae0; --sim-soft:#2c2540; --pos:#6cc49c; --neg:#ec8a78; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141816; --panel:#1c211e; --panel-2:#232a26; --ink:#e7ebe8; --ink-2:#b7c0bb; --muted:#8b958f; --line:#333b37;
+  --truck:#7ea6e6; --truck-soft:#1f2c40; --people:#6cc49c; --people-soft:#1b3129; --assume:#e0a552; --assume-soft:#3a2d18;
+  --sim:#b39ae0; --sim-soft:#2c2540; --pos:#6cc49c; --neg:#ec8a78; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 60px;display:flex;flex-direction:column;gap:34px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0}
+h1{font-size:28px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:700;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+h2 small{font:400 13px var(--body);color:var(--muted)}
+p{margin:0}
+.lead{color:var(--ink-2);max-width:70ch}
+.eyebrow{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+section{display:flex;flex-direction:column;gap:14px}
+
+/* headline figures */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.kpi b{font:600 22px var(--mono);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted)}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+
+/* legend chips */
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.c-truck{background:var(--truck-soft);color:var(--truck)}.c-people{background:var(--people-soft);color:var(--people)}
+.c-sim{background:var(--sim-soft);color:var(--sim)}.c-assume{background:var(--assume-soft);color:var(--assume)}
+.c-data{background:var(--panel-2);color:var(--ink-2)}
+
+/* mindmap */
+.mm{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;overflow-x:auto}
+.mm-root{display:flex;justify-content:center}
+.root{background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 20px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.root b{font:700 17px var(--display)}.root span{font:12px var(--mono);opacity:.85}
+.trunk{height:18px;width:2px;background:var(--line);margin:0 auto}
+.branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;border-top:2px solid var(--line);padding-top:18px;position:relative}
+.br{border-radius:10px;border:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column;min-width:0}
+.br-h{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.br-h .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.br-h b{font:700 14.5px var(--display)}
+.br-h small{margin-left:auto;font-size:11.5px;color:var(--muted);text-align:right}
+.leaves{list-style:none;margin:0;padding:6px 12px 10px;display:flex;flex-direction:column}
+.leaf{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:7px 0;border-top:1px dashed var(--line);align-items:start}
+.leaf:first-child{border-top:0}
+.leaf .t{font-size:13.5px;min-width:0}
+.leaf .t em{display:block;font-style:normal;font-size:12px;color:var(--muted)}
+.imp{font:600 11.5px var(--mono);font-variant-numeric:tabular-nums;padding:2px 7px;border-radius:6px;white-space:nowrap;background:var(--panel-2);color:var(--ink-2);text-align:right}
+.imp.big{background:var(--assume-soft);color:var(--assume)}
+.imp.none{color:var(--muted);font-weight:400}
+
+/* impact bars */
+.bars{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;overflow-x:auto}
+.bar-row{display:grid;grid-template-columns:minmax(170px,260px) 1fr 70px 70px;gap:10px;align-items:center;min-width:620px;padding:5px 0;border-top:1px solid var(--line)}
+.bar-row.head{border-top:0;font:600 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.bar-row .lab{font-size:13px;min-width:0}
+.bar-row .lab small{display:block;font-size:11.5px;color:var(--muted)}
+.track{position:relative;height:16px}
+.track .axis{position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--ink-2);opacity:.5}
+.track .fill{position:absolute;top:2px;height:12px;border-radius:3px}
+.bar-row .v{text-align:right;font:600 12.5px var(--mono);font-variant-numeric:tabular-nums}
+.bar-row .v2{text-align:right;font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:12.5px;color:var(--muted);max-width:80ch}
+
+/* history */
+.tl{display:flex;flex-direction:column;border-left:2px solid var(--line);margin-left:6px}
+.ev{position:relative;padding:0 0 14px 18px;display:grid;grid-template-columns:1fr;gap:3px}
+.ev::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--ink-2)}
+.ev b{font-size:14px}
+.ev p{font-size:13px;color:var(--ink-2);max-width:78ch}
+.ev .res{font:12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* asks */
+.asks{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.ask{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--assume);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.ask b{font-size:14px}.ask p{font-size:13px;color:var(--ink-2)}
+.ask .imp{align-self:flex-start}
+.ask.lim{border-left-color:var(--muted)}
+a{color:var(--truck)}
+@media (max-width:640px){h1{font-size:23px}.branches{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <span class="eyebrow">Checkpoint · 30/09/2026 · dữ liệu tháng 8/2026</span>
+    <h1>D2S Seller Planner: model đang có gì</h1>
+    <p class="lead">Bản đồ các thành phần của model và mức ảnh hưởng của từng thành phần lên kết quả. Ảnh hưởng đo bằng cách tắt hoặc đổi <b>một</b> thành phần, giữ nguyên mọi thứ khác, rồi chạy lại toàn bộ gốc và kế hoạch mạng.</p>
+  </header>
+
+  <section aria-labelledby="h-kpi">
+    <h2 id="h-kpi">Kết quả hiện tại <small>triệu đồng / kỳ (31 ngày)</small></h2>
+    <div class="kpis">
+      <div class="kpi"><span>Gốc: lãi/lỗ D2S hiện trạng</span><b class="neg">−949</b></div>
+      <div class="kpi"><span>Kế hoạch mạng: tuyến xe</span><b class="pos">+1.362</b><span>31 tuyến ghép</span></div>
+      <div class="kpi"><span>Kế hoạch mạng: nhóm người</span><b class="pos">+107</b><span>17 nhóm người chung</span></div>
+      <div class="kpi"><span>Sau kế hoạch</span><b class="pos">+519</b><span>= gốc + xe + người</span></div>
+    </div>
+    <p class="note">Theo vùng (xe / người): North 127 / 56 · South 157 / 43 · HN 894 / 0 · HCM 183 / 8 · DNCH 0 / 0. Mọi đề xuất mới đều kịp giờ ở ngày kiểm tra.</p>
+  </section>
+
+  <section aria-labelledby="h-mm">
+    <h2 id="h-mm">Mindmap <small>con số bên phải = thay đổi của "sau kế hoạch" khi tắt/đổi riêng thành phần đó</small></h2>
+    <div class="legend"><span class="chip c-data">Dữ liệu</span><span class="chip c-truck">Xe</span><span class="chip c-people">Người</span><span class="chip c-sim">Mô phỏng giờ</span><span class="chip c-assume">Giả định cần xác nhận</span><span>· "≈0" = đo được nhưng gần như không đổi · "—" = không tách riêng được</span></div>
+    <div class="mm">
+      <div class="mm-root"><div class="root"><b>D2S Seller Planner</b><span>gốc −949 → sau kế hoạch +519 tr</span></div></div>
+      <div class="trunk"></div>
+      <div class="branches">
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--muted)"></i><b>1 · Dữ liệu đầu vào</b><small>nền của mọi tính toán</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Đơn/ngày từng seller, theo loại ngày BAU / Mini CP / CP<em>Tag tần suất Daily · Mini/CP · CP</em></span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Chuyến xe thật T8: giờ tới/rời, đơn mỗi lần dừng<em>→ COT seller thường bàn giao, thời gian chất xe, số chỗ đỗ</em></span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Giờ COT (deck) + North gần HY 19h/20h<em>Giờ bàn giao cuối: sheet seller › deck › xe muộn nhất p90 = hạn cứng</em></span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">FM Hub cover: sheet "SPC to SOC" + chỉnh tay<em>vd. Shop Mẹ Cá Heo → 51-HCM Binh Chieu</em></span><span class="imp none">gốc −1</span></li>
+            <li class="leaf"><span class="t">Khoảng cách điểm ↔ SOC, điểm ↔ điểm</span><span class="imp none">—</span></li>
+          </ul></div>
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--truck)"></i><b>2 · Chi phí xe</b><small>quyết định phần lợi tuyến xe</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Giá chuyến theo vùng (trung vị nhà xe)<em>tắt = dùng giá chung toàn quốc</em></span><span class="imp big">−477</span></li>
+            <li class="leaf"><span class="t">Lấp đầy xe 85%<em>đổi thành 100%</em></span><span class="imp big">+340</span></li>
+            <li class="leaf"><span class="t">Thuê ca 12H khi điểm/tuyến chạy ≥ 2 lượt<em>tắt = chỉ thuê theo chuyến</em></span><span class="imp">−160</span></li>
+            <li class="leaf"><span class="t">Giá theo km: bậc km + đ/km đi vòng<em>tắt = +10%/điểm + 10k/km như trước</em></span><span class="imp">−70</span></li>
+            <li class="leaf"><span class="t">Xe điều tới theo yêu cầu, tới đúng lúc chất<em>tắt = bám giờ xe thật, chạy sớm tối đa 2h</em></span><span class="imp">−21</span></li>
+            <li class="leaf"><span class="t">Tiền xe chờ: 30%/giờ đầu, sau 100k/h, trần 600k<em>tắt = chờ miễn phí</em></span><span class="imp">+12</span></li>
+            <li class="leaf"><span class="t">Tổ hợp xe rẻ nhất mỗi lượt (VAN → 8T), không cố định 1 cỡ</span><span class="imp none">—</span></li>
+          </ul></div>
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--people)"></i><b>3 · Người sort &amp; chất</b><small>quyết định chi phí người</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Năng suất 2.000 đơn/người/7h<em>2.500 → +422 · 1.500 → −740</em></span><span class="imp big">±422–740</span></li>
+            <li class="leaf"><span class="t">Nhóm người chung phải kịp giờ COT<em>tắt = gốc tốt lên 172 tr (ít người hơn)</em></span><span class="imp">+151</span></li>
+            <li class="leaf"><span class="t">Người riêng sort liên tục từ giờ mở cửa / lượt xe trước</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Nhóm chung trong cùng Hub, đi vòng: sort xong ở lại chất rồi mới đi<em>tắt "ở lại chất"</em></span><span class="imp none">≈0</span></li>
+            <li class="leaf"><span class="t">Số người nhóm = ít tốn nhất (lương + xe chờ) mà vẫn kịp</span><span class="imp none">—</span></li>
+          </ul></div>
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--sim)"></i><b>4 · Mô phỏng giờ</b><small>kiểm tra kịp COT từng lượt xe</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Hàng của 1 COT có sớm nhất 3h trước Packed<em>4h → +165 · không giới hạn → +238</em></span><span class="imp big">+165…+238</span></li>
+            <li class="leaf"><span class="t">Tuyến xe kiểm ở ngày đông (p90)<em>đổi sang ngày trung bình</em></span><span class="imp">+115</span></li>
+            <li class="leaf"><span class="t">COT seller = có xe ≥ 30% số ngày và ≥ 10 đơn/lượt<em>bỏ ngưỡng 10 đơn</em></span><span class="imp none">≈0</span></li>
+            <li class="leaf"><span class="t">Thời gian chất = phút cố định + phút/đơn (đo từ lần dừng thật)</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Mỗi xe chỉ ghé điểm có hàng của nó; điểm lớn lên trọn xe</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Lịch nhóm: thử 2 thứ tự việc, giữ cách ít trễ hơn</span><span class="imp none">—</span></li>
+          </ul></div>
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--ink-2)"></i><b>5 · Tối ưu mạng</b><small>mỗi vùng một bài toán</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Ghép tuyến xe tối đa 4 điểm, chỉ nhận khi kịp giờ</span><span class="imp none">31 tuyến</span></li>
+            <li class="leaf"><span class="t">Nhóm người tối đa 4 điểm, cùng Hub, cách nhau ≤ 15 km</span><span class="imp none">17 nhóm</span></li>
+            <li class="leaf"><span class="t">Nhóm mới phải kịp giờ ở ngày TB và không trễ hơn hiện nay; nhóm không kịp bị tách dần</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Lệch giờ xe đầu ≤ 180' mới xét ghép<em>tắt ràng buộc</em></span><span class="imp none">≈0</span></li>
+          </ul></div>
+
+        <div class="br"><div class="br-h"><i class="dot" style="background:var(--muted)"></i><b>6 · Chỉnh tay &amp; bằng chứng</b><small>không đổi con số nếu không dùng</small></div>
+          <ul class="leaves">
+            <li class="leaf"><span class="t">Hai chế độ: "Sửa cho đúng thực tế" (vào gốc, tối ưu lại) · "Thử thay đổi" (chỉ kịch bản)</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Chỉnh người hàng loạt: nhóm A/B/C, khóa người riêng, đổi hub</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Chỉnh giờ xe tới từng lượt; giờ có hàng từng điểm × COT</span><span class="imp none">—</span></li>
+            <li class="leaf"><span class="t">Popup: hiện trạng trước điều chỉnh, lịch từng điểm, căn cứ thời gian chất</span><span class="imp none">—</span></li>
+          </ul></div>
+
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-imp">
+    <h2 id="h-imp">Ảnh hưởng từng thành phần <small>xếp theo độ lớn · thay đổi so với hiện tại</small></h2>
+    <div class="bars" id="bars"></div>
+    <p class="note">Mỗi dòng đổi <b>một</b> thứ, giữ nguyên phần còn lại. Các ảnh hưởng không cộng dồn được vì chúng tác động lẫn nhau. Cột "sau KH" = gốc + lợi tuyến xe + lợi nhóm người; cột "gốc" = riêng hiện trạng. Thanh màu cam là giả định chưa được xác nhận.</p>
+  </section>
+
+  <section aria-labelledby="h-hist">
+    <h2 id="h-hist">Những gì đã thay đổi gần đây <small>kết quả sau mỗi bước · xe / người theo vùng N · S · HN · HCM</small></h2>
+    <div class="tl">
+      <div class="ev"><b>Mô phỏng không gò 1 cỡ xe</b><p>Bỏ giả định 3.000 đơn/xe; mỗi lượt chọn tổ hợp xe rẻ nhất.</p><span class="res">gốc −961 · 83/99 · 112/41 · 1.047/0 · 120/8</span></div>
+      <div class="ev"><b>Giá theo km thay +10%/điểm</b><p>Điểm xa hơn 30 km tính theo bậc km; tuyến nhiều điểm cộng đ/km × km đi vòng.</p><span class="res">gốc −961 · 126/90 · 123/41 · 894/0 · 129/8</span></div>
+      <div class="ev"><b>Bỏ COT xe ghé mà không lấy hàng</b><p>TranHa, Hoang Minh Huan, Bibo Mart: lượt gần 0 đơn không còn là COT.</p><span class="res">không đổi</span></div>
+      <div class="ev"><b>Sửa thứ tự việc của nhóm người</b><p>Nhóm không còn chọn việc có xe tới sớm nhưng hàng chưa có (sociollavn trễ +199' → kịp).</p><span class="res">không đổi</span></div>
+      <div class="ev"><b>Rà soát toàn bộ lịch: 4 lỗi</b><p>Mỗi xe chỉ ghé điểm có hàng của nó (MASAN/xiaomi trễ 225' → kịp); tách nhóm mới không kịp giờ; kiểm từng xe khi lùi giờ; nhóm mới không được trễ hơn hiện nay.</p><span class="res">gốc −965 · 137/59 · 205/43 · 894/0 · 183/8</span></div>
+      <div class="ev"><b>Xe điều theo yêu cầu</b><p>Bỏ giới hạn chạy sớm 2h; xe tới đúng lúc chất; điểm lớn lên trọn xe.</p><span class="res">gốc −949 · 127/56 · 157/43 · 894/0 · 183/8</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-ask">
+    <h2 id="h-ask">Còn mở <small>xếp theo ảnh hưởng</small></h2>
+    <div class="asks">
+      <div class="ask"><b>Năng suất thật mỗi người</b><p>Đang dùng 2.000 đơn/người/7h, "số lý tưởng". Đây là thứ ảnh hưởng lớn nhất: ±500 đơn làm gốc lệch 430–740 tr.</p><span class="imp big">±422–740</span></div>
+      <div class="ask"><b>Hàng của một COT có từ lúc nào</b><p>Đang giả định 3h trước Packed cho nhóm chung và giờ chất xe. Có data giờ đóng gói xong thì nhập theo điểm × COT.</p><span class="imp big">+165…+238</span></div>
+      <div class="ask"><b>Lấp đầy xe thực tế</b><p>Đang giả định xe chở 85% sức chứa. Nếu thực tế chở đầy hơn, phần lợi ghép tuyến tăng mạnh.</p><span class="imp big">tới +340</span></div>
+      <div class="ask"><b>Kiểm tuyến ở ngày đông hay ngày thường</b><p>Đang kiểm tuyến xe ở ngày đông (p90) cho an toàn. Chấp nhận trễ ngày đông thì có thêm tuyến ghép.</p><span class="imp">+115</span></div>
+      <div class="ask"><b>Thêm người có chất xe nhanh hơn?</b><p>Hiện coi thời gian chất cố định theo số đơn. Nếu có, nhóm người lớn (vd. Song Lo 9 điểm) khả thi hơn.</p><span class="imp none">chưa đo</span></div>
+      <div class="ask"><b>Bảng giá km</b><p>Km 1 chiều từ điểm xa nhất về SOC, không phụ phí mỗi điểm dừng: đúng không?</p><span class="imp">~70</span></div>
+      <div class="ask lim"><b>Chưa có trong model</b><p>Giờ cấm tải (cần danh sách seller + khung giờ theo cỡ xe). Nhóm người Hub lớn mô hình như một khối đi chung. Nhóm người chỉ kiểm ở ngày trung bình.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ảnh hưởng đo ngày 30/09: [tên, mô tả, Δ sau kế hoạch, Δ gốc, loại] ; loại a = giả định, m = thành phần model */
+const D=[
+ ["Năng suất 1.500 đơn/người","thay 2.000",-740,-740,"a"],
+ ["Bỏ giá chuyến theo vùng","dùng giá chung",-477,-300,"m"],
+ ["Năng suất 2.500 đơn/người","thay 2.000",422,433,"a"],
+ ["Lấp đầy xe 100%","thay 85%",340,-23,"a"],
+ ["Hàng có không giới hạn trước Packed","thay 3h",238,88,"a"],
+ ["Hàng có từ 4h trước Packed","thay 3h",165,34,"a"],
+ ["Bỏ thuê ca 12H","chỉ thuê theo chuyến",-160,-4,"m"],
+ ["Nhóm người không cần kịp COT","bỏ ràng buộc",151,172,"m"],
+ ["Kiểm tuyến ở ngày trung bình","thay ngày đông p90",115,-14,"a"],
+ ["Bỏ giá theo km","về +10%/điểm",-70,0,"m"],
+ ["Xe bám giờ thật (≤2h sớm)","tắt điều theo yêu cầu",-21,-2,"m"],
+ ["Chờ xe miễn phí","bỏ tiền chờ",12,16,"m"],
+ ["Bỏ ngưỡng 10 đơn/COT","",3,1,"m"],
+ ["Nhóm không ở lại chất","tắt oneVisit",1,0,"m"],
+ ["Bỏ lệch giờ ≤180' khi ghép","",0,0,"m"]];
+const M=740,fmt=v=>(v>0?"+":v<0?"−":"")+Math.abs(v).toLocaleString("vi-VN");
+let h=`<div class="bar-row head"><span>Thay đổi</span><span style="text-align:center">xấu đi ← 0 → tốt lên</span><span style="text-align:right">sau KH</span><span style="text-align:right">gốc</span></div>`;
+D.forEach(([n,d,v,b,k])=>{const w=Math.abs(v)/M*50,col=k==="a"?"var(--assume)":(v>=0?"var(--pos)":"var(--neg)");
+  const left=v>=0?50:50-w;
+  h+=`<div class="bar-row"><span class="lab">${n}${d?`<small>${d}</small>`:""}</span><span class="track"><i class="axis"></i>${v!==0?`<i class="fill" style="left:${left}%;width:${Math.max(w,.4)}%;background:${col}"></i>`:""}</span><span class="v ${v>0?"pos":v<0?"neg":""}">${fmt(v)}</span><span class="v2">${fmt(b)}</span></div>`;});
+document.getElementById("bars").innerHTML=h;
+</script>
