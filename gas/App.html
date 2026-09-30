@@ -1889,8 +1889,8 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
   const kp=xe?[kpi("Đơn/ngày",f0(ado)),kpi("Chuyến xe/ngày",f1(tBefore),f1(tAfter)),kpi("Loại xe",esc(vB),esc(vA),"loại dùng nhiều nhất"),kpi("Số COT có hàng",cotN,null,cotTx),kpi("Người lên hàng",f1(hB),null,"không đổi trong phương án xe"),kpi("Đi vòng",dk>0?f1(dk)+" km":"–",null,"mỗi chuyến")]
     :[kpi("Người/ngày",f1(hB),f1(hA)),(()=>{if(!sim)return "";let m=0;sim.rows.forEach(R=>R.st.forEach(z=>{if(z.l0!=null)m+=Math.max(0,z.ls-z.arr);}));const c=Math.min(m/60*(G.truck.waitH??100000),(G.truck.waitCap??600000)*Math.max(1,g.length))*ACT.length;return kpi("Xe chờ nhóm",Math.round(m)+" phút/ngày",null,m>0?`≈ ${f1(c/1e6)} tr/kỳ (${f0((G.truck.waitH??100000)/1000)}k/giờ, tối đa ${f0((G.truck.waitCap??600000)/1000)}k)`:"xe tới đúng lúc hàng sẵn");})(),kpi("Đơn/ngày",f0(ado)),kpi("Điểm",g.length,null,esc((S[g[0]].h||"").replace(/ Hub$/,""))),kpi("Số COT có hàng",cotN,null,cotTx),kpi("Chuyến xe/ngày",f1(tBefore),null,"không đổi trong phương án người")];
   const pk=D.pks&&x.pk;
-  const people=i=>{const t=teamOf(i);return t.length>1?`chung ${t.length} điểm · ${f1(nvHc(t))} người`:`riêng · ${f1(nvHc([i]))} người`;};
-  const truckNow=i=>{const b=(xe?Pb:netPlan(S[i].R).T0).find(h=>h.includes(i))||[i],m=vehMix(b);return (b.length>1?`ghép ${b.length} điểm`:"riêng")+` · ${esc(vT(m.v))}<small>${f1(m.t)} chuyến/ngày</small>`;};
+  const people=i=>{const t=teamOf(i);if(t.length<2)return `riêng · ${f1(nvHc([i]))} người`;return `chung ${t.length} điểm (${esc(t.filter(j=>j!==i).map(j=>shortN(S[j].n)).join(", "))}) · ${f1(nvHc(t))} người`;};
+  const truckNow=i=>{const b=(xe?Pb:netPlan(S[i].R).T0).find(h=>h.includes(i))||[i],m=vehMix(b);return (b.length>1?`ghép với ${esc(b.filter(j=>j!==i).map(j=>shortN(S[j].n)).join(", "))}`:"riêng")+` · ${esc(vT(m.v))}<small>${f1(m.t)} chuyến/ngày</small>`;};
   const ho=i=>{const co=closeOf(i);return co?hhmm(co.t)+`<small>${{sheet:"sheet",deck:"deck",xe:"xe muộn nhất"}[co.src]}</small>`:"–";};
   const tbl=`<div class="tablewrap"><table class="data nvd-t"><thead><tr><th>#</th><th class="l">Điểm</th><th>Đơn/ngày</th><th>COT có hàng (Packed)</th><th>Bàn giao cuối</th><th class="l">Người hiện nay</th><th class="l">Xe hiện nay</th><th>Lời</th></tr></thead><tbody>
     ${ord.map((i,k)=>{const gi=(D.pks||[]).reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);return `<tr><td class="num">${k+1}</td><td class="l rowname">${esc(S[i].n.trim())}</td><td class="num">${f0(nvAdo(i))}</td><td class="num">${cotsTxt(i)}</td><td class="num">${ho(i)}</td><td class="l">${people(i)}</td><td class="l">${truckNow(i)}</td><td class="num ${cls(gi)}">${D.pks?sgT(gi):"–"}</td></tr>`;}).join("")}</tbody></table></div>
@@ -1907,7 +1907,7 @@ function nvDetail(kind,j){const D=(NVD[kind]||{})[j];if(!D)return null;const {x,
   else plan=`<h4 class="nvd-h">Kế hoạch linehaul</h4><p class="note">${real?"Các điểm này đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay (hiện nay xe tới: "+ord.map(i=>esc(shortN(S[i].n))+" "+(waveTimes(i)||[]).map(hhmm).join(", ")).join("; ")+").":"Chưa đủ giờ xe thật để mô phỏng."}</p>`;
   return {title:`<i class="nvc-sw" style="background:${c};display:inline-block;width:6px;height:18px;border-radius:3px;vertical-align:-3px;margin-right:8px"></i>${xe?"Tuyến":"Nhóm"} ${j+1} <b class="${cls(x.v)}" style="font-size:15px;margin-left:8px">${sgT(x.v)} tr/kỳ</b>`,
     sub:`${esc(ord.map(i=>shortN(S[i].n)).join(" → "))}${soc?` → ${esc(soc.replace(/ Mega SOC| SOC/,""))}`:""}`,
-    body:`<div class="nvd">${xe?"":teamExplain(g,ord,hB,hA,Pb,sim)}<div class="mk-row">${kp.join("")}</div>${tbl}${xe?stopPlan(sim,ord):teamDay(sim,ord)}${plan}</div>`};}
+    body:`<div class="nvd">${nvBefore(g,xe)}${xe?"":teamExplain(g,ord,hB,hA,Pb,sim)}<div class="mk-row">${kp.join("")}</div>${tbl}${xe?stopPlan(sim,ord):teamDay(sim,ord)}${plan}</div>`};}
 /* nhóm người: giải thích bằng lời cho người mới — ai dùng chung, nhóm làm gì, xe phối hợp ra sao */
 function teamExplain(g,ord,hB,hA,Pb,sim){const hub=(S[g[0]].h||"").replace(/ Hub$/,""),befs=Pb.filter(b=>b.some(i=>g.includes(i)));
   const n=sim&&sim.h?sim.h:Math.max(1,Math.round(hA)),bef=befs.map(b=>{if(b.length===1)return `${shortN(S[b[0]].n)} có ${f1(nvHc(b))} người riêng`;const inG=b.filter(i=>g.includes(i)),part=inG.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0);
@@ -1992,6 +1992,28 @@ function stopPlan(sim,ord){if(!sim||!sim.rows.length)return "";const by=new Map(
   return `<h4 class="nvd-h">Kế hoạch người & năng lực tại từng điểm · ngày đông</h4>
     <p class="note" style="margin:0">Mỗi điểm: đường xanh lá = đơn người đã sort xong (lũy kế theo giờ; người sort lần lượt từng lượt, hàng của một lượt chỉ có sau lượt xe trước), đường xanh dương đứt = đơn xe đã lấy đi. Khả thi khi đường xanh lá luôn nằm trên đường xanh dương. Năng suất theo bảng Năng suất (2.000 đơn lý tưởng, đã trừ chute/COT/cồng kềnh), làm liên tục ${G.lab.prodH??7} giờ.</p>
     <div class="sp-grid">${rows.join("")}</div>`;}
+/* ================= HIỆN TRẠNG TRƯỚC ĐIỀU CHỈNH (bối cảnh cho người mới đọc) =================
+   Mọi điểm liên quan: điểm của tuyến/nhóm mới + mọi điểm đang đi chung xe hoặc chung người với chúng.
+   Liệt kê tuyến xe hiện nay (X1…) và nhóm người hiện nay (N1…) với đủ tên điểm, rồi bảng trước → sau cho từng điểm. */
+function nvBefore(g,xe){const P=netPlan(S[g[0]].R),T0=P.T0,T1=P.T1,L0=P.L0,L1=P.L1,gs=new Set(g);
+  const find=(Ps,i)=>Ps.find(h=>h.includes(i))||[i];
+  const scope=new Set(g);g.forEach(i=>{find(T0,i).forEach(j=>scope.add(j));find(L0,i).forEach(j=>scope.add(j));});
+  const pts=[...scope].sort((a,b)=>(gs.has(b)-gs.has(a))||nvAdo(b)-nvAdo(a));
+  const tB=[],lB=[];pts.forEach(i=>{const t=find(T0,i),l=find(L0,i);if(t.length>1&&!tB.some(x=>gkey(x)===gkey(t)))tB.push(t);if(l.length>1&&!lB.some(x=>gkey(x)===gkey(l)))lB.push(l);});
+  const tLab=i=>{const t=find(T0,i),k=tB.findIndex(x=>gkey(x)===gkey(t));return k>=0?"X"+(k+1):null;},lLab=i=>{const l=find(L0,i),k=lB.findIndex(x=>gkey(x)===gkey(l));return k>=0?"N"+(k+1):null;};
+  const nm=i=>esc(shortN(S[i].n)),vt=v=>String(v).replace(/\d+(?:[.,]\d+)?×/g,"").trim()||"–",times=i=>{const w=waveTimes(i);return w&&w.length?w.map(hhmm).join(", "):"–";};
+  const tCard=(t,k)=>{const m=vehMix(t);return `<li><b class="nb-tag x">X${k+1}</b> <b>Xe ghép ${t.length} điểm:</b> ${t.map(nm).join(" → ")}<small>${esc(vt(m.v))} · ${f1(m.t)} chuyến/ngày · xe thật tới (T8): ${t.map(i=>nm(i)+" "+times(i)).join(" · ")}</small></li>`;};
+  const lCard=(l,k)=>`<li><b class="nb-tag n">N${k+1}</b> <b>Nhóm người chung ${l.length} điểm</b> · FM Hub ${esc((S[l[0]].h||"").replace(/ Hub$/,""))} · ${f1(nvHc(l))} người/ngày<small>${l.map(i=>nm(i)+" ("+f0(nvAdo(i))+" đơn)").join(" · ")}</small></li>`;
+  const tNow=i=>{const L=tLab(i),m=vehMix(find(T0,i));return (L?`<b class="nb-tag x">${L}</b> xe ghép`:"xe riêng")+` · ${esc(vt(m.v))}<small>xe tới ${times(i)}</small>`;};
+  const lNow=i=>{const L=lLab(i);return L?`<b class="nb-tag n">${L}</b> người chung`:`người riêng · ${f1(nvHc([i]))}`;};
+  const tAft=i=>{const t=find(T1,i);if(gkey(t)===gkey(find(T0,i)))return `<span class="muted">giữ nguyên</span>`;return t.length>1?`${xe&&gs.has(i)?"<b>tuyến này</b>":"tuyến mới"}: ${t.map(nm).join(" → ")}`:"xe riêng";};
+  const lAft=i=>{const l=find(L1,i);if(gkey(l)===gkey(find(L0,i)))return `<span class="muted">giữ nguyên</span>`;return l.length>1?`${!xe&&gs.has(i)?"<b>nhóm này</b>":"nhóm mới"}: ${l.map(nm).join(" + ")}`:"người riêng";};
+  return `<section class="nb"><h4 class="nvd-h">Hiện trạng trước điều chỉnh</h4>
+    <p class="note" style="margin:0">Mọi điểm liên quan: ${g.length} điểm của ${xe?"tuyến":"nhóm"} này và các điểm đang đi chung xe hoặc chung người với chúng.</p>
+    ${tB.length||lB.length?`<ul class="nb-l">${tB.map(tCard).join("")}${lB.map(lCard).join("")}</ul>`:`<p class="note">Các điểm này hiện đi xe riêng và có người riêng.</p>`}
+    <div class="tablewrap"><table class="data nb-t"><thead><tr><th class="l">Điểm</th><th>Đơn/ngày</th><th class="l">Xe trước</th><th class="l">Người trước</th><th class="l">Xe sau</th><th class="l">Người sau</th></tr></thead><tbody>
+    ${pts.map(i=>`<tr class="${gs.has(i)?"in":"out"}"><td class="l rowname">${nm(i)}${gs.has(i)?"":`<small>ngoài ${xe?"tuyến":"nhóm"} này, bị ảnh hưởng</small>`}</td><td class="num">${f0(nvAdo(i))}</td><td class="l">${tNow(i)}</td><td class="l">${lNow(i)}</td><td class="l">${tAft(i)}</td><td class="l">${lAft(i)}</td></tr>`).join("")}
+    </tbody></table></div></section>`;}
 function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0),w=L==="xe"?"Tuyến":"Nhóm";
   const news=nvNews(st);

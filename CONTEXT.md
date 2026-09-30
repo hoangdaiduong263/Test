@@ -155,3 +155,7 @@ Hai yêu cầu kèm theo:
 - Cache: `cotsOf` (COTC), `cotOfWave` (gắn trên lượt), `openOf` (OPC), danh sách xe theo vùng (VLC), số người nhóm theo nhóm+ngày+số liệu (POOLM); trong mỗi `simRun` nhớ sẵn điểm trong lượt, cửa sổ sort, năng suất, đơn. `computeBase` chỉ xóa kế hoạch mạng sau khi tính gốc (giữ cache mô phỏng). Tất cả xóa trong `netReset` khi đổi cấu hình.
 - Thẻ ngưỡng ADO ở bước 2 và bước 3: chỉ tính vùng đang xem (`thrOne`), hiện "đang tính…" rồi điền sau khi trang đã hiện.
 - Đo (headless): mở trang 10,1 s → 1,8 s; bước 2: 4,7 s → ~0,05 s (thẻ ngưỡng điền sau ~1–3 s); bước 3 / kế hoạch mạng: ~32 s → ~3,4 s.
+
+## Cập nhật 30/09: hiện trạng trước điều chỉnh trong popup
+- Đầu mỗi popup tuyến/nhóm (`nvBefore`): mọi điểm liên quan = điểm của plan + điểm đang đi chung xe/chung người với chúng. Liệt kê tuyến xe hiện nay (X1…: các điểm, loại xe, chuyến/ngày, giờ xe thật tới T8) và nhóm người hiện nay (N1…: hub, người/ngày, từng điểm + đơn), rồi bảng từng điểm: xe trước / người trước → xe sau / người sau (giữ nguyên, tuyến/nhóm mới gồm ai, hay đi riêng). Điểm ngoài plan nhưng bị ảnh hưởng ghi rõ.
+- Bảng từng điểm của plan ghi tên các điểm đang chung người / ghép xe thay cho "chung 6 điểm".
