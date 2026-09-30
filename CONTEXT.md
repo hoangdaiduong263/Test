@@ -177,3 +177,8 @@ Hai yêu cầu kèm theo:
 ## Cập nhật 30/09: đổi FM Hub cover
 - Hub cover chỉnh tay ưu tiên hơn sheet "1. SPC to SOC" và data (`applyHubMap`, `hSrc="tay"`): `HUBFIX` trong code (đính chính từ vận hành) + `G.hubOv` (đổi trong "Chỉnh người hàng loạt": chọn điểm → "Đổi FM Hub cover", hoặc "Trả hub theo dữ liệu").
 - HCMSeller-Shop Me Ca Heo: 50-HCM Thu Duc/Hiep Binh Phuoc → **51-HCM Thu Duc/Binh Chieu Hub**. Trong data chưa có điểm nào khác ở hub 51 nên điểm này dùng người riêng (4,7 tr cả kỳ); hub 50 còn 7 điểm. Gốc −961 → −962 tr; kế hoạch mạng không đổi (HCM 129/8).
+
+## Cập nhật 30/09: "Chỉnh người hàng loạt" dạng cây
+- Ba bước đánh số: ① chọn điểm (dán tên) · ② thao tác (khung dính trên cùng khi cuộn; chia 3 nhóm: Người hiện trạng / Kế hoạch mạng / FM Hub; chip các điểm đã chọn, bấm × để bỏ) · ③ danh sách cây FM Hub → nhóm người (chip màu A/B/C, riêng) → điểm, thụt lề theo cấp.
+- Hub đóng/mở (▸/▾), "mở tất cả / thu gọn tất cả", "chỉ hiện điểm đã chọn"; hub có điểm đang chọn tự mở. Ô tick ở cấp hub và nhóm (chọn cả cấp; chọn một phần thì hiện nửa tick).
+- Mỗi điểm: đơn/ngày, người/ngày, thẻ 🔒 khóa / hub chỉnh tay / nhóm chỉnh tay, và kế hoạch mạng ("giữ nguyên" hoặc "→ nhóm mới N điểm / người riêng", in đậm khi đổi).

@@ -1454,6 +1454,7 @@ function renderModals(focusTop){
       <div class="mdl-body">${x.body}</div></div>`;}).join("");
   document.body.classList.toggle("noscroll",MS.length>0);
   MS.forEach(m=>{const R=MR[m.k];if(R&&m.k==="cfg")renderCfg();});
+  root.querySelectorAll("input[data-part]").forEach(e=>{e.indeterminate=true;});
   root.querySelectorAll(".mdl-body").forEach((b,l)=>{if(keep[l]!=null&&!(focusTop&&l===MS.length-1))b.scrollTop=keep[l];});
   if(act&&$(act))$(act).focus();
   else if(focusTop){const t=root.querySelectorAll(".mdl .x");if(t.length)t[t.length-1].focus();}
@@ -1978,30 +1979,56 @@ MR.hubed=m=>{const {R,h}=m,X=OUT?OUT.X:BASE,B0=BASE,mode=ui.em,pts=S.map((_,i)=>
     <div class="row" style="gap:8px"><button type="button" class="ghost sm" data-hubreset="${esc(R)}|${esc(h)}">Bỏ mọi chỉnh tay nhóm người của hub này</button><button type="button" class="ghost sm" data-bulkp="${esc(R)}">Chỉnh nhiều điểm / nhiều hub cùng lúc →</button></div></div>`;
   return {title:`Chia người trong Hub · ${esc(h.replace(/ Hub$/,""))}`,sub:`${R} · ${pts.length} điểm · ${mode==="r"?"sửa cho đúng thực tế (vào gốc)":"thử thay đổi (vào kịch bản)"}`,body,size:""};};
 /* chỉnh người hàng loạt: chọn nhiều điểm (tick, cả hub, hoặc dán danh sách tên) rồi áp một thao tác cho tất cả, tính lại một lần */
-MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),P=netPlan(R),X=OUT?OUT.X:BASE,mode=ui.em;
+MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),P=netPlan(R),X=OUT?OUT.X:BASE,mode=ui.em;
   const pts=S.map((_,i)=>i).filter(i=>S[i].R===R&&BASE.tot[i].vol>0).sort((a,b)=>(S[a].h||"~").localeCompare(S[b].h||"~")||nvAdo(b)-nvAdo(a));
   const hubs=[...new Set(pts.map(i=>S[i].h||""))],nSel=pts.filter(i=>sel[i]).length;
   const find=(Pz,i)=>Pz.find(g=>g.includes(i))||[i];
-  const now=i=>{const h=S[i].h||"",g=hubGOf(h,X.set[i].team),gr=find(P.L0,i),ov=(mode==="r"?(OV[i]||{}).s:((OV[i]&&OV[i].w)||{}).s)||{};return (g==="R"?"người riêng":`nhóm ${g==="•"?"khác":g} · ${gr.length} điểm`)+(ov.team!=null?' <span class="mini" style="color:var(--warn)">(chỉnh tay)</span>':"");};
-  const aft=i=>{const g=find(P.L1,i);return g.length>1?`nhóm ${g.length} điểm`:"người riêng";};
-  const row=i=>`<tr${sel[i]?' class="in"':""}><td class="c"><input type="checkbox" data-bsel="${i}"${sel[i]?" checked":""} aria-label="Chọn ${esc(S[i].n.trim())}"></td><td class="l rowname">${esc(shortN(S[i].n))}${S[i].hSrc==="tay"?'<small>hub chỉnh tay</small>':""}</td><td class="num">${f0(nvAdo(i))}</td><td class="l">${now(i)}</td><td class="c">${lKeep(i)?"🔒":""}</td><td class="l">${aft(i)}</td></tr>`;
-  const hrow=h=>{const hp=pts.filter(i=>(S[i].h||"")===h),all=hp.every(i=>sel[i]);return `<tr class="hub-sum"><td class="c"><input type="checkbox" data-bselh="${esc(h)}"${all?" checked":""} aria-label="Chọn cả ${esc(h||"không hub")}"></td><td class="l" colspan="5"><b>${esc(h||"(không có FM Hub)")}</b> <span class="mini" style="display:inline">· ${hp.length} điểm · tick để chọn cả hub</span></td></tr>`+hp.map(row).join("");};
-  const btn=(k,l,tt)=>`<button type="button" class="ghost sm" data-bact="${k}"${nSel?"":" disabled"} data-tt="${esc(tt)}">${l}</button>`;
-  const body=`<div class="nvd">${emSeg()}
-    <p class="note" style="margin:0">Tick nhiều điểm (hoặc tick cả hub, hoặc dán danh sách tên), rồi bấm một thao tác — áp cho tất cả điểm đã chọn và tính lại một lần.<br>
-    <b>Hiện trạng (đầu vào)</b>: chọn "Sửa cho đúng thực tế" ở trên → gốc và "Hiện trạng trước điều chỉnh" đổi theo; "Thử thay đổi" → chỉ vào kịch bản. Nhóm A/B/C là nhóm trong <i>cùng FM Hub</i> của từng điểm.<br>
-    <b>Khóa người riêng</b>: kế hoạch mạng không ghép người của các điểm này (đang chung thì tách ra).</p>
-    <div class="row" style="gap:8px;align-items:flex-start"><textarea class="inp" id="bpaste" rows="2" style="flex:1;min-width:200px" placeholder="Dán tên điểm (mỗi dòng một điểm hoặc cách nhau bằng dấu phẩy), vd: GGGVIETNAM, mojistore">${esc(ui.bpaste||"")}</textarea>
-      <button type="button" class="ghost sm" data-bpaste="1">Chọn theo danh sách</button><button type="button" class="ghost sm" data-bclr="1">Bỏ chọn hết</button></div>
-    ${ui.bmsg?`<p class="mini" style="white-space:normal;margin:0">${ui.bmsg}</p>`:""}
-    ${nSel?`<p class="mini" style="white-space:normal;margin:0">Đã chọn: ${pts.filter(i=>sel[i]).map(i=>esc(shortN(S[i].n))).join(", ")}</p>`:""}
-    <div class="row" style="gap:6px;flex-wrap:wrap"><b style="align-self:center">${nSel} điểm đã chọn:</b>
-      ${btn("R","Hiện trạng: người riêng","Đổi nhóm người hiện trạng của các điểm đã chọn thành người riêng")}${HUBG.map(L=>btn(L,"Chung nhóm "+L,"Các điểm đã chọn cùng hub dùng chung nhóm "+L)).join("")}
-      ${btn("clear","Bỏ chỉnh tay nhóm","Trả nhóm người về như dữ liệu gốc (cả chỉnh theo ngày)")}${btn("lock","🔒 Khóa người riêng trong kế hoạch","Kế hoạch mạng giữ các điểm này dùng người riêng")}${btn("unlock","Bỏ khóa","Cho kế hoạch mạng ghép người lại")}</div>
-    <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span>Đổi FM Hub cover:</span><input class="inp sm" id="bhub" list="bhubL" style="min-width:260px" placeholder="chọn hoặc gõ tên hub mới" value="${esc(ui.bhub||"")}"><datalist id="bhubL">${[...new Set(S.filter(x=>x.R===R&&x.h).map(x=>x.h))].sort().map(h=>`<option value="${esc(h)}">`).join("")}</datalist>
-      ${btn("hub","Đổi hub","Các điểm đã chọn chuyển sang hub này (nhóm người mặc định theo hub mới)")}${btn("hubx","Trả hub theo dữ liệu","Bỏ đổi hub trong app")}</div>
-    <div class="tablewrap"><table class="data nb-t"><thead><tr><th></th><th class="l">Điểm</th><th>Đơn/ngày</th><th class="l">Người hiện trạng</th><th>Khóa</th><th class="l">Người trong kế hoạch</th></tr></thead><tbody>${hubs.map(hrow).join("")}</tbody></table></div></div>`;
-  return {title:"Chỉnh người hàng loạt",sub:`${R} · ${pts.length} điểm · ${mode==="r"?"sửa cho đúng thực tế (vào gốc)":"thử thay đổi (vào kịch bản)"}`,body,size:""};};
+  const hcA=i=>ACT.reduce((a,d)=>a+(X.rows[i][d]&&X.rows[i][d].vol>0?X.rows[i][d].hc||0:0),0)/Math.max(1,ACT.length);
+  const gOf=i=>hubGOf(S[i].h||"",X.set[i].team);
+  const gName=g=>g==="R"?"Người riêng":g==="•"?"Nhóm khác":"Nhóm "+g;
+  const ovTeam=i=>{const L=mode==="r"?(OV[i]||{}):((OV[i]&&OV[i].w)||{});return (L.s||{}).team!=null;};
+  const planOf=i=>{const a=find(P.L0,i),b=find(P.L1,i);if(gkey(a)===gkey(b))return {t:"giữ nguyên",ch:false};return {t:b.length>1?`nhóm mới ${b.length} điểm`:"người riêng",ch:true,tt:b.map(j=>shortN(S[j].n)).join(" + ")};};
+  const vis=i=>!ui.bonly||sel[i];
+  const cb=(attr,val,on,lab,part)=>`<input type="checkbox" ${attr}="${esc(val)}"${on?" checked":""}${part?' data-part="1"':""} aria-label="${esc(lab)}">`;
+  const ptRow=i=>{const pl=planOf(i);return `<div class="bk-pt${sel[i]?" sel":""}">${cb("data-bsel",i,sel[i],"Chọn "+S[i].n.trim())}
+      <span class="bk-nm">${esc(shortN(S[i].n))}${lKeep(i)?' <span class="bk-tag lk" data-tt="Khóa người riêng trong kế hoạch">🔒 khóa</span>':""}${S[i].hSrc==="tay"?' <span class="bk-tag">hub chỉnh tay</span>':""}${ovTeam(i)?' <span class="bk-tag ov">nhóm chỉnh tay</span>':""}</span>
+      <span class="bk-num">${f0(nvAdo(i))}<small>đơn</small></span><span class="bk-num">${f1(hcA(i))}<small>người</small></span>
+      <span class="bk-plan${pl.ch?" ch":""}"${pl.tt?` data-tt="${esc(pl.tt)}"`:""}>${pl.ch?"→ ":""}${pl.t}</span></div>`;};
+  const hubBlock=h=>{const hp=pts.filter(i=>(S[i].h||"")===h).filter(vis);if(!hp.length)return "";
+    const all=pts.filter(i=>(S[i].h||"")===h),ns=all.filter(i=>sel[i]).length,isOpen=open[h]!=null?open[h]:(ui.bonly||ns>0);
+    const groups={};hp.forEach(i=>{const g=gOf(i);(groups[g]=groups[g]||[]).push(i);});
+    const order=Object.keys(groups).sort((a,b)=>(a==="R")-(b==="R")||a.localeCompare(b));
+    const chips=order.map(g=>`<span class="bk-chip g${g}">${g==="R"?"riêng":g} · ${groups[g].length}</span>`).join("");
+    const ado=all.reduce((a,i)=>a+nvAdo(i),0),hc=all.reduce((a,i)=>a+hcA(i),0);
+    const head=`<div class="bk-hub${isOpen?" open":""}"><button type="button" class="bk-tog" data-btog="${esc(h)}" aria-expanded="${isOpen}" aria-label="${isOpen?"Thu gọn":"Mở"} ${esc(h)}">${isOpen?"▾":"▸"}</button>
+      ${cb("data-bselh",h,ns===all.length,"Chọn cả "+(h||"không hub"),ns>0&&ns<all.length)}
+      <button type="button" class="bk-hn" data-btog="${esc(h)}">${esc(h||"(không có FM Hub)")}</button>
+      <span class="bk-meta">${all.length} điểm · ${f0(ado)} đơn/ngày · ${f1(hc)} người/ngày</span><span class="bk-chips">${chips}</span>${ns?`<span class="bk-sel">${ns} đã chọn</span>`:""}</div>`;
+    if(!isOpen)return `<div class="bk-h">${head}</div>`;
+    const grp=g=>{const L=groups[g],gs=L.every(i=>sel[i]),gp=L.some(i=>sel[i])&&!gs;
+      return `<div class="bk-grp"><div class="bk-gh">${cb("data-bselg",h+"|"+g,gs,"Chọn "+gName(g)+" của "+h,gp)}<span class="bk-chip g${g}">${gName(g)}</span>
+        <span class="bk-meta">${L.length} điểm · ${f0(L.reduce((a,i)=>a+nvAdo(i),0))} đơn/ngày · ${f1(L.reduce((a,i)=>a+hcA(i),0))} người/ngày${g!=="R"&&L.length>1?" (dùng chung)":""}</span></div>
+        <div class="bk-pts">${L.map(ptRow).join("")}</div></div>`;};
+    return `<div class="bk-h">${head}<div class="bk-body">${order.map(grp).join("")}</div></div>`;};
+  const btn=(k,l,tt,cls)=>`<button type="button" class="ghost sm${cls?" "+cls:""}" data-bact="${k}"${nSel?"":" disabled"} data-tt="${esc(tt)}">${l}</button>`;
+  const selNames=pts.filter(i=>sel[i]);
+  const body=`<div class="nvd bk">${emSeg()}
+    <details class="bk-help"><summary>Cách dùng</summary><p class="note" style="margin:6px 0 0">① Chọn điểm: tick từng điểm, tick cả nhóm / cả hub, hoặc dán danh sách tên. ② Bấm một thao tác — áp cho tất cả điểm đã chọn, tính lại một lần.<br>
+      <b>Người hiện trạng</b>: chế độ "Sửa cho đúng thực tế" → đổi đầu vào (gốc và "Hiện trạng trước điều chỉnh" đổi theo); "Thử thay đổi" → chỉ vào kịch bản. Nhóm A/B/C là nhóm trong cùng FM Hub của từng điểm.<br>
+      <b>Kế hoạch mạng</b>: 🔒 khóa → kế hoạch không ghép người của điểm đó. <b>FM Hub</b>: đổi hub cover của điểm.</p></details>
+    <section class="bk-step"><h5><span class="bk-n">1</span>Chọn điểm</h5>
+      <div class="row" style="gap:8px;align-items:flex-start"><textarea class="inp" id="bpaste" rows="2" style="flex:1;min-width:200px" placeholder="Dán tên điểm (mỗi dòng một điểm hoặc cách nhau bằng dấu phẩy), vd: GGGVIETNAM, mojistore">${esc(ui.bpaste||"")}</textarea>
+        <button type="button" class="ghost sm" data-bpaste="1">Chọn theo danh sách</button></div>
+      ${ui.bmsg?`<p class="mini" style="white-space:normal;margin:0">${ui.bmsg}</p>`:""}</section>
+    <section class="bk-step bk-act"><h5><span class="bk-n">2</span>Thao tác cho <b>${nSel}</b> điểm đã chọn ${nSel?`<button type="button" class="linkish" data-bclr="1">bỏ chọn hết</button>`:""}</h5>
+      ${nSel?`<div class="bk-selc">${selNames.map(i=>`<span class="bk-sc">${esc(shortN(S[i].n))}<button type="button" data-bunsel="${i}" aria-label="Bỏ chọn ${esc(S[i].n.trim())}">×</button></span>`).join("")}</div>`:`<p class="mini" style="margin:0">Chưa chọn điểm nào.</p>`}
+      <div class="bk-ops"><div class="bk-op"><span class="bk-ol">Người hiện trạng</span>${btn("R","Người riêng","Đổi nhóm người hiện trạng thành người riêng")}${HUBG.map(L=>btn(L,"Nhóm "+L,"Dùng chung nhóm "+L+" trong cùng hub","g"+L)).join("")}${btn("clear","Bỏ chỉnh tay","Trả nhóm người về như dữ liệu gốc (cả chỉnh theo ngày)")}</div>
+        <div class="bk-op"><span class="bk-ol">Kế hoạch mạng</span>${btn("lock","🔒 Khóa người riêng","Kế hoạch mạng giữ các điểm này dùng người riêng")}${btn("unlock","Bỏ khóa","Cho kế hoạch mạng ghép người lại")}</div>
+        <div class="bk-op"><span class="bk-ol">FM Hub</span><input class="inp sm" id="bhub" list="bhubL" style="min-width:220px;flex:1" placeholder="chọn hoặc gõ tên hub" value="${esc(ui.bhub||"")}"><datalist id="bhubL">${[...new Set(S.filter(x=>x.R===R&&x.h).map(x=>x.h))].sort().map(h=>`<option value="${esc(h)}">`).join("")}</datalist>${btn("hub","Đổi hub","Các điểm đã chọn chuyển sang hub này")}${btn("hubx","Trả hub theo dữ liệu","Bỏ đổi hub trong app")}</div></div></section>
+    <section class="bk-step"><h5><span class="bk-n">3</span>Danh sách theo FM Hub → nhóm người → điểm
+      <span class="bk-tools"><button type="button" class="linkish" data-ball="1">mở tất cả</button> · <button type="button" class="linkish" data-ball="0">thu gọn tất cả</button> · <label class="bk-only"><input type="checkbox" data-bonly="1"${ui.bonly?" checked":""}> chỉ hiện điểm đã chọn</label></span></h5>
+      <div class="bk-tree">${hubs.map(hubBlock).join("")||`<p class="note">Không có điểm.</p>`}</div></section></div>`;
+  return {title:"Chỉnh người hàng loạt",sub:`${R} · ${pts.length} điểm · ${hubs.length} hub · ${mode==="r"?"sửa cho đúng thực tế (vào gốc)":"thử thay đổi (vào kịch bản)"}`,body,size:""};};
 document.addEventListener("input",e=>{if(e.target&&e.target.id==="bpaste")ui.bpaste=e.target.value;if(e.target&&e.target.id==="bhub")ui.bhub=e.target.value;});
 function bulkApply(act,R){const sel=Object.keys(ui.bsel||{}).map(Number).filter(i=>S[i]&&S[i].R===R);if(!sel.length)return;
   if(act==="hub"||act==="hubx"){const h=act==="hub"?String(($("bhub")||{}).value||"").trim():"";if(act==="hub"&&!h)return;G.hubOv=G.hubOv||{};sel.forEach(i=>{const n=S[i].n.trim();if(h)G.hubOv[n]=h;else delete G.hubOv[n];});saveCfg();refreshAll();return;}
@@ -2021,6 +2048,8 @@ function hubReset(R,h){const mode=ui.em;S.forEach((s,i)=>{if(s.R!==R||(s.h||"")!
   Object.keys(L.d).forEach(d=>{if(L.d[d].team!=null){delete L.d[d].team;if(!Object.keys(L.d[d]).length)delete L.d[d];ch=true;}});if(ch)saveSeller(i);});mode==="r"?refreshAll():scnSoon();}
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.tov!=null){const [h,m]=String(t.value||"").split(":").map(Number);if(isFinite(h)&&isFinite(m)){G.tov=G.tov||{};G.tov[t.dataset.tov]=h*60+m;saveCfg();refreshAll();}return;}
   if(t.dataset&&t.dataset.bsel!=null){const sel=ui.bsel||(ui.bsel={});if(t.checked)sel[t.dataset.bsel]=1;else delete sel[t.dataset.bsel];renderModals();return;}
+  if(t.dataset&&t.dataset.bselg!=null){const sel=ui.bsel||(ui.bsel={}),m=MS[MS.length-1],[h,g]=t.dataset.bselg.split("|"),X=OUT?OUT.X:BASE;S.forEach((s,i)=>{if(s.R===(m&&m.R)&&(s.h||"")===h&&BASE.tot[i].vol>0&&hubGOf(h,X.set[i].team)===g){if(t.checked)sel[i]=1;else delete sel[i];}});renderModals();return;}
+  if(t.dataset&&t.dataset.bonly!=null){ui.bonly=t.checked;renderModals();return;}
   if(t.dataset&&t.dataset.bselh!=null){const sel=ui.bsel||(ui.bsel={}),m=MS[MS.length-1];S.forEach((s,i)=>{if(s.R===(m&&m.R)&&(s.h||"")===t.dataset.bselh&&BASE.tot[i].vol>0){if(t.checked)sel[i]=1;else delete sel[i];}});renderModals();return;}
   if(t.dataset&&t.dataset.lkeep!=null){const n=S[+t.dataset.lkeep].n.trim();G.lkeep=G.lkeep||{};if(t.checked)G.lkeep[n]=1;else delete G.lkeep[n];saveCfg();refreshAll();return;}
   if(t.dataset&&t.dataset.hubsel!=null){if(t.value!=="•")hubSetSeller(+t.dataset.hubsel,t.value);}});
@@ -3376,6 +3405,9 @@ document.addEventListener("click",e=>{
   const bpo=t.closest("[data-bulkp]");if(bpo){ui.bmsg="";openModal({k:"bulkp",R:bpo.dataset.bulkp});return;}
   const bac=t.closest("[data-bact]");if(bac){const m=MS[MS.length-1];if(m&&m.k==="bulkp")bulkApply(bac.dataset.bact,m.R);return;}
   const bps=t.closest("[data-bpaste]");if(bps){const m=MS[MS.length-1];if(m&&m.k==="bulkp")bulkPaste(m.R);return;}
+  const btg=t.closest("[data-btog]");if(btg){const h=btg.dataset.btog,o=ui.bopen||(ui.bopen={}),cur=btg.closest(".bk-hub").classList.contains("open");o[h]=!cur;renderModals();return;}
+  const bal=t.closest("[data-ball]");if(bal){const m=MS[MS.length-1],o=ui.bopen={};S.forEach(s=>{if(s.R===(m&&m.R))o[s.h||""]=bal.dataset.ball==="1";});renderModals();return;}
+  const bun=t.closest("[data-bunsel]");if(bun){delete (ui.bsel||{})[bun.dataset.bunsel];renderModals();return;}
   const bcl=t.closest("[data-bclr]");if(bcl){ui.bsel={};ui.bmsg="";renderModals();return;}
   const hbr=t.closest("[data-hubreset]");if(hbr){const [R,h]=hbr.dataset.hubreset.split("|");hubReset(R,h);return;}
   const nvd=t.closest("[data-nvd]");if(nvd){const [k,jj]=nvd.dataset.nvd.split("|");openModal({k:"nvd",kind:k,j:+jj});return;}
