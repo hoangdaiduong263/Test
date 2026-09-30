@@ -129,3 +129,10 @@ Hai yêu cầu kèm theo:
 - Thẻ/popup nhóm người trước đây lấy cả số người của nhóm cũ (kể cả điểm không vào nhóm mới) để so với nhóm mới. Nay "trước" = phần người của các điểm trong nhóm mới, chia theo đơn (`nvShare`); khung "Trước" ghi rõ nhóm cũ gồm ai, bao nhiêu đơn/người, và phần của các điểm này.
 - (30/09) Xe phải chờ ở một điểm (nhóm người chưa sort/chưa tới) thì cho xe tới muộn hơn đúng khoảng chờ, miễn các điểm ghé trước vẫn kịp hạn; chỉ giữ thay đổi nếu không làm trễ thêm (bộ xếp lịch nhóm là tham lam). Gốc −1.259 tr; kế hoạch mạng (xe/người, tr): North 81/76, South 244/43, HN 899/0, HCM 97/8.
 - (30/09) Xe được tới sớm và đứng chờ (bỏ việc lùi giờ xe để tránh chờ). Lúc chờ xe, nhóm người xét mọi điểm chưa sort (không chỉ điểm kế tiếp) để sort trước. Gốc −1.236 tr; kế hoạch mạng (xe/người, tr): North 81/65, South 244/43, HN 899/0, HCM 97/8.
+
+## Cập nhật 30/09: giá xe theo vùng, thuê ca 12H, phí chờ theo hợp đồng
+- Giá theo vùng `G.vehR` (trung vị bảng giá 7 nhà xe, file "LH ICIR and X-Metro Final Price LH check_1"): [thuê chuyến, thuê ca 12H]. HCM & South = HCM không chạy giờ cấm tải; HN = HN ngoài trung tâm; North = BN ngoài trung tâm; DNCH và 8T giữ giá chung. Chỉnh ở trang cấu hình (bảng "Giá xe theo vùng"). Mọi chỗ tính tiền xe đặt vùng trước khi tính (`PR_R`, `vehP`).
+- Thuê ca 12H (trong `truckCost`): điểm/tuyến chạy từ 2 lượt/ngày thì so tiền thuê chuyến với thuê ca (số xe = số xe tối đa trong một lượt) và lấy cách rẻ hơn; tắt bằng `G.truck.ca=false`. Gốc vẫn tính theo chuyến thật; thuê ca đi vào phương án mới (mạng lưới, đổi cỡ xe).
+- Phí xe chờ nhóm người: `truck.waitH` 100.000 đ/giờ, tối đa `truck.waitCap` 600.000 đ/điểm/ngày (phí chờ xe 2T trong hợp đồng).
+- Kết quả: gốc −955 tr (giá vùng +326 tr so với trước); kế hoạch mạng (xe/người, tr): North 81/64, South 103/43, HN 1.337/0, HCM 197/8. Không có thuê ca: HN 962, HCM 91, South 109.
+- Chưa mô phỏng giờ cấm tải.
