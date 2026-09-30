@@ -193,3 +193,17 @@ Hai yêu cầu kèm theo:
 - Lỗi: lịch nhóm chọn việc theo giờ xe tới. Khi xe của COT sau bị kéo/lùi sớm (vd. xe COT 2 tới TRUE CARE 12:37 dù hàng chỉ sort được từ 14:22), nhóm chọn việc đó trước, đứng chờ tới 14:22, sort + chất xong mới sang sociollavn → xe COT 1 ở sociollavn chờ từ 12:41 tới 16:08 (trễ +199').
 - Sửa (`simRun` → `plan`): xếp lịch nhóm theo 2 cách — theo giờ xe tới, và theo lúc việc làm được thật = max(giờ xe tới, lúc hàng sort xong sớm nhất) — giữ cách có tổng phút trễ ít hơn. sociollavn: nhóm sort 11:00, xe COT 1 rời 12:51–13:01 (hạn 14:00).
 - Kết quả toàn mạng không đổi (gốc −961; North 126/90, South 123/41, HN 894/0, HCM 129/8).
+
+## Cập nhật 30/09: rà soát toàn bộ lịch + giờ có hàng / giờ người có mặt
+Rà soát tự động mọi tuyến xe (30) và nhóm người (18) trong kế hoạch mạng, 397 lần dừng. Sửa 4 lỗi:
+1. **Mọi xe của lượt ghé mọi điểm** (chia đều đơn): điểm nhỏ phải tiếp cả đoàn xe của điểm lớn (vd. xiaomi 160 đơn tiếp 6 xe × 60' chất, 1 chỗ đỗ → MASAN trễ 225'). Nay đơn từng điểm được gán cho xe cụ thể (`J.qi`): điểm nhỏ chỉ lên số xe cần (xe có giờ gần giờ xe thật tới điểm đó), điểm lớn lấp phần còn lại; giờ xe tới theo điểm đầu tiên xe đó ghé.
+2. **Nhóm người mới không kịp giờ lọt vào kế hoạch**: bước tách nhóm trong `netSearch` không kiểm lại phần còn lại (vd. nhóm HCM Keyphone… trễ 457'). Nay sau tìm kiếm, nhóm mới nào không kịp thì bỏ dần điểm làm trễ nhiều nhất.
+3. **Bước lùi giờ xe (giảm tiền chờ) tạo trễ mới**: chỉ kiểm trễ lớn nhất toàn lịch → xe khác được lùi tới mức trễ đó. Nay kiểm từng xe.
+4. **Nhóm mới "không trễ hơn người riêng trong mô hình"** nhưng vẫn trễ hơn thực tế: nay còn phải không trễ hơn trễ thật hiện nay (`realLateOf`).
+- Sau sửa: không còn đề xuất mới nào trễ giờ. Còn cờ ở 5 tuyến/nhóm **hiện trạng** giữ nguyên (lịch mô phỏng dùng ngày đông cho tuyến xe; 2 nhóm người hiện nay model coi là không kịp).
+- Kết quả: gốc −965; North 137/59, South 205/43, HN 894/0, HCM 183/8 (trước: −961; 126/90, 123/41, 894/0, 129/8).
+
+Giờ có hàng / giờ người có mặt:
+- Popup tuyến/nhóm: mỗi COT có bảng "Giờ từng điểm": Có hàng từ (sửa được, `G.rdyOv[điểm|COT]`) · Người có mặt (người riêng: đúng giờ; nhóm: lúc nhóm tới) · Sort · Xe tới · Chất (chờ) · Rời · Hạn · ±. Sort bắt đầu = muộn hơn giữa giờ có hàng và giờ người có mặt.
+- Mặc định giờ có hàng: nhóm chung + giờ chất xe = max(mở cửa, lượt xe trước rời, Packed − `lab.sortWin`); người riêng sort từ mở cửa / lượt xe trước. Kiểm với data thật (160 điểm): quy tắc này khớp 129/160 điểm về trễ >30'; áp 3h cho cả người riêng chỉ khớp 109/160 (báo 60 điểm trễ, thực tế 29).
+- Độ nhạy theo `sortWin`: 3h → gốc −965; 4h → −927; không giới hạn → −871. `sortWin` hiện trong cấu hình người ("Giả định — chưa xác nhận").
