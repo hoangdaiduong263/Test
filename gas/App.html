@@ -28,7 +28,7 @@ function tOf(i,d){const o=getDay(i,d);if(o&&o.t!=null)return o.t;const sd=schedD
 const DEFG={
   save:{rS:669,rM:2.2,hS:632.2157,hM:1.4},
   veh:[{k:"VAN",on:1,p:500000,n:1000,b:350},{k:"1T25",on:1,p:600000,n:1300,b:450},{k:"1T9",on:1,p:790000,n:2000,b:700},{k:"5T",on:1,p:1200000,n:3700,b:1000},{k:"8T",on:1,p:1800000,n:6000,b:1800}],
-  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,peakP:90,docks:1,cotMin:30,cotMinQ:10,lastP:90,shiftMax:120,kmMode:true,cityKm:30,waitH:100000,waitCap:600000,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
+  truck:{gCot:true,gKm:30,stops:4,kmP:10000,cotGap:180,cotTol:0,peakP:90,docks:1,cotMin:30,cotMinQ:10,lastP:90,shiftMax:120,onCall:true,kmMode:true,cityKm:30,waitH:100000,waitCap:600000,fill:85,cal:true,ihF:100,stopSur:10,dropSur:10,keVeh:"1T9",keF:100,keStop:10},
   soc:{al:70,be:70,same:true,pSoc:1050,pay:520000,rq:true,gRs:25,gKeep:true},
   lab:{sortWin:180,prodH:7,open:480,oneVisit:true,payF:520000,payB:520000,fte:1,fteM:false,paidD:26,ovh:25,minHC:1,poolN:3,tMax:4,tKm:15,cot:true,hrs:8},
   prod:{base:2000,hand:2000,cI:1,cS:1,cR:10,sI:100,sS:5,sR:10,spK:40,spG:90,bI:10,bS:10,bR:5,hR:50},
@@ -216,8 +216,9 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
     const JB=[];for(let j=0;j<n;j++){const f=n>1?j/(n-1):0,st0=at(wB,f,"arr","arrL")??at(w0,f,"arr","arrL");JB.push({sl,mem,n,j,f,rk,veh:tk[j].k,fr:tk[j].cap/capT,qi:new Map(),fix:ov!=null,start:ov!=null?ov+(st0-s0):st0});}
     /* chia hàng từng điểm cho xe: điểm nhỏ chỉ lên số xe cần cho đơn của nó (xe có giờ gần giờ xe thật tới điểm đó nhất), điểm lớn lấp phần còn lại —
        không bắt mọi xe của lượt ghé mọi điểm (vd. điểm 160 đơn không phải tiếp 6 xe) */
-    const rem=JB.map(J=>J.fr*Q);mem.slice().sort((a,b)=>vol(a)*xOf0(sl,a).sh-vol(b)*xOf0(sl,b).sh).forEach(i=>{const x=xOf0(sl,i);let need=vol(i)*x.sh;if(!(need>0))return;
-      const ta=at(x.w,0,"arr","arrL")??JB[0].start,ordJ=JB.map((J,k)=>k).sort((a,b)=>Math.abs(JB[a].start-ta)-Math.abs(JB[b].start-ta)||a-b);
+    /* sức chở thật của từng xe (không ép bằng tổng đơn); điểm lớn xếp trước, ưu tiên xe còn đủ chỗ cho cả điểm (ít tách điểm ra nhiều xe) */
+    const sc=Q>0&&capT<Q?Q/capT:1,rem=tk.map(t=>t.cap*sc);mem.slice().sort((a,b)=>vol(b)*xOf0(sl,b).sh-vol(a)*xOf0(sl,a).sh).forEach(i=>{const x=xOf0(sl,i);let need=vol(i)*x.sh;if(!(need>0))return;
+      const ta=at(x.w,0,"arr","arrL")??JB[0].start,fit=k=>rem[k]>=need-1e-6?0:1,ordJ=JB.map((J,k)=>k).sort((a,b)=>fit(a)-fit(b)||Math.abs(JB[a].start-ta)-Math.abs(JB[b].start-ta)||a-b);
       for(const k of ordJ){if(need<=1e-6)break;const take=Math.min(need,rem[k]);if(take>1e-6){JB[k].qi.set(i,(JB[k].qi.get(i)||0)+take);rem[k]-=take;need-=take;}}
       if(need>1e-6){const k=ordJ[0];JB[k].qi.set(i,(JB[k].qi.get(i)||0)+need);}});
     /* giờ xe tới = theo giờ xe thật tới điểm đầu tiên xe này ghé (cùng vị trí f trong lượt); giờ chỉnh tay G.tov giữ cố định */
@@ -278,12 +279,12 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
     rows.forEach(R=>{const hasT=R.st.some(z=>z.s0!=null);if(hasT||R.st.every(z=>z.ls-z.arr<=1)){let seenT=false;const g2=Math.min(...R.st.map(z=>{const x=xOf(R.J,z.i),ow=openW(z.i,x.w,cotOfWave(z.i,x.w).p);
         if(z.s0!=null){if(seenT)return 1e9;seenT=true;return z.arr-Math.max(ow+(z.s1-z.s0),ow);}   // điểm có nhóm người: chỉ xét điểm đầu (lịch nhóm sẽ xếp lại theo giờ xe mới)
         return z.arr-Math.max(ow,z.thr??-1e9);}));
-      if(g2>1&&it<3){PL.set(R.J,(PL.get(R.J)||0)+g2);pch=true;}}});
+      if(g2>1&&it<(G.truck.onCall!==false?6:3)){PL.set(R.J,(PL.get(R.J)||0)+g2);pch=true;}}});
     if(pch){TP=plan(XS);rows=runAll(XS,TP);}
     const ex=new Map();rows.forEach(R=>R.st.forEach(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w),e=z.dep-(c.p0??c.p);ex.set(R.J.sl,Math.max(ex.get(R.J.sl)??-1e9,e));}));
-    let ch=false;ex.forEach((e,sl)=>{if(e>0.5){const cur=XS.get(sl)||0,nx=Math.min(G.truck.shiftMax??120,cur+e);if(nx>cur+0.5){XS.set(sl,nx);ch=true;}}});if(!ch&&!pch)break;if(ch){TP=plan(XS);rows=runAll(XS,TP);}}
+    let ch=false;ex.forEach((e,sl)=>{if(e>0.5){const cur=XS.get(sl)||0,nx=Math.min(G.truck.onCall!==false?1440:(G.truck.shiftMax??120),cur+e);   /* G.truck.onCall: xe điều tới theo yêu cầu → không giới hạn chạy sớm */if(nx>cur+0.5){XS.set(sl,nx);ch=true;}}});if(!ch&&!pch)break;if(ch){TP=plan(XS);rows=runAll(XS,TP);}}
   /* xe chờ tốn tiền (G.truck.waitH đ/giờ): cuối cùng lùi giờ xe cho khớp lúc hàng sẵn, giữ nguyên lịch nhóm; chỉ nhận nếu không làm trễ thêm */
-  if(tm&&!quick)for(let it=0;it<3;it++){const lateOf=rs=>Math.max(-1e9,...rs.flatMap(R=>R.st.map(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);return z.dep-c.p;})));
+  if(!quick&&(tm||G.truck.onCall!==false))for(let it=0;it<3;it++){   /* xe theo yêu cầu: cả điểm người riêng cũng lùi xe cho khớp lúc hàng sẵn (bớt chờ) */const lateOf=rs=>Math.max(-1e9,...rs.flatMap(R=>R.st.map(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);return z.dep-c.p;})));
     const snap=new Map(PL),l0=lateOf(rows);let any=false;
     rows.forEach(R=>{let best=0,sl=1e9,tSeen=false;R.st.forEach(z=>{const w=(z.s0!=null&&tSeen)?0:z.ls-z.arr;if(z.s0!=null)tSeen=true;   // chờ nhóm ở điểm sau trên cùng xe là không tránh được (nhóm tới sau khi chất điểm trước)
         best=Math.max(best,Math.min(w,sl));const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);sl=Math.min(sl,c.p-z.dep);});
@@ -291,9 +292,11 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
     if(!any)break;
     /* kiểm từng xe: lùi giờ không được làm chính xe đó (hay xe khác qua lịch nhóm) trễ hơn trước; xe nào trễ thêm thì trả về giờ cũ */
     const lr=rs=>{const m=new Map();rs.forEach(R=>m.set(R.J,Math.max(-1e9,...R.st.map(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);return z.dep-c.p;}))));return m;},b0=lr(rows);
-    let r2=runAll(XS,TP);for(let k=0;k<4;k++){const b1=lr(r2);let bad=false;b1.forEach((v,J)=>{if(v>Math.max(b0.get(J)??-1e9,0)+0.5&&PL.get(J)!==snap.get(J)){if(snap.has(J))PL.set(J,snap.get(J));else PL.delete(J);bad=true;}});if(!bad)break;r2=runAll(XS,TP);}
+    let r2=runAll(XS,TP);for(let k=0;k<12;k++){const b1=lr(r2);let bad=false;b1.forEach((v,J)=>{if(v>Math.max(b0.get(J)??-1e9,0)+0.5&&PL.get(J)!==snap.get(J)){if(snap.has(J))PL.set(J,snap.get(J));else PL.delete(J);bad=true;}});if(!bad)break;r2=runAll(XS,TP);}
     const b2=lr(r2);let worse=false;b2.forEach((v,J)=>{if(v>Math.max(b0.get(J)??-1e9,0)+0.5)worse=true;});
     if(!worse&&lateOf(r2)<=Math.max(l0,0)+0.5)rows=r2;else{PL.clear();snap.forEach((v,k)=>PL.set(k,v));break;}}
+  /* xe điều theo yêu cầu (G.truck.onCall): xe tới điểm đầu đúng lúc bắt đầu chất — bỏ phần chờ ở điểm đầu; giờ chất, rời, các điểm sau không đổi */
+  if(G.truck.onCall!==false)rows.forEach(R=>{if(R.J.fix)return;const z0=R.st[0],d=z0?z0.ls-z0.arr:0;if(d>0.5){z0.arr=z0.ls;R.X-=d;}});
   rows.forEach(({J,X,st,soc})=>{X=X;
     /* đạt khi xe rời điểm trước giờ Packed của COT; nhóm người chung còn phải sort xong trước giờ Received */
     st.forEach(z=>{const x=J.sl.m.find(y=>y.i===z.i),c=cotOfWave(z.i,x.w);z.soc=soc;z.cot=c;

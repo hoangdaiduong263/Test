@@ -207,3 +207,8 @@ Giờ có hàng / giờ người có mặt:
 - Popup tuyến/nhóm: mỗi COT có bảng "Giờ từng điểm": Có hàng từ (sửa được, `G.rdyOv[điểm|COT]`) · Người có mặt (người riêng: đúng giờ; nhóm: lúc nhóm tới) · Sort · Xe tới · Chất (chờ) · Rời · Hạn · ±. Sort bắt đầu = muộn hơn giữa giờ có hàng và giờ người có mặt.
 - Mặc định giờ có hàng: nhóm chung + giờ chất xe = max(mở cửa, lượt xe trước rời, Packed − `lab.sortWin`); người riêng sort từ mở cửa / lượt xe trước. Kiểm với data thật (160 điểm): quy tắc này khớp 129/160 điểm về trễ >30'; áp 3h cho cả người riêng chỉ khớp 109/160 (báo 60 điểm trễ, thực tế 29).
 - Độ nhạy theo `sortWin`: 3h → gốc −965; 4h → −927; không giới hạn → −871. `sortWin` hiện trong cấu hình người ("Giả định — chưa xác nhận").
+
+## Cập nhật 30/09: xe điều tới theo yêu cầu
+- Vận hành xác nhận: xe được yêu cầu tới lúc nào thì điều tới lúc đó. `truck.onCall` (mặc định bật): bỏ giới hạn chạy sớm `shiftMax` 120'; xe tới điểm đầu đúng lúc bắt đầu chất (bỏ chờ ở điểm đầu, chính xác vì giờ chất/rời/các điểm sau không đổi); bước lùi giờ xe áp cả cho điểm người riêng; bước kiểm từng xe khi lùi giờ: tối đa 12 vòng trả lại riêng xe bị trễ thêm.
+- Chia hàng cho xe dùng sức chở thật (không ép bằng tổng đơn), điểm lớn xếp trước, ưu tiên xe còn đủ chỗ cho cả điểm → ít tách điểm (vd. Anh Quan 2.790 đơn lên trọn 1 xe, không còn 87 đơn lên xe Cafe So phải chờ Cafe So sort xong).
+- Kết quả: gốc −949 (bớt tiền xe chờ); North 127/56, South 157/43, HN 894/0, HCM 183/8. Không còn đề xuất mới nào trễ; còn cờ ở 6 tuyến/nhóm hiện trạng (3 tuyến HN trễ ngày đông do người riêng sort chưa kịp; 3 nhóm người hiện nay).
