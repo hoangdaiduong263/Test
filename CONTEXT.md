@@ -182,3 +182,4 @@ Hai yêu cầu kèm theo:
 - Ba bước đánh số: ① chọn điểm (dán tên) · ② thao tác (khung dính trên cùng khi cuộn; chia 3 nhóm: Người hiện trạng / Kế hoạch mạng / FM Hub; chip các điểm đã chọn, bấm × để bỏ) · ③ danh sách cây FM Hub → nhóm người (chip màu A/B/C, riêng) → điểm, thụt lề theo cấp.
 - Hub đóng/mở (▸/▾), "mở tất cả / thu gọn tất cả", "chỉ hiện điểm đã chọn"; hub có điểm đang chọn tự mở. Ô tick ở cấp hub và nhóm (chọn cả cấp; chọn một phần thì hiện nửa tick).
 - Mỗi điểm: đơn/ngày, người/ngày, thẻ 🔒 khóa / hub chỉnh tay / nhóm chỉnh tay, và kế hoạch mạng ("giữ nguyên" hoặc "→ nhóm mới N điểm / người riêng", in đậm khi đổi).
+- Thẻ tần suất chạy ở mỗi điểm (theo cấu hình chạy D2S của điểm `set.on` = [BAU, Mini CP, CP]): **Daily** (chạy cả ngày BAU), **Mini/CP** (chỉ Mini CP + CP), **CP** (chỉ CP), "Không chạy"; tooltip ghi số ngày có hàng theo loại ngày. Dòng hub đếm số điểm theo tần suất.

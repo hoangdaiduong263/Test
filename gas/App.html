@@ -1989,9 +1989,11 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
   const ovTeam=i=>{const L=mode==="r"?(OV[i]||{}):((OV[i]&&OV[i].w)||{});return (L.s||{}).team!=null;};
   const planOf=i=>{const a=find(P.L0,i),b=find(P.L1,i);if(gkey(a)===gkey(b))return {t:"giữ nguyên",ch:false};return {t:b.length>1?`nhóm mới ${b.length} điểm`:"người riêng",ch:true,tt:b.map(j=>shortN(S[j].n)).join(" + ")};};
   const vis=i=>!ui.bonly||sel[i];
+  const frq=i=>{const o=X.set[i].on||[0,0,0],c=S[i].runT||[0,0,0],k=o[0]?"daily":o[1]?"mini":o[2]?"cp":"off",l={daily:"Daily",mini:"Mini/CP",cp:"CP",off:"Không chạy"}[k];
+    return `<span class="bk-fq ${k}" data-tt="${esc(`Tần suất chạy D2S (cấu hình): ${DTN.filter((_,t)=>o[t]).join(" + ")||"không chạy"}<br>Ngày có hàng trong kỳ: ${DTN.map((n,t)=>n+" "+c[t]).join(" · ")}`)}">${l}</span>`;};
   const cb=(attr,val,on,lab,part)=>`<input type="checkbox" ${attr}="${esc(val)}"${on?" checked":""}${part?' data-part="1"':""} aria-label="${esc(lab)}">`;
   const ptRow=i=>{const pl=planOf(i);return `<div class="bk-pt${sel[i]?" sel":""}">${cb("data-bsel",i,sel[i],"Chọn "+S[i].n.trim())}
-      <span class="bk-nm">${esc(shortN(S[i].n))}${lKeep(i)?' <span class="bk-tag lk" data-tt="Khóa người riêng trong kế hoạch">🔒 khóa</span>':""}${S[i].hSrc==="tay"?' <span class="bk-tag">hub chỉnh tay</span>':""}${ovTeam(i)?' <span class="bk-tag ov">nhóm chỉnh tay</span>':""}</span>
+      <span class="bk-nm">${frq(i)} ${esc(shortN(S[i].n))}${lKeep(i)?' <span class="bk-tag lk" data-tt="Khóa người riêng trong kế hoạch">🔒 khóa</span>':""}${S[i].hSrc==="tay"?' <span class="bk-tag">hub chỉnh tay</span>':""}${ovTeam(i)?' <span class="bk-tag ov">nhóm chỉnh tay</span>':""}</span>
       <span class="bk-num">${f0(nvAdo(i))}<small>đơn</small></span><span class="bk-num">${f1(hcA(i))}<small>người</small></span>
       <span class="bk-plan${pl.ch?" ch":""}"${pl.tt?` data-tt="${esc(pl.tt)}"`:""}>${pl.ch?"→ ":""}${pl.t}</span></div>`;};
   const hubBlock=h=>{const hp=pts.filter(i=>(S[i].h||"")===h).filter(vis);if(!hp.length)return "";
@@ -2003,7 +2005,7 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
     const head=`<div class="bk-hub${isOpen?" open":""}"><button type="button" class="bk-tog" data-btog="${esc(h)}" aria-expanded="${isOpen}" aria-label="${isOpen?"Thu gọn":"Mở"} ${esc(h)}">${isOpen?"▾":"▸"}</button>
       ${cb("data-bselh",h,ns===all.length,"Chọn cả "+(h||"không hub"),ns>0&&ns<all.length)}
       <button type="button" class="bk-hn" data-btog="${esc(h)}">${esc(h||"(không có FM Hub)")}</button>
-      <span class="bk-meta">${all.length} điểm · ${f0(ado)} đơn/ngày · ${f1(hc)} người/ngày</span><span class="bk-chips">${chips}</span>${ns?`<span class="bk-sel">${ns} đã chọn</span>`:""}</div>`;
+      <span class="bk-meta">${all.length} điểm · ${f0(ado)} đơn/ngày · ${f1(hc)} người/ngày${(()=>{const c={};all.forEach(i=>{const o=X.set[i].on||[0,0,0],k=o[0]?"Daily":o[1]?"Mini/CP":o[2]?"CP":"Không chạy";c[k]=(c[k]||0)+1;});return " · "+Object.entries(c).map(([k,n])=>k+" "+n).join(", ");})()}</span><span class="bk-chips">${chips}</span>${ns?`<span class="bk-sel">${ns} đã chọn</span>`:""}</div>`;
     if(!isOpen)return `<div class="bk-h">${head}</div>`;
     const grp=g=>{const L=groups[g],gs=L.every(i=>sel[i]),gp=L.some(i=>sel[i])&&!gs;
       return `<div class="bk-grp"><div class="bk-gh">${cb("data-bselg",h+"|"+g,gs,"Chọn "+gName(g)+" của "+h,gp)}<span class="bk-chip g${g}">${gName(g)}</span>
