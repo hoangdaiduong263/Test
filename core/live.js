@@ -24,11 +24,11 @@ function Live(C, root, opts) {
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
-          if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
+          if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, n: nn, p0: st, p1: 1e9, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
             ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
           else teams.set(a.team.id, a.team); }); }); });
     teams.forEach(t => { const hg = C.geo(t.hub); if (hg) hubs[t.hub] = hg;
-      t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, k: sg.k, av: sg.av, a: sg.start, b: sg.end, who: `nhóm hub ${t.id} (${t.n} người)` });
+      t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, k: sg.k, av: sg.av, a: sg.start, b: sg.end, n: t.n, p0: sg.start, p1: sg.end, who: `nhóm hub ${t.id} (${t.n} người)` });
         ev.push({ t: sg.start, k: "sort", txt: `Nhóm hub ${t.id} (${t.n} người) bắt đầu sort · ${short(sg.i)}` });
         if (sg.from != null && sg.from !== sg.i && inP.has(sg.from)) { moves.push({ id: t.id, a: sg.leave, b: sg.leave + C.travel(sg.from, sg.i), p0: geoP(sg.from), p1: geoP(sg.i) });
           ev.push({ t: sg.leave, k: "team", txt: `Nhóm hub ${t.id} đi ${short(sg.from)} → ${short(sg.i)} (${Math.round(C.travel(sg.from, sg.i))}')` }); } }); });
@@ -38,15 +38,20 @@ function Live(C, root, opts) {
   }
 
   /* ---------- TỒN tại điểm: mỗi lượt q đơn — có từ av (chờ sort) → sort a..b (chuyển dần sang chờ xe) → chất ls..dep (lên xe) ---------- */
-  function invOf(M) { const pc = {};
-    M.dls.forEach(d => { const so = M.sorts.find(s => s.i === d.i && s.k === d.k) || { av: d.ready, a: d.ready, b: d.ready }; (pc[d.i] = pc[d.i] || []).push({ q: d.q, av: so.av, a: so.a, b: so.b, ls: d.ls, dep: d.dep, dl: d.dl }); });
-    const at = (L, t) => { let u = 0, s = 0, late = 0; L.forEach(x => { const f = (t0, t1) => t1 > t0 ? Math.min(1, Math.max(0, (t - t0) / (t1 - t0))) : (t >= t1 ? 1 : 0);
-        if (t >= x.av && t < x.b) u += x.q * (1 - f(x.a, x.b)); if (t >= x.a && t < x.dep) s += x.q * (t < x.ls ? f(x.a, x.b) : 1 - f(x.ls, x.dep));
-        if (t > x.dl && t < x.dep) late += x.q * (t < x.ls ? 1 : 1 - f(x.ls, x.dep)); }); return { u, s, late }; };
-    const st = 2, ts = []; for (let t = M.t0; t <= M.t1; t += st) ts.push(t);
-    const rows = M.pts.filter(i => pc[i]).map(i => ({ i, L: pc[i], v: ts.map(t => at(pc[i], t)) }));
-    const tot = { i: null, v: ts.map((t, k) => rows.reduce((o, r) => ({ u: o.u + r.v[k].u, s: o.s + r.v[k].s, late: o.late + r.v[k].late }), { u: 0, s: 0, late: 0 })) };
-    return { ts, rows: [tot].concat(rows), at: (r, t) => r.i == null ? rows.reduce((o, x) => { const v = at(x.L, t); return { u: o.u + v.u, s: o.s + v.s, late: o.late + v.late }; }, { u: 0, s: 0, late: 0 }) : at(r.L, t), dl: pc }; }
+  /* tồn từng lượt, tính theo từng 2 phút:
+     đơn về dần trong khung nhận đơn của COT (hoặc về một lần lúc "có hàng từ" nếu chỉnh tay / vùng không có khung);
+     người sort với năng suất của đúng số người đang dùng (đơn/phút), chỉ khi có mặt; xong hẳn lúc hàng sẵn; xe chất dần từ lúc bắt đầu chất tới lúc rời */
+  function invOf(M) { const dt = 2, ts = []; for (let t = M.t0; t <= M.t1; t += dt) ts.push(t);
+    const series = (i, d) => { const so = M.sorts.find(s => s.i === d.i && s.k === d.k) || { a: d.ready, n: 1, p0: d.ready, p1: 1e9 }, x = C.dlInfo(i).find(y => y.k === d.k) || {}, q = d.q;
+      const win = x.avOv == null && x.win, A = t => win ? q * Math.min(1, Math.max(0, (t - x.a) / Math.max(1, x.b - x.a))) : (t >= (x.avOv ?? so.av ?? so.a) ? q : 0);
+      const r = q / Math.max(0.1, C.durMin(i, q, so.n || 1)); let S = 0;
+      return ts.map(t => { const a = A(t); if (t >= so.p0 && t < so.p1) S = Math.min(a, S + r * dt); if (t >= d.ready) S = q;
+        const Ld = t < d.ls ? 0 : t >= d.dep ? q : q * (t - d.ls) / Math.max(1, d.dep - d.ls), L = Math.min(S, Ld);
+        const u = Math.max(0, a - S), s2 = Math.max(0, S - L); return { u, s: s2, late: t > d.dl && t < d.dep ? u + s2 : 0 }; }); };
+    const add = (A, B) => A.map((v, k) => ({ u: v.u + B[k].u, s: v.s + B[k].s, late: v.late + B[k].late })), zero = ts.map(() => ({ u: 0, s: 0, late: 0 })), pc = {};
+    const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => add(acc, series(i, d)), zero) } : null; }).filter(Boolean);
+    const tot = { i: null, v: rows.reduce((acc, r) => add(acc, r.v), zero) };
+    return { ts, rows: [tot].concat(rows), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
   function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, H = I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
     const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
     const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
