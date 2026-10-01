@@ -19,10 +19,10 @@ function Live(C, root, opts) {
         ev.push({ t: way[0].t, k: "truck", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
-          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq });
+          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq, roll: z.roll || 0 });
           ev.push({ t: z.ready, k: "ready", txt: `Hàng sẵn · ${nm} (${Math.round(z.q)} đơn)` });
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : z.ready > z.arr + 0.5 ? ` · chất dần, chờ đơn cuối (${hm(z.ready)})` : ""}` });
-          ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
+          ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})${z.roll >= 1 ? ` · dồn ${Math.round(z.roll)} đơn sang COT sau` : ""}` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
           if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, n: nn, p0: st, p1: 1e9, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
             ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
@@ -47,7 +47,9 @@ function Live(C, root, opts) {
       const r = q / Math.max(0.1, C.durMin(i, q, so.n || 1)); let S = 0;
       return ts.map(t => { const a = A(t); if (t >= so.p0 && t < so.p1) S = Math.min(a, S + r * dt); if (t >= d.ready) S = q;
         /* xe chất với tốc độ chất thật (cả lượt mất dwq phút) nhưng chỉ chất được phần đã sort; rời lúc dep thì đã chất hết */
-        const Ld = t < d.ls ? 0 : t >= d.dep ? q : q * (t - d.ls) / Math.max(1, d.dwq || d.dep - d.ls), L = Math.min(S, Ld);
+        /* xe rời: đã chất q − dồn; phần dồn nằm lại điểm tới lượt xe sau của điểm */
+        const Ld = t < d.ls ? 0 : t >= d.dep ? q - (d.roll || 0) : q * (t - d.ls) / Math.max(1, d.dwq || d.dep - d.ls), L = Math.min(S, Ld);
+        if (t >= d.dep && d.roll >= 1) { const nx = M.dls.filter(e => e.i === i && e.dep > d.dep).sort((a2, b2) => a2.dep - b2.dep)[0]; if (!nx || t >= nx.dep) return { u: 0, s: 0, late: 0, a }; }
         const u = Math.max(0, a - S), s2 = Math.max(0, S - L); return { u, s: s2, late: t > d.dl && t < d.dep ? u + s2 : 0, a }; }); };
     const add = (A, B) => A.map((v, k) => ({ u: v.u + B[k].u, s: v.s + B[k].s, late: v.late + B[k].late })), zero = ts.map(() => ({ u: 0, s: 0, late: 0 })), pc = {};
     const wave = {};   // chuỗi tồn của từng lượt (điểm|COT) để ghi nhãn trên bản đồ
@@ -141,7 +143,7 @@ function Live(C, root, opts) {
         rows.push(`<tr><td class="mono">${gi + 1}</td><td>COT${s.k + 1}<br><span class="muted mono">${s.nTr} xe</span></td>
           <td><input type="text" inputmode="numeric" maxlength="5" size="5" data-rk="${esc(rk)}" data-k="${s.k}" data-v0="${Math.round(z0.arr)}" value="${hm(z0.arr)}" class="${ov[s.k] != null ? "ov" : ""}" aria-label="Xe tới điểm đầu tuyến ${gi + 1} COT${s.k + 1}">
             <small>${ov[s.k] != null ? "chỉnh tay" : `lúc hàng sẵn ở ${esc(short(z0.i))}`}</small></td>
-          <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : z.ready > z.arr + 0.5 ? ` (chất dần tới ${hm(z.ready)})` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
+          <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : z.ready > z.arr + 0.5 ? ` (chất dần tới ${hm(z.ready)})` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}${z.roll >= 1 ? ` · dồn ${Math.round(z.roll)} đơn` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
     const el2 = root.querySelector("#lv-tr"); if (!rows.length) { el2.innerHTML = ""; return; }
     el2.innerHTML = `<div class="lv-ih"><h3>Lịch xe</h3><span class="muted" style="font-size:12px">sửa giờ xe tới điểm đầu của lượt · xe tới trước giờ hàng sẵn thì đứng chờ</span></div>
       <div class="scroll"><table class="lv-dlt lv-trt"><thead><tr><th>Tuyến</th><th>Lượt</th><th>Xe tới điểm đầu</th><th>Thứ tự ghé · giờ tới / rời từng điểm</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
@@ -171,9 +173,9 @@ function Live(C, root, opts) {
     Object.entries(M.teamEl).forEach(([id, g]) => { const mv = M.moves.find(m => m.id == id && t >= m.a && t < m.b);
       if (!mv) { g.setAttribute("visibility", "hidden"); return; } const f = (t - mv.a) / (mv.b - mv.a), a = F(mv.p0), b = F(mv.p1);
       g.setAttribute("visibility", "visible"); g.setAttribute("transform", `translate(${(a[0] + (b[0] - a[0]) * f).toFixed(1)},${(a[1] + (b[1] - a[1]) * f).toFixed(1)})`); });
-    const fin = M.dls.filter(d => d.dep <= t), ok = fin.filter(d => d.dep <= d.dl).length;
+    const fin = M.dls.filter(d => d.dep <= t), ok = fin.filter(d => d.dep <= d.dl).length, rolled = fin.reduce((a, d) => a + (d.roll || 0), 0);
     root.querySelector("#lv-kpi").innerHTML = `<div><span>Xe đang chạy</span><b class="mono">${road}</b></div><div><span>Điểm đang sort</span><b class="mono">${sorting}</b></div>
-      <div><span>Lượt đã đi · kịp</span><b class="mono">${ok}/${fin.length}</b></div><div class="${late ? "bad" : ""}"><span>Quá hạn COT</span><b class="mono">${late}${late ? ` · ${Math.round(worst)}'` : ""}</b></div>`;
+      <div><span>Lượt đã đi · kịp</span><b class="mono">${ok}/${fin.length}</b></div><div><span>Đơn dồn sang COT sau</span><b class="mono">${Math.round(rolled).toLocaleString("vi-VN")}</b></div><div class="${late ? "bad" : ""}"><span>Quá hạn COT</span><b class="mono">${late}${late ? ` · ${Math.round(worst)}'` : ""}</b></div>`;
     const n = M.ev.filter(e => e.t <= t).length; if (n !== M.seen) { const log = root.querySelector("#lv-log");
       log.innerHTML = M.ev.slice(0, n).reverse().slice(0, 60).map((e, k) => `<li class="${e.k}${k === 0 && n > M.seen ? " new" : ""}"><span class="mono">${hm(e.t)}</span>${esc(e.txt)}</li>`).join(""); M.seen = n; } }
 

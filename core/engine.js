@@ -22,6 +22,8 @@ function Core(D, REF) {
     peakP: 90,         // ngày đông = phân vị này của đơn/ngày
     maxExtra: 0,       // tuyến trễ: cho thêm tối đa bấy nhiêu FTE riêng mỗi điểm để kịp COT (0 = không thêm)
     lateTol: 60,       // cho trễ COT tối đa (phút)
+    early: 1,          // 1 = xe lấy phần đã sort và rời để kịp hạn, đơn chưa xong dồn sang COT sau · 0 = xe chờ đủ đơn của COT
+    rollMax: 10,       // mỗi lượt-điểm được dồn tối đa bấy nhiêu % đơn sang COT sau (vượt thì xe phải chờ thêm, có thể trễ)
     closeMin: 5,       // xe chất dần hàng đã sort; sau khi hàng cuối sẵn cần thêm bấy nhiêu phút để chốt xe rời
     prodBase: 2000,    // năng suất sort lý tưởng: đơn/người/ngày (1 chute, 10% hàng to)
     prodHand: 2000,    // năng suất phần không sort (quét, bàn giao, xếp xe): đơn/người/ngày
@@ -299,11 +301,25 @@ function Core(D, REF) {
       const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] : ow(i).st;
       /* XE CHẤT DẦN: tới nơi là chất phần đã sort (không trước lúc bắt đầu sort); rời khi chất xong cả lượt và đã qua lúc hàng cuối sẵn + closeMin.
          Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc hàng cuối sẵn + closeMin */
-      const run0 = (pts, a0) => { let t = null, prev = null, lt = -1e9; const st = [];
-        pts.forEach(i => { const rd = ready(i), dwq = dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0);
-          const arr = prev == null ? (a0 ?? Math.max(sortSt(i), Math.min(rd, rd + P.closeMin - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
-          const dep = Math.max(ls + dwq, rd + P.closeMin), dl = deadline(i, w[i]);
-          st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, dwq, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
+      /* số đơn đã sort xong tại điểm i tới giờ t (đơn về dần theo khung / về một lần; người sort theo năng suất) */
+      const cl01 = x => Math.min(1, Math.max(0, x));
+      const sortedAt = (i, t) => { const rd = ready(i); if (t >= rd) return q[i]; const c = cotsOf(i)[w[i].k], ov = (AVOV[nm(i)] || {})[w[i].k];
+        const Aq = ov != null ? (t >= ov ? q[i] : 0) : c && c.win ? q[i] * cl01((t - c.a) / Math.max(1, c.b - c.a)) : (t >= avail(i, w[i], q[i]) ? q[i] : 0);
+        const s0 = sortSt(i), Sx = A[i].m === "H" ? q[i] * cl01((t - s0) / Math.max(1, rd - s0)) : (t - s0) * q[i] / Math.max(0.1, durMin(i, q[i], A[i].m === "F" ? nOf(i, A[i]) : fteN(i)));
+        return Math.max(0, Math.min(Aq, Sx)); };
+      /* giờ sớm nhất đã sort đủ (1 − rollMax%) đơn của lượt */
+      const TR = {}, tRoll = i => i in TR ? TR[i] : (TR[i] = tRoll0(i)), tRoll0 = i => { const need = q[i] * (1 - P.rollMax / 100); let lo = sortSt(i), hi = ready(i); if (sortedAt(i, lo) >= need) return lo;
+        for (let k = 0; k < 24; k++) { const m = (lo + hi) / 2; if (sortedAt(i, m) >= need) hi = m; else lo = m; } return hi; };
+      const DW = {}, run0 = (pts, a0) => { let t = null, prev = null, lt = -1e9; const st = [];
+        const dwOf = i => DW[i] ?? (DW[i] = dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0));
+        /* XE ĐI SỚM: giờ rời muộn nhất ở mỗi điểm để mọi điểm sau vẫn kịp hạn (tính ngược từ điểm cuối) */
+        const LD = []; for (let x = pts.length - 1; x >= 0; x--) { const i = pts[x], own = Math.max(deadline(i, w[i]), tRoll(i) + P.closeMin);   // điểm không thể kịp thì không ép điểm trước đi sớm vì nó
+          LD[x] = x === pts.length - 1 ? own : Math.min(own, LD[x + 1] - legMin(i, pts[x + 1]) - dwOf(pts[x + 1])); }
+        pts.forEach((i, x) => { const rd = ready(i), dwq = dwOf(i), full = rd + P.closeMin, dl = deadline(i, w[i]);
+          const tgt = P.early ? Math.min(full, Math.max(LD[x], tRoll(i) + P.closeMin)) : full;   // xe đi sớm: rời lúc cần để kịp, nhưng không dồn quá rollMax%
+          const arr = prev == null ? (a0 ?? Math.max(sortSt(i), Math.min(rd, tgt - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
+          const dep = Math.max(ls + dwq, tgt), roll = P.early ? Math.max(0, q[i] - sortedAt(i, dep - P.closeMin)) : 0;
+          st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, dwq, roll, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
       /* lùi giờ xuất phát tới muộn nhất mà không trễ thêm và không về muộn hơn: xe không phải tới sớm rồi nằm chờ đơn cuối ở điểm sau */
       const run1 = pts => { if (tov[s.k] != null) return run0(pts, tov[s.k]); const x0 = run0(pts); let best = x0, idle = 0;
         x0.st.forEach(z => { idle += Math.max(0, z.dep - z.arr - z.dwq); if (idle < 0.5) return; const x = run0(pts, x0.st[0].arr + idle);

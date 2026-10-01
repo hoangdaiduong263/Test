@@ -84,6 +84,12 @@ Vùng có trong `COTW` (hiện là HN) dùng COT theo khung nhận đơn, thay c
 - Hạn = Packed. Hiện nay xe rời muộn hơn thì hạn = giờ rời hiện nay.
 - Bước lặp: tuyến chứa trọn một tuyến đã bị loại cũng bị loại. Hết vòng mà còn tuyến không khả thi thì tách tuyến đó về đi riêng.
 
+## Quy tắc COT: xe đi sớm, dồn đơn (`early`, mặc định bật)
+- Xe lấy phần **đã sort** và rời đúng lúc cần để mọi điểm của lượt kịp hạn. Giờ rời muộn nhất ở mỗi điểm được tính ngược từ điểm cuối; điểm nào đằng nào cũng không kịp thì không ép điểm trước đi sớm vì nó.
+- Đơn chưa sort xong lúc xe rời **dồn sang COT sau**, tương đương đơn về nhưng sang COT sau mới bấm Received. Mỗi lượt-điểm dồn tối đa `rollMax` % (mặc định 10%); muốn dồn nhiều hơn thì xe phải chờ, có thể trễ.
+- Đơn dồn chưa được cộng vào lượt sau khi tính xe và người (đang giản lược).
+- `early = 0`: quay về quy tắc cũ, xe chờ đủ đơn của COT.
+
 ## Chưa có (cố ý bỏ để gọn)
 - Trần số người tại điểm / số người hub cấp được.
 - Năng suất theo % đủ diện tích và bàn giao pallet (đang coi là đủ diện tích, bàn giao lẻ).
