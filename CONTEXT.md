@@ -465,3 +465,8 @@ Giờ có hàng / giờ người có mặt:
 - Popup chi tiết tuyến/nhóm (`MR.nvd`) dùng `size:"xwide"`: rộng tới 1500px (hoặc màn hình − 24px).
 - Biểu đồ lịch trong popup vẽ rộng theo cửa sổ (W = innerWidth − 140, trong khoảng 780–1440) thay vì cố định 780, nên các khối xe / sort dài ra và số trong khối dễ đọc. Điện thoại không bị tràn.
 - Biểu đồ lịch trong popup: vẽ với W = (innerWidth − 140) / 1,3 (700–1100) rồi để SVG giãn đầy khung, nên phóng to đều cả ngang lẫn dọc (chữ, khối, chiều cao hàng ~×1,3). Không còn dẹt.
+
+## Thuê xe ca 12H: mặc định TẮT
+- `G.truck.ca` (mặc định false): chỉ khi bật mới so thuê chuyến với thuê ca 12H cho điểm/tuyến ≥2 lượt/ngày. Tắt = mọi xe tính giá thuê chuyến như hiện nay; "Đổi cỡ xe" chỉ đổi loại xe.
+- Công tắc ở Cấu hình › Xe ("Cho thuê xe theo ca 12H").
+- Mặc định sau khi tắt: North +191,4 · South +253,4 · HN +615,1 · HCM +354,1 tr/kỳ.
