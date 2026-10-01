@@ -247,3 +247,10 @@ Giờ có hàng / giờ người có mặt:
 - Popup nhóm người: mục "Tuyến xe gắn liền với nhóm" (từng điểm: xe riêng hoặc tuyến ghép mới/giữ nguyên, nút "xem kế hoạch linehaul →"). Liên kết mở được cả tuyến/nhóm giữ nguyên (popup dựng tại chỗ, `data-nvopen`).
 - `simRun` nhận nhiều nhóm người độc lập (`team.teams`): tuyến đi qua điểm của 2 nhóm được mô phỏng chung cả 2 nhóm với toàn bộ việc của từng nhóm (`routeSimPlan`); kiểm tra nhất quán bắt mọi điểm thuộc nhóm mà lịch tuyến coi là người riêng.
 - Sửa tiêu đề popup luôn ghi "Tuyến 1/Nhóm 1".
+
+## Cập nhật 01/10: đóng các lỗ nhất quán còn lại (kiểm tra nhất quán báo 1 lỗi bên người dùng)
+- `netSearch`: nhóm còn lại sau khi bớt một điểm (tuyến xe hoặc nhóm người) cũng phải đạt `gok`, trừ khi nhóm cũ vốn không đạt. Trước đây chỉ nhóm nhận điểm được kiểm → tuyến còn lại có thể không kịp (vd. GULU FOODS → KhoBim 3Mien → TopGia MienBac trong cấu hình người dùng).
+- `routeTimeOk`: tuyến các điểm đang đi chung chuyến thật chỉ được nhận nếu mô phỏng không trễ hơn hiện nay (cùng luật với kiểm tra nhất quán).
+- Sau khi có cả kế hoạch xe và người: tuyến xe MỚI được kiểm với đúng bố trí người của kế hoạch (nhiều nhóm cùng lúc); không kịp thì các điểm của tuyến rời nhóm chung (vd. Cross kho 24 → Hannah-Seyo → MASAN).
+- `simRun`: (1) người riêng sort theo thứ tự COT, tính sẵn (`thrM`) — trước đây theo thứ tự xe được xử lý: xe COT1 bị lùi sau xe COT2 thì hàng COT1 sort sau, xe chờ, bị lùi tiếp (Song Lo: xe COT1 NongSan3Mien bị lùi 521' tới 17:47). (2) Chỗ chất hàng theo khung giờ (khe trống sớm nhất), không xếp hàng theo thứ tự xử lý. (3) Chỉ cho cả lượt chạy sớm khi chính xe là nút thắt (không chờ hàng/người/chỗ ở điểm trễ hoặc trước đó) — trước đây với xe theo yêu cầu, lượt bị đẩy sớm 706' vô ích.
+- Kiểm với data thật: vẫn khớp 141/160, giờ xe rời lệch trung vị −10'. Kết quả: gốc −332; North 43/65, South 105/41, HN 482/0, HCM 177/8. Kiểm tra nhất quán: 0 lỗi mọi vùng; lưu ý North 11, HN 4 (tuyến/nhóm giữ nguyên; phần lớn là ngày đông, 2 chỗ mô phỏng lệch xa thực tế: KhoPhiHung → Si Le và nhóm GaoChungTri).

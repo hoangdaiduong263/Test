@@ -107,19 +107,19 @@ a{color:var(--truck)}
   <section aria-labelledby="h-kpi">
     <h2 id="h-kpi">Kết quả hiện tại <small>triệu đồng / kỳ (31 ngày)</small></h2>
     <div class="kpis">
-      <div class="kpi"><span>Gốc: lãi/lỗ D2S hiện trạng</span><b class="neg">−317</b></div>
-      <div class="kpi"><span>Kế hoạch mạng: tuyến xe</span><b class="pos">+751</b><span>32 tuyến ghép</span></div>
-      <div class="kpi"><span>Kế hoạch mạng: nhóm người</span><b class="pos">+118</b><span>14 nhóm người chung</span></div>
-      <div class="kpi"><span>Sau kế hoạch</span><b class="pos">+552</b><span>= gốc + xe + người</span></div>
+      <div class="kpi"><span>Gốc: lãi/lỗ D2S hiện trạng</span><b class="neg">−332</b></div>
+      <div class="kpi"><span>Kế hoạch mạng: tuyến xe</span><b class="pos">+807</b><span>tuyến ghép</span></div>
+      <div class="kpi"><span>Kế hoạch mạng: nhóm người</span><b class="pos">+114</b><span>nhóm người chung</span></div>
+      <div class="kpi"><span>Sau kế hoạch</span><b class="pos">+589</b><span>= gốc + xe + người</span></div>
     </div>
-    <p class="note">Theo vùng (xe / người): North 43 / 64 · South 128 / 45 · HN 403 / 0 · HCM 177 / 8 · DNCH 0 / 0. Mọi đề xuất mới đều kịp giờ ở ngày kiểm tra.</p>
+    <p class="note">Theo vùng (xe / người): North 43 / 65 · South 105 / 41 · HN 482 / 0 · HCM 177 / 8 · DNCH 0 / 0. Mọi đề xuất mới đều kịp giờ ở ngày kiểm tra.</p>
   </section>
 
   <section aria-labelledby="h-mm">
     <h2 id="h-mm">Mindmap <small>con số bên phải = thay đổi của "sau kế hoạch" khi tắt/đổi riêng thành phần đó</small></h2>
     <div class="legend"><span class="chip c-data">Dữ liệu</span><span class="chip c-truck">Xe</span><span class="chip c-people">Người</span><span class="chip c-sim">Mô phỏng giờ</span><span class="chip c-assume">Giả định cần xác nhận</span><span>· "≈0" = đo được nhưng gần như không đổi · "—" = không tách riêng được</span></div>
     <div class="mm">
-      <div class="mm-root"><div class="root"><b>D2S Seller Planner</b><span>gốc −317 → sau kế hoạch +552 tr</span></div></div>
+      <div class="mm-root"><div class="root"><b>D2S Seller Planner</b><span>gốc −332 → sau kế hoạch +589 tr</span></div></div>
       <div class="trunk"></div>
       <div class="branches">
 
@@ -199,6 +199,7 @@ a{color:var(--truck)}
       <div class="ev"><b>Xe điều theo yêu cầu</b><p>Bỏ giới hạn chạy sớm 2h; xe tới đúng lúc chất; điểm lớn lên trọn xe.</p><span class="res">gốc −949 · 127/56 · 157/43 · 894/0 · 183/8</span></div>
       <div class="ev"><b>Cập nhật volume tháng 8 (Detail [Semi])</b><p>HNSPC_56 Thôn Đường Đa: 22.292 → 814.982 đơn/tháng (~26k/ngày, khớp số đơn xe thật lấy); 18 điểm khác chỉnh nhỏ đơn hoặc hàng to. HN gốc −603 → +126.</p><span class="res">gốc −220 · 127/56 · 157/43 · 916/0 · 183/8</span></div>
       <div class="ev"><b>Giờ có hàng quyết định giờ sort</b><p>Áp cho cả người riêng. Mặc định theo data từng điểm (giờ xe thật tới − thời gian sort lượt đó) thay cho "3h trước Packed": khớp thực tế 141/160 điểm, giờ xe rời lệch trung vị 9'. North cần thêm người (gốc −98); nhiều tuyến ghép dựa vào giả định cũ bị loại (HN 916 → 403).</p><span class="res">gốc −317 · 43/64 · 128/45 · 403/0 · 177/8</span></div>
+      <div class="ev"><b>Kế hoạch xe ↔ người nhất quán + kiểm tra tự động</b><p>Lịch tuyến dùng đúng bố trí người của kế hoạch (nhiều nhóm cùng lúc); nhóm/tuyến bị đụng phải kiểm lại; người riêng sort theo thứ tự COT; chỗ chất theo khung giờ. Nút kiểm tra nhất quán: 0 lỗi. (Biểu đồ ảnh hưởng ở trên đo trước bước này.)</p><span class="res">gốc −332 · 43/65 · 105/41 · 482/0 · 177/8</span></div>
     </div>
   </section>
 
