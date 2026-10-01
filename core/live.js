@@ -24,8 +24,8 @@ function Live(C, root, opts) {
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
-          if (a.m !== "H") { const st = C.ownReady(z.i)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${C.fteN(z.i)} FTE riêng` });
-            ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
+          if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
+            ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
           else teams.set(a.team.id, a.team); }); }); });
     teams.forEach(t => { const hg = C.geo(t.hub); if (hg) hubs[t.hub] = hg;
       t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, k: sg.k, av: sg.av, a: sg.start, b: sg.end, who: `nhóm hub ${t.id} (${t.n} người)` });
@@ -100,22 +100,26 @@ function Live(C, root, opts) {
       const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
     M.teamEl = {}; [...new Set(M.moves.map(m => m.id))].forEach(id => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 8 }, g); el("text", { y: 3.5, class: "c" }, g).textContent = "H" + id; M.teamEl[id] = g; });
     M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = tk.n > 1 ? "×" + tk.n : "xe"; return g; });
-    dlTable(p, title); invDraw(M); wire(); draw(); }
+    dlTable(r, p); invDraw(M); wire(); draw(); }
 
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
-  function dlTable(p, title) { const pts = M.pts, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
+  function dlTable(r, p) { const pts = M.pts, aOf = i => { const g = p.nw.find(x => x.includes(i)), h = g && r.hc(g); return h && h.A ? h.A[i] : null; }, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
     const why = x => x.ov != null ? "chỉnh tay" : x.close ? "bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
     const whyA = x => x.avOv != null ? "chỉnh tay" : x.win ? `nhận đơn ${hm(x.a)}→${hm(x.b - 1)}` : `suy từ xe tới ${hm(x.arr)}`;
     const inp = (i, k, f, v, cls, lab) => `<input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="${f}-${i}-${k}" data-i="${i}" data-k="${k}" data-f="${f}" value="${hm(v)}" class="${cls}" aria-label="${lab}">`;
-    root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Giờ có hàng &amp; hạn COT</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
-      <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}<br><span class="muted">có hàng từ → hạn</span></th>`).join("")}</tr>
-        <tr class="all"><td>Áp cho cả gói</td>${ks.map(k => `<td><div class="dlp"><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="có hàng" data-allk="${k}" data-allf="av" aria-label="Có hàng COT${k + 1} cả gói"><span class="muted">→</span><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="hạn" data-allk="${k}" data-allf="dl" aria-label="Hạn COT${k + 1} cả gói"></div></td>`).join("")}</tr></thead><tbody>${pts.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const x = info[i].find(y => y.k === k);
-        return x ? `<td><div class="dlp">${inp(i, k, "av", x.av, x.avOv != null ? "ov" : "", `Có hàng COT${k + 1} ${esc(short(i))}`)}<span class="muted">→</span>${inp(i, k, "dl", x.dl, x.ov != null ? "ov" : "", `Hạn COT${k + 1} ${esc(short(i))}`)}</div><small>${esc(whyA(x))} · ${esc(why(x))}</small></td>` : `<td class="muted">–</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
-      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-dlrun">Chạy lại với giờ này</button><button type="button" class="btn ghost" id="lv-dlclr">Bỏ chỉnh tay các điểm này</button></div>`;
+    root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Giờ có hàng, hạn COT &amp; số người</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
+      <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}<br><span class="muted">có hàng từ → hạn</span></th>`).join("")}<th>FTE riêng<br><span class="muted">người</span></th></tr>
+        <tr class="all"><td>Áp cho cả gói</td>${ks.map(k => `<td><div class="dlp"><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="có hàng" data-allk="${k}" data-allf="av" aria-label="Có hàng COT${k + 1} cả gói"><span class="muted">→</span><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="hạn" data-allk="${k}" data-allf="dl" aria-label="Hạn COT${k + 1} cả gói"></div></td>`).join("")}<td></td></tr></thead><tbody>${pts.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const x = info[i].find(y => y.k === k);
+        return x ? `<td><div class="dlp">${inp(i, k, "av", x.av, x.avOv != null ? "ov" : "", `Có hàng COT${k + 1} ${esc(short(i))}`)}<span class="muted">→</span>${inp(i, k, "dl", x.dl, x.ov != null ? "ov" : "", `Hạn COT${k + 1} ${esc(short(i))}`)}</div><small>${esc(whyA(x))} · ${esc(why(x))}</small></td>` : `<td class="muted">–</td>`; }).join("")}${(() => { const a = aOf(i), n = a && a.m === "F" ? a.n || C.fteBase(i) : C.fteBase(i), auto = C.fteN(i);
+          return `<td><input type="number" min="1" max="99" step="1" id="hc-${i}" data-i="${i}" data-f="hc" value="${n}" class="hc${C.HCOV[C.nm(i)] != null ? " ov" : ""}" aria-label="FTE riêng ${esc(short(i))}"><small>${a && a.m !== "F" ? (a.m === "P" ? "đang dùng PPS" : "đang dùng nhóm hub") : n > C.fteBase(i) ? `tự thêm +${n - C.fteBase(i)}` : C.HCOV[C.nm(i)] != null ? "chỉnh tay" : `theo khối việc ${auto}`}</small></td>`; })()}</tr>`).join("")}</tbody></table></div>
+      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-dlrun">Chạy lại</button><button type="button" class="btn ghost" id="lv-dlclr">Bỏ chỉnh tay các điểm này</button></div>`;
     root.querySelectorAll("#lv-dl [data-allk]").forEach(e => { e.oninput = () => { if (toMin(e.value) == null) return;
       root.querySelectorAll(`#lv-dl tbody input[data-k="${e.dataset.allk}"][data-f="${e.dataset.allf}"]`).forEach(x => { x.value = e.value; x.classList.add("chg"); }); }; });
-    const send = clr => { const ch = []; root.querySelectorAll("#lv-dl tbody input").forEach(e => { const i = +e.dataset.i, k = +e.dataset.k, f = e.dataset.f, x = info[i].find(y => y.k === k), v = toMin(e.value);
+    const send = clr => { const ch = []; root.querySelectorAll("#lv-dl tbody input").forEach(e => { const i = +e.dataset.i, k = +e.dataset.k, f = e.dataset.f;
+      if (f === "hc") { const v = parseInt(e.value, 10), ov = C.HCOV[C.nm(i)]; if (clr) { if (ov != null) ch.push({ f, name: C.nm(i), v: null }); }
+        else if (v >= 1 && e.classList.contains("chg")) ch.push({ f, name: C.nm(i), v: v === C.fteN(i) ? null : v }); return; }
+      const x = info[i].find(y => y.k === k), v = toMin(e.value);
       const cur = f === "av" ? x.av : x.dl, auto = f === "av" ? x.avAuto : x.auto, ov = f === "av" ? x.avOv : x.ov;
       if (clr) { if (ov != null) ch.push({ f, name: C.nm(i), k, v: null }); } else if (v != null && v !== Math.round(cur)) ch.push({ f, name: C.nm(i), k, v: v === Math.round(auto) ? null : v }); });
       if (ch.length && opts && opts.onApply) opts.onApply(ch, pts); };

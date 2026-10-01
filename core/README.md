@@ -58,6 +58,9 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
 | Rider PPS | Như hiện nay; rider quét lúc giao, nên cộng thời gian quét vào lúc xe đứng | đơn × `ppsRate` |
 | Nhóm FM Hub | Nhóm đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; đi giữa 2 điểm mất km ÷ `hubSpd` | số người × `hubPay` × ngày chạy |
 
+**Số FTE riêng tại điểm:** theo khối việc ngày đông; sửa tay được theo điểm (`setHC`, cột "FTE riêng" trong màn live). Thêm người thì sort nhanh hơn, hàng sẵn sớm hơn, nhưng không sớm hơn lúc hết khung nhận đơn.
+`maxExtra` (mặc định 0 = tắt): khi tuyến không kịp, [2a] thêm dần 1 FTE riêng ở điểm giúp giảm trễ nhiều nhất, tối đa `maxExtra` người mỗi điểm. Tuyến hiện nay không được thêm người.
+
 **Hai tầng chọn:**
 1. **[2a] Từng tuyến mới** (`routeBest`): thử mọi tổ hợp FTE riêng / PPS, chọn rẻ nhất có trễ ≤ `lateTol`.
    - Không tổ hợp nào kịp thì tuyến bị cấm, chạy lại bước 1.

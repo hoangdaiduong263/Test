@@ -17,8 +17,8 @@
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
   /* hạn COT chỉnh tay: lưu trên trình duyệt, nạp lại khi mở trang */
   try { const o = JSON.parse(localStorage.getItem("d2s-core-dl") || "{}"), ld = (M, f) => Object.entries(M || {}).forEach(([n, m]) => Object.entries(m).forEach(([k, v]) => f(n, +k, v)));
-    if (o.dl || o.av) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); } else ld(o, C.setDeadline); } catch (e) {}
-  const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => (c.f === "av" ? C.setAvail : C.setDeadline)(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify({ dl: C.DLOV, av: C.AVOV })); } catch (e) {}
+    if (o.dl || o.av || o.hc) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); Object.entries(o.hc || {}).forEach(([n, v]) => C.setHC(n, v)); } else ld(o, C.setDeadline); } catch (e) {}
+  const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => c.f === "hc" ? C.setHC(c.name, c.v) : (c.f === "av" ? C.setAvail : C.setDeadline)(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify({ dl: C.DLOV, av: C.AVOV, hc: C.HCOV })); } catch (e) {}
     const R = ST.R; delete ST.res[R]; ST.open.clear(); document.querySelector(".wrap").classList.add("busy");
     setTimeout(() => { const r = res(R); document.querySelector(".wrap").classList.remove("busy"); render();
       /* mở lại gói có nhiều điểm chung nhất với gói đang xem (kế hoạch có thể đổi sau khi chạy lại) */
@@ -48,7 +48,7 @@
 
   const rt = g => `<span class="rt">${g.map(i => `<span class="pt" title="${esc(C.nm(i))}">${esc(short(i))}</span>`).join("<i>+</i>")}</span>`;
   const verdict = h => h.nodata ? `<span class="chip info">thiếu data</span>` : `<span class="chip ${h.ok ? "ok" : "bad"}">${h.ok ? "✓" : "✗"} trễ ${mins(h.late)}</span>`;
-  const modeOf = (g, h, i) => h.A && h.A[i] ? C.modeTxt(h.A[i]) : "FTE riêng";
+  const modeOf = (g, h, i) => h.A && h.A[i] ? C.modeTxt(h.A[i], i) : "FTE riêng";
 
   function routeDetail(r, g) { const h = r.hc(g), rc = C.routeCost(g), ord = h.order || C.routeOrder(g);
     const ppl = [...new Set(g.map(i => modeOf(g, h, i)))].join(" · ");
@@ -86,7 +86,7 @@
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
   const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
     ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/kỳ", 1e6], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1],
-    ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
+    ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Người", "maxExtra", "Tuyến trễ: thêm FTE riêng tối đa mỗi điểm", "người", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodChute", "Mỗi chute thêm ngoài 1", "−%", 1], ["Năng suất (theo đặc điểm seller)", "prodBulky", "Mỗi 10 điểm % hàng to lệch 10%", "−%", 1],
     ["Loại người", "ftePay", "FTE riêng", "k/người/ngày", 1e3], ["Loại người", "hubPay", "Nhóm FM Hub", "k/người/ngày", 1e3], ["Loại người", "hubKm", "Nhóm hub: điểm cách nhau tối đa", "km", 1],
