@@ -410,3 +410,13 @@ Giờ có hàng / giờ người có mặt:
 - `plan` thử 3 cách (giờ xe, lúc làm được, hạn COT), giữ cách ít trễ nhất. `G.lab.teamOrd` = "edd" / "eta" để ép một cách.
 - Nhóm 6 điểm cũ: BOXME sort trước từ 11:03 → mojistore → GGG → BongSenVang → MCL (kịp) → HAPAS. Tổng phút trễ 508 → 174.
 - Toàn mạng: kiểm tra nhất quán 0 lỗi, khớp thực tế vẫn 141/160. Gốc của vài nhóm bớt trễ nên lời kế hoạch North +87,4 → +84,8 (gốc thực tế hơn).
+
+## Cập nhật: một nguồn số cho mọi kịch bản Trước / Sau
+- Lỗi đã sửa: popup tuyến xe lấy lịch "Sau" theo ngày đông (routeSched, volPeak) nhưng lịch "Trước" theo ngày trung bình (nvSimWith, adoOf), nên số đơn khác nhau (1.611 vs 2.3k). Ô "Loại xe" thì lấy từ cách chọn xe của mô hình tiền (vehMix), khác với xe trong lịch.
+- Nay dùng chung:
+  - `simPeakFor(pts,kind,L1)`: tuyến xe không có nhóm người chung → ngày đông (p90), còn lại ngày trung bình;
+  - `simLate(sm,pts)`: trễ lớn nhất trên các lần dừng của chính các điểm.
+  - Thẻ gói (lateA/lateB, ghi "Giờ ngày đông / ngày TB"), popup (nhãn tóm tắt, nút Trước/Sau, tab Lịch chạy) và kiểm tra nhất quán đều qua `nvSimWith` với cùng loại ngày. Lịch "Sau" không còn dùng routeSimPlan / teamSim riêng.
+  - Tóm tắt popup tuyến xe lấy số xe / loại xe / đơn từ chính lịch Trước/Sau đang hiện ("Xe/ngày · ngày đông 3 → 2", "2×1T25 + 1T9 → 5T + 1T25"). "Chuyến/ngày TB (tính tiền)" là số của mô hình tiền, ghi rõ.
+  - Đầu mỗi khối COT ghi "N đơn của các điểm này (+M đơn điểm khác cùng xe/nhóm)", nên Trước và Sau so cùng một khối lượng.
+- Kiểm tra tự động (tcons.js, 18 popup ở 4 vùng): thẻ gói = popup (giờ Trước/Sau), đơn Trước = Sau, tab Chi phí = mô hình gói. Bật từng gói = số trên thẻ; cộng các gói = bật cả kế hoạch. planAudit 0 lỗi; khớp thực tế 141/160.
