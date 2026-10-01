@@ -399,3 +399,14 @@ Giờ có hàng / giờ người có mặt:
   - **Thường**: mặc định.
 - Tag ⚓ / ★ hiện ở dòng điểm trong bảng hàng loạt và trên ô "Hiện nay / Đề xuất" của thẻ gói.
 - Thử: BaonamShop ★ → North gói 4 đổi thành 1991shop + KhongMinhKien + Thugiangshop (+7,7). sociolla ★ → nhóm sociolla + TRUE CARE vẫn đạt (+15,1). Kiểm tra nhất quán 0 lỗi.
+
+## Cập nhật: nhóm người chọn việc theo hạn COT (thêm cách xếp thứ 3)
+- Trước đây `plan1` xếp việc của nhóm theo giờ xe tới (hoặc lúc việc làm được); hạn COT chỉ dùng khi bằng nhau. Sort xong là ở lại chất xe (oneVisit). Hệ quả: nhóm 6 điểm cũ ở North đi HAPAS (hạn 20:00) trước MCL (hạn 17:30), làm MCL trễ 47–71' và BOXME trễ tới 187'.
+- Thêm cách `"edd"`:
+  - mỗi việc (sort một lượt / chất một xe) có lúc làm được (sort: lúc có hàng; chất: lúc xe tới) và hạn COT;
+  - việc kế tiếp = hạn sớm nhất trong số việc làm được khi nhóm tới nơi;
+  - sort xong được đi điểm khác rồi quay lại chất (sort trước buổi sáng ở điểm lớn);
+  - điểm ★ ưu tiên được tính như hạn sớm hơn `prioMin`.
+- `plan` thử 3 cách (giờ xe, lúc làm được, hạn COT), giữ cách ít trễ nhất. `G.lab.teamOrd` = "edd" / "eta" để ép một cách.
+- Nhóm 6 điểm cũ: BOXME sort trước từ 11:03 → mojistore → GGG → BongSenVang → MCL (kịp) → HAPAS. Tổng phút trễ 508 → 174.
+- Toàn mạng: kiểm tra nhất quán 0 lỗi, khớp thực tế vẫn 141/160. Gốc của vài nhóm bớt trễ nên lời kế hoạch North +87,4 → +84,8 (gốc thực tế hơn).
