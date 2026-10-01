@@ -246,10 +246,11 @@ function Core(D, REF) {
   /* hàng của một lượt có từ: giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở) → FTE riêng tái hiện đúng giờ hiện nay */
   const avail = (i, w, q) => Math.max(openOf(i), w.arr - durMin(i, q, fteN(i)));
   const shareOf = i => { const W = waves(i); const tot = W ? W.w.reduce((a, w) => a + w.up, 0) : 1; return w => w.up / tot; };
-  /* các lượt của tuyến: lượt của điểm nhiều lượt nhất; lượt của điểm khác gắn vào lượt gần giờ nhất */
-  function slotsOf(g) { const T = g.map(waves); if (T.some(t => !t)) return null; let L = 0; T.forEach((t, k) => { if (t.w.length > T[L].w.length) L = k; });
-    const sl = T[L].w.map(w => ({ t: w.arr, m: [] })); g.forEach((i, k) => { const sh = shareOf(i);
-      T[k].w.forEach(w => { let b = 0; sl.forEach((x, y) => { if (Math.abs(x.t - w.arr) < Math.abs(sl[b].t - w.arr)) b = y; }); sl[b].m.push({ i, w, sh: sh(w) }); }); }); return sl.filter(s => s.m.length); }
+  /* các lượt của tuyến: một lượt cho mỗi COT (theo chỉ số COT của từng điểm), giờ lượt = giờ xe thật tới sớm nhất trong các điểm.
+     (Trước đây gắn lượt theo giờ gần nhất → hai lượt của cùng một điểm có thể rơi vào một lượt tuyến và mất hạn COT sớm.) */
+  function slotsOf(g) { const T = g.map(waves); if (T.some(t => !t)) return null; const by = {};
+    g.forEach((i, k) => { const sh = shareOf(i); T[k].w.forEach(w => { const s = by[w.k] || (by[w.k] = { k: w.k, t: w.arr, m: [] }); s.t = Math.min(s.t, w.arr); s.m.push({ i, w, sh: sh(w) }); }); });
+    return Object.values(by).sort((a, b) => a.t - b.t); }
   const perms = a => a.length <= 1 ? [a] : a.flatMap((x, k) => perms(a.slice(0, k).concat(a.slice(k + 1))).map(p => [x].concat(p)));
   /* NHÓM FM HUB: n người đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; sang điểm khác mất km ÷ hubSpd */
   function teamReady(pts, n) { const tasks = [];
