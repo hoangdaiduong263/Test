@@ -420,3 +420,7 @@ Giờ có hàng / giờ người có mặt:
   - Tóm tắt popup tuyến xe lấy số xe / loại xe / đơn từ chính lịch Trước/Sau đang hiện ("Xe/ngày · ngày đông 3 → 2", "2×1T25 + 1T9 → 5T + 1T25"). "Chuyến/ngày TB (tính tiền)" là số của mô hình tiền, ghi rõ.
   - Đầu mỗi khối COT ghi "N đơn của các điểm này (+M đơn điểm khác cùng xe/nhóm)", nên Trước và Sau so cùng một khối lượng.
 - Kiểm tra tự động (tcons.js, 18 popup ở 4 vùng): thẻ gói = popup (giờ Trước/Sau), đơn Trước = Sau, tab Chi phí = mô hình gói. Bật từng gói = số trên thẻ; cộng các gói = bật cả kế hoạch. planAudit 0 lỗi; khớp thực tế 141/160.
+
+## Cập nhật: ghi lý do xe không tới sớm hơn trên lịch tuyến ghép
+- Tuyến ghép trọn: giờ xe tới điểm đầu do điểm sau quyết định. Xe theo yêu cầu được lùi cho khớp lúc hàng điểm sau sort xong, vì tới sớm chỉ đứng chờ ở điểm đó.
+- Dưới ô "Xe tới" của mỗi lượt (nvCotSecs) nay có dòng `.tov-why` khi hàng ở điểm đầu xong sớm hơn giờ xe tới quá 5': "Hàng ở A xong hh:mm nhưng xe ghép trọn còn phải chở hàng ở B, sort xong hh:mm. Tới sớm hơn thì xe chỉ đứng chờ ở đó, giờ về SOC không đổi." Điểm B = điểm sau có (lúc xong − thời gian đi tới đó) lớn nhất.
