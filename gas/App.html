@@ -1396,7 +1396,7 @@ function netPlan(R){const K=NET.plan||(NET.plan={});if(K[R])return K[R];
        for(let j=PL.length-1;j>=0;j--)if(ks.has(gkey(PL[j])))PL.splice(j,1);pk.cut.forEach(g=>PL.push(g));
        const j2=PK.indexOf(pk);if(j2>=0)PK.splice(j2,1);
        if(xe){pk.gs.flat().forEach(i=>{delete NET.t1of[i];});pk.cut.forEach(g=>{if(g.length>1)g.forEach(i=>{NET.t1of[i]=g;});});}});
-     if(drop.length){u.dropped=drop;u.items=u.items.filter(it=>!drop.includes(it));u.ids=u.items.map(x=>x.pk.id);u.g=u.mustIds.length===u.ids.length?u.gMust:rv(u.ids);
+     if(drop.length){u.dropped=drop;u.items=u.items.filter(it=>!drop.includes(it));u.gModel=u.items.reduce((a,x)=>a+x.pk.g,0);u.ids=u.items.map(x=>x.pk.id);u.g=u.mustIds.length===u.ids.length?u.gMust:rv(u.ids);
        u.pts=srtN([...new Set(u.items.flatMap(x=>x.pk.pts.concat(x.pk.cut.flat())))]);
        if(u.need==="either"&&!u.items.some(x=>x.tag==="nice"))u.need=u.items.length>1?"both":u.items[0].kind;}});
    up.sort((a,b)=>b.g-a.g);}
@@ -1883,10 +1883,11 @@ function nvState(){const Rs=REG.filter(R=>ui.reg==="all"||R===ui.reg).filter(R=>
 function nvDumb(st){const {P,sc}=st,inS=new Set(sc.pts);
   const T0=P.T0.filter(g=>g.some(i=>inS.has(i))),T1=P.T1.filter(g=>g.some(i=>inS.has(i))),L0=P.L0.filter(g=>g.some(i=>inS.has(i))),L1=P.L1.filter(g=>g.some(i=>inS.has(i)));
   const net0=sc.pts.reduce((a,i)=>a+BASE.tot[i].net,0),gi=i=>P.tp.concat(P.lp).reduce((a,x)=>a+((x.gi&&x.gi[i])||0),0),net1=net0+sc.pts.reduce((a,i)=>a+gi(i),0);
-  const km=Ps=>Ps.reduce((a,g)=>a+routeKm(g)*nvTrips(g),0);
+  const km=Ps=>Ps.reduce((a,g)=>a+routeKm(g)*nvTrips(g),0),kmc=Ps=>Ps.reduce((a,g)=>a+(g.length>1?vehMix(g).kmc:0),0),xc=Ps=>Ps.reduce((a,g)=>a+netTC(g).tot,0);
   const rows=[["Chuyến xe/ngày",T0.reduce((a,g)=>a+nvTrips(g),0),T1.reduce((a,g)=>a+nvTrips(g),0),-1,f1,"mô hình, cả tuyến"],
     ["Điểm đi riêng",T0.filter(g=>g.length===1).length,T1.filter(g=>g.length===1).length,-1,f0,"điểm không ghép với ai"],
-    ["Km đi vòng/ngày",km(T0),km(T1),-1,f0,"để lấy thêm điểm"],
+    ["Km đi vòng/ngày",km(T0),km(T1),-1,f0,`để lấy thêm điểm · tiền đi vòng ${f1(kmc(T0)/1e6)} → ${f1(kmc(T1)/1e6)} tr/kỳ`],
+    ["Tiền xe (tr/kỳ)",xc(T0)/1e6,xc(T1)/1e6,-1,f1,"đã gồm tiền đi vòng"],
     ["Người/ngày",L0.reduce((a,g)=>a+nvHc(g),0),L1.reduce((a,g)=>a+nvHc(g),0),-1,f1,"người sort ở các điểm"],
     ["Lãi/lỗ (tr/kỳ)",net0/1e6,net1/1e6,1,f1,"ước theo từng gói"]];
   return `<div class="nv-dumb">${rows.map(([lab,a,b,good,fm,sub])=>{const lo=Math.min(a,b,0),hi=Math.max(a,b,0),sp=hi-lo||1,px=v=>((v-lo)/sp*100).toFixed(2);
@@ -2022,11 +2023,11 @@ function nvSchedBrief(sim,real){if(real)return `<p class="nvc-brief">Đang đi c
   const st=worst>tol?["neg","trễ nhất +"+Math.round(worst)+"'"]:worst>0?["warn","sát hạn +"+Math.round(worst)+"'"]:["pos","kịp mọi hạn"];
   return `<p class="nvc-brief"><b>${sim.rows.length}</b> xe · <b>${nc}</b> lượt COT · <span class="${st[0]}">${st[1]}</span>${sh>=1?` · chạy sớm tới ${Math.round(sh)}'`:""}</p>`;}
 /* loại xe hay dùng nhất và số chuyến/ngày của một nhóm điểm đi chung (theo cách tính tiền xe của model) */
-function vehMix(g){PR_R=S[g[0]].R;PR_K=tripKm(g);const K=NET.vmx||(NET.vmx={}),key=gkey(g);if(key in K)return K[key];const tally={};let t=0,n=0;
+function vehMix(g){PR_R=S[g[0]].R;PR_K=tripKm(g);const K=NET.vmx||(NET.vmx={}),key=gkey(g);if(key in K)return K[key];const tally={};let t=0,n=0,kmc=0;
   for(const d of ACT){const act=g.filter(i=>BASE.rows[i][d].vol>0);if(!act.length)continue;n++;let nb=0,b=0,kk=1,md=true,mt=1;const fp=[];
     act.forEach(i=>{const r=BASE.rows[i][d],c=BASE.set[i];nb+=r.nb;b+=r.bk;kk=Math.max(kk,r.st||1);md=md&&!!c.md;mt=Math.max(mt,r.mt||1);fp.push({nb:r.nb,b:r.bk,fl:flx(c.fl)});});
-    const o=truckCost(nb,b,kk,md,"auto",act.length,mt,false,grpFl(fp));t+=o.t;if(o.v)tally[o.v]=(tally[o.v]||0)+1;}
-  const v=Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];return K[key]={v:v?v[0]:"–",t:t/Math.max(1,n)};}
+    const o=truckCost(nb,b,kk,md,"auto",act.length,mt,false,grpFl(fp),routeKm(act));t+=o.t;kmc+=o.kmS||0;if(o.v)tally[o.v]=(tally[o.v]||0)+1;}
+  const v=Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];return K[key]={v:v?v[0]:"–",t:t/Math.max(1,n),kmc};}   /* kmc: tiền đi vòng (đ/km × km lấy thêm điểm) cả kỳ */
 /* ô nhập giờ đóng cửa (bàn giao cuối) của một điểm */
 function closeInp(i){const nm=S[i].n.trim(),co=closeOf(i),tay=co&&co.src==="tay",sv=co?hhmm(co.t):"";
   const auto=(()=>{const keep=G.closeOv;G.closeOv=null;const c=closeOf(i);G.closeOv=keep;return c;})();

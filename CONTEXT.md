@@ -316,3 +316,10 @@ Giờ có hàng / giờ người có mặt:
   - `closeOf` trả `src:"tay"`.
   - Ô nhập `closeInp(i)` (`data-cls`, commit qua `timeCommit`; ↺ `data-clsx` trả về mặc định) có ở tab "Điểm & giờ" và cột "Đóng cửa" trong bảng giờ seller (MR.rdyed).
   - Đổi giờ thì COT cuối = giờ mới và kế hoạch tính lại.
+
+## Cập nhật: sửa lỗi tổng gói khi bỏ phần "nên làm" + hiện tiền đi vòng
+- Lỗi kiểm tra "tổng các gói ≠ tổng kế hoạch" (South, có từ v58): khi bỏ một phần "nên làm", `u.gModel` chưa trừ phần đó. Nay tính lại `u.gModel` theo các phần còn lại.
+- Biểu đồ trước → sau:
+  - dòng Km đi vòng/ngày ghi thêm tiền đi vòng trước → sau (`vehMix(g).kmc` = Σ kmS của truckCost, nay truyền routeKm);
+  - thêm dòng "Tiền xe (tr/kỳ)" (Σ netTC, đã gồm đi vòng).
+- HN mặc định: km 42 → 145/ngày, tiền đi vòng 5,3 → 24 tr/kỳ; tiền xe 2.617,8 → 2.047,1 tr/kỳ; chuyến 116,5 → 93,4/ngày.
