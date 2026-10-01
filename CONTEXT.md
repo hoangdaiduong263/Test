@@ -266,3 +266,8 @@ Giờ có hàng / giờ người có mặt:
 - Gia dung Duc Hi + Gia dung Thao Van ngày nào cũng lên cùng một xe 5T chạy vòng FM Hub (Chợ Mới 02 → Chợ Mới → SW SOC), nhưng cấu hình ghi "đi riêng" → kế hoạch đề xuất "tuyến mới" và tính tiết kiệm ảo. Sửa: `netTBase` coi các điểm "đi riêng" mà đi chung chuyến thật ≥80% số ngày (cùng SOC) là đang đi chung; `netTC` giữ tiền xe thật cho nhóm như vậy.
 - Biểu đồ lịch popup tuyến: mỗi điểm có một vạch nhân sự cố định ở đáy hàng (người riêng: lúc sort phần đơn từng xe, số người ghi một lần; nhóm chung: lúc nhóm sort ở điểm), thay cho thanh rải theo làn xe. Dòng mô tả xe gộp xe giống nhau ("xe nào cũng ghé: …").
 - Kết quả: gốc −335; North 28/66, South 79/41, HN 571/0, HCM 129/8 → sau kế hoạch +518. Kiểm tra nhất quán 0 lỗi.
+
+## Cập nhật 01/10: thay đổi bắt buộc được tính tiền và giải thích
+- `netPacks` trước đây bỏ mọi gói có lợi cấu trúc ≤ 0 (`filter(p=>p.gm>0)`). Các thay đổi do luật khả thi ép (tách nhóm người không còn kịp giờ với tuyến xe mới, điểm rời nhóm cho tuyến mới kịp giờ) vẫn nằm trong kế hoạch nhưng không có gói → thẻ hiện "–" và tiền tăng không được trừ vào tổng. Nay giữ mọi gói; gói không tiết kiệm đánh dấu `forced` (bắt buộc), tiền tính vào tổng.
+- Thẻ tuyến/nhóm của gói bắt buộc ghi "Thay đổi bắt buộc, không phải để tiết kiệm…" + tiền tốn thêm. Nhóm/tuyến bị giải tán (mọi điểm về người riêng/đi riêng) có ô riêng (`nvSplitNote`) trong cả hai tab, khớp với cầu lãi/lỗ (trước đây tab người ghi "Không có nhóm người nào đổi" trong khi cầu có "Tách … −2,1").
+- Hiện có 2 gói bắt buộc (North, nhóm người): tách Bim BabyCare · ShopDienMay · ChiNhanhMacDinh (−2,1 tr) và nhóm Song Lo 9 điểm (−2,6 tr). Kết quả: gốc −335; North 28/61, South 79/41, HN 571/0, HCM 129/8 → sau kế hoạch +513.

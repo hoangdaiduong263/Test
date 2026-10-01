@@ -1304,7 +1304,8 @@ function netPacks(P0,P,cost,costM){const bK=new Set(P0.map(gkey)),fK=new Set(P.m
     p.cut.forEach(g=>{const c=cost(g);before+=c.tot;g.forEach(i=>{gi[i]=(gi[i]||0)+c.per[i];});});
     p.gs.forEach(g=>{const c=cost(g);after+=c.tot;g.forEach(i=>{gi[i]=(gi[i]||0)-c.per[i];});});
     const gm=costM?p.cut.reduce((a,g)=>a+costM(g).tot,0)-p.gs.reduce((a,g)=>a+costM(g).tot,0):before-after;
-    return Object.assign(p,{pts:srtN(p.gs.flat()),g:before-after,gm,gi});}).filter(p=>p.gm>0);}
+    /* gói không tiết kiệm (gm ≤ 0) vẫn giữ: đó là thay đổi BẮT BUỘC do luật khả thi (nhóm/tuyến cũ không còn kịp giờ khi tuyến/nhóm khác đổi) — tiền tăng phải tính vào tổng */
+    return Object.assign(p,{pts:srtN(p.gs.flat()),g:before-after,gm,gi,forced:gm<=0});});}
 const shortN=n=>n.replace(/^(HN|HCM|DNCH|North|South)?(SPC|Seller)?\s*[-_]\s*/i,"").trim()||n;
 const gName=g=>g.map(i=>shortN(S[i].n)).join(" + ");
 /* dòng phụ trong popup: điểm này vào tuyến/nhóm mới nào, trước đây đi chung với ai */
@@ -2322,6 +2323,7 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
   const news=nvNews(st);
   // tuyến cũ bị giải tán hết (mọi điểm về đi riêng) — cũng là một thay đổi cần thấy
   const splits=Pb.filter(g=>g.length>1&&g.some(i=>inS.has(i))&&g.every(i=>{const a=Pa.find(h=>h.includes(i));return !a||a.length===1;}));
+  if(!news.length&&splits.length)return nvSplitNote(st,L);
   if(!news.length&&!splits.length)return `<p class="note">Không có ${w.toLowerCase()} nào đổi trong phạm vi này${sc.q?` (lọc "${esc(ui.q3)}")`:""}: ${L==="xe"?"các điểm giữ nguyên cách chạy hiện tại":"giữ cách bố trí người hiện tại"}.</p>`;
   const N=ui.nvN||6,shown=news.slice(0,N);
   const card=x=>{const g=x.g,j=x.j,c=x.c,ord=L==="xe"?(routeSched(g).order||routeOrder(g)):g,soc=L==="xe"?socMain(g):null,pk=pks.find(p=>p.pts.some(i=>g.includes(i)));
@@ -2338,7 +2340,7 @@ function nvCards(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1
   NVD.xe={};news.forEach(x=>NVD.xe[x.j]={x,Pb,pks,soc:null});
   return `<div class="nvc-grid">${shown.map(card).join("")}</div>
     ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} ${w.toLowerCase()}</button></div>`:""}
-    ${splits.length?`<p class="note">${w} bị giải tán (các điểm về ${L==="xe"?"đi riêng":"người riêng"}): ${splits.map(g=>esc(gName(g))).join("; ")}.</p>`:""}`;}
+    ${nvSplitNote(st,L)}`;}
 /* ---------- các tuyến/nhóm mới của phạm vi đang xem, xếp theo lời ---------- */
 function nvNews(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp,bK=new Set(Pb.map(gkey));
   const gi=i=>pks.reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);
@@ -2347,7 +2349,8 @@ function nvNews(st){const {P,sc,L}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,
   return Pa.filter(g=>g.length>1&&!bK.has(gkey(g))&&g.some(i=>inS.has(i))).map(g=>{const pk=ps.find(p=>p.gs.some(h=>gkey(h)===gkey(g)))||null;return {g,v:g.reduce((a,i)=>a+gi(i),0),pk,pi:pk?ps.indexOf(pk):99};})
     .sort((a,b)=>a.pi-b.pi||b.v-a.v).map((x,j)=>Object.assign(x,{j,c:NVCOL[j]||"var(--ink-2)"}));}
 /* vì sao một tuyến lỗ vẫn nằm trong kế hoạch: điểm của nó phải rời tuyến cũ để tuyến khác trong gói ghép được */
-function nvWhyNeg(x,news,Pb,L){if(x.v>=0||!x.pk)return "";const w=L==="xe"?"Tuyến":"Nhóm",wl=w.toLowerCase();
+function nvWhyNeg(x,news,Pb,L){if(x.pk&&x.pk.forced)return `<p class="nvd-warn" style="margin:4px 0">Thay đổi <b>bắt buộc</b>, không phải để tiết kiệm: ${L==="xe"?"tuyến":"nhóm người"} hiện nay không còn kịp giờ khi ${L==="xe"?"các nhóm người":"các tuyến xe"} trong kế hoạch thay đổi, nên phải tách/đổi để kế hoạch khả thi. ${x.pk.g<-5e4?`Tốn thêm ${sgT(-x.pk.g)} tr/kỳ (đã trừ vào tổng kế hoạch).`:"Gần như không đổi chi phí."}</p>`;
+  if(x.v>=0||!x.pk)return "";const w=L==="xe"?"Tuyến":"Nhóm",wl=w.toLowerCase();
   const moved=[];x.g.forEach(i=>{const b=Pb.find(h=>h.includes(i));if(!b||b.length<2)return;b.filter(y=>!x.g.includes(y)).forEach(y=>{const o=news.find(n=>n.g.includes(y));if(o&&o!==x)moved.push([i,y,o]);});});
   const cost=L==="xe"?netTC:netLC,solo=x.g.reduce((a,i)=>a+cost([i]).tot,0)-cost(x.g).tot;
   const tot=news.filter(n=>n.pk===x.pk).length;
@@ -2374,8 +2377,13 @@ function nvSummary(st){const {P,L}=st,Pb=L==="xe"?P.T0:P.L0,news=nvNews(st);if(!
 const PERSON=`<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="5" cy="3.4" r="2.9"/><path d="M0.6 16 V10.2 Q0.6 7.2 5 7.2 Q9.4 7.2 9.4 10.2 V16Z"/></svg>`;
 function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=0;k<full;k++)h+=`<i class="pp">${PERSON}</i>`;
   if(fr>0.05)h+=`<i class="pp part" style="--f:${(fr*100).toFixed(0)}%">${PERSON}</i>`;return `<span class="pps" aria-label="${f1(v)} người">${h}</span>`;}
-function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st);
-  if(!news.length)return `<p class="note">Không có nhóm người nào đổi trong phạm vi này.</p>`;
+/* nhóm/tuyến bị giải tán (mọi điểm về người riêng / đi riêng): nêu rõ lý do và tiền, khớp với cầu lãi/lỗ */
+function nvSplitNote(st,L){const {P,sc}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp;
+  const sp=Pb.filter(g=>g.length>1&&g.some(i=>inS.has(i))&&g.every(i=>{const a=Pa.find(h=>h.includes(i));return !a||a.length===1;}));if(!sp.length)return "";
+  return sp.map(g=>{const pk=pks.find(p=>p.cut.some(h=>gkey(h)===gkey(g)));const w=L==="xe"?"Tuyến":"Nhóm người";
+    return `<div class="nvd-warn" style="margin:6px 0"><b>Tách ${w.toLowerCase()}: ${esc(g.map(i=>shortN(S[i].n)).join(" · "))}</b> → các điểm về ${L==="xe"?"đi riêng":"người riêng"}${pk?` · <b class="${cls(pk.g)}">${sgT(pk.g)} tr/kỳ</b>`:""}.<br>${pk&&pk.forced?`Thay đổi <b>bắt buộc</b>, không phải để tiết kiệm: ${L==="xe"?"tuyến":"nhóm"} hiện nay mô phỏng không còn kịp giờ khi ${L==="xe"?"các nhóm người":"các tuyến xe"} trong kế hoạch thay đổi. Tiền chênh đã tính vào tổng kế hoạch.`:"Tách ra cho lợi hơn."} ${nvOpenBtn(L==="xe"?"xe":"nguoi",g,`xem ${w.toLowerCase()} hiện nay →`)}</div>`;}).join("");}
+function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st),spl=nvSplitNote(st,"nguoi");
+  if(!news.length)return spl||`<p class="note">Không có nhóm người nào đổi trong phạm vi này.</p>`;
   const N=ui.nvN||6;
   const card=x=>{const g=x.g,befs=Pb.filter(b=>b.some(i=>g.includes(i))),hub=S[g[0]].h||"(chưa gắn hub)",hb=g.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0),ha=nvHc(g);   // trước: chỉ phần người của các điểm trong nhóm mới (chia theo đơn), không lấy cả nhóm cũ
     const tsim=teamSim(g);
@@ -2392,7 +2400,7 @@ function nvTeamCards(st){const {P}=st,Pb=P.L0,news=nvNews(st);
       ${nvSchedBrief(tsim,false)}<button type="button" class="nvc-more" data-nvd="nguoi|${x.j}">Chi tiết & kế hoạch linehaul →</button></article>`;};
   NVD.nguoi={};news.forEach(x=>NVD.nguoi[x.j]={x,Pb,pks:st.P.lp});
   return `<div class="nvc-grid">${news.slice(0,N).map(card).join("")}</div>
-    ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} nhóm</button></div>`:""}`;}
+    ${news.length>N?`<div class="row" style="margin:10px 0 0"><button type="button" class="ghost sm" data-nvmore="1">Hiện thêm ${news.length-N} nhóm</button></div>`:""}${spl}`;}
 function netViz(){const st=nvState();if(!st)return "";const {R,Rs,P,sc,L}=st;
   const seg=(key,val,opts)=>`<div class="seg" role="group">${opts.map(([k,l])=>`<button type="button" data-${key}="${k}" aria-pressed="${val===k}">${l}</button>`).join("")}</div>`;
   const nT=P.T1.filter(g=>g.length>1).length,nC=P.T0.filter(g=>g.length>1&&!P.T1.some(h=>gkey(h)===gkey(g))).length;
