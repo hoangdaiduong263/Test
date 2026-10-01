@@ -271,3 +271,12 @@ Giờ có hàng / giờ người có mặt:
 - `netPacks` trước đây bỏ mọi gói có lợi cấu trúc ≤ 0 (`filter(p=>p.gm>0)`). Các thay đổi do luật khả thi ép (tách nhóm người không còn kịp giờ với tuyến xe mới, điểm rời nhóm cho tuyến mới kịp giờ) vẫn nằm trong kế hoạch nhưng không có gói → thẻ hiện "–" và tiền tăng không được trừ vào tổng. Nay giữ mọi gói; gói không tiết kiệm đánh dấu `forced` (bắt buộc), tiền tính vào tổng.
 - Thẻ tuyến/nhóm của gói bắt buộc ghi "Thay đổi bắt buộc, không phải để tiết kiệm…" + tiền tốn thêm. Nhóm/tuyến bị giải tán (mọi điểm về người riêng/đi riêng) có ô riêng (`nvSplitNote`) trong cả hai tab, khớp với cầu lãi/lỗ (trước đây tab người ghi "Không có nhóm người nào đổi" trong khi cầu có "Tách … −2,1").
 - Hiện có 2 gói bắt buộc (North, nhóm người): tách Bim BabyCare · ShopDienMay · ChiNhanhMacDinh (−2,1 tr) và nhóm Song Lo 9 điểm (−2,6 tr). Kết quả: gốc −335; North 28/61, South 79/41, HN 571/0, HCM 129/8 → sau kế hoạch +513.
+
+## Cập nhật 01/10: GÓI KẾ HOẠCH (tuyến xe + nhóm người), nhãn Compulsory / Nice-to-have
+- View mặc định của khối kế hoạch mạng: "Gói kế hoạch (xe + người)" (`nvPackCards`); hai tab cũ thành "Chi tiết tuyến xe" / "Chi tiết nhóm người".
+- `netPlan` → `P.up`: gộp gói xe (`tp`) và gói người (`lp`) có điểm chung. Mỗi phần gắn nhãn:
+  - **Bắt buộc · Compulsory**: thay đổi bị ép để kế hoạch khả thi — gói không tự tiết kiệm (`forced`), hoặc nhóm người cũ có điểm đổi tuyến xe và không còn kịp giờ với tuyến mới (`dep`, kể cả khi tự nó cũng có lợi), hoặc sửa chỗ hiện trạng đang trễ (`why=late`).
+  - **Nên làm · Nice-to-have**: tự có lợi, làm hay không tùy chọn.
+  - Nhãn cả gói: "Cần làm cả tuyến xe + nhóm người" / "Tuyến xe và nhóm người làm riêng được" / "Chỉ cần đổi tuyến xe" / "Chỉ cần đổi nhóm người" / "Sửa chỗ hiện đang trễ".
+- Một công tắc bật/tắt cả gói (mọi phần). Mỗi phần có link "xem →" mở popup tuyến/nhóm.
+- Kiểm tra nhất quán thêm: tổng các gói = tổng kế hoạch; mọi thay đổi trong kế hoạch nằm trong một gói. Hiện: North 7 gói, South 5, HN 3, HCM 3; tổng khớp mọi vùng; 0 lỗi.
