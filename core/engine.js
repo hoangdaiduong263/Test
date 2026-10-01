@@ -139,12 +139,15 @@ function Core(D, REF) {
   const openOf = i => REF.OPENT[nm(i)] ?? Math.min(P.open, (() => { const w = waves(i); return w ? Math.min(...w.w.map(x => x.arr)) - 60 : 1e9; })());
   /* hạn của một lượt = giờ Packed của COT; nếu hiện nay xe đã đi muộn hơn thì hạn = giờ đi hiện nay (không bắt tốt hơn thực tế) */
   /* hạn chỉnh tay theo điểm × COT (phút từ 0h), ưu tiên hơn mọi quy tắc trên */
-  const DLOV = {};
+  const DLOV = {}, AVOV = {};
   const dlAuto = (i, w) => { const c = cotsOf(i)[w.k]; return w.dep > c.p && !c.close ? w.dep : c.p; };
   function deadline(i, w) { const o = DLOV[nm(i)]; return o && o[w.k] != null ? o[w.k] : dlAuto(i, w); }
   /* bảng hạn của một điểm: mỗi lượt xe thật → giờ Packed của COT, giờ rời hiện nay, hạn tự tính, hạn chỉnh tay */
   const dlInfo = i => { const W = waves(i); return W ? W.w.map(w => { const c = cotsOf(i)[w.k], o = (DLOV[nm(i)] || {})[w.k];
-    return { k: w.k, p: c.p, close: !!c.close, dep: w.dep, auto: dlAuto(i, w), ov: o ?? null, dl: o ?? dlAuto(i, w) }; }) : []; };
+    const q = volPk(i) * shareOf(i)(w), ao = (AVOV[nm(i)] || {})[w.k], aa = availAuto(i, w, q);
+    return { k: w.k, p: c.p, close: !!c.close, dep: w.dep, arr: w.arr, auto: dlAuto(i, w), ov: o ?? null, dl: o ?? dlAuto(i, w), avAuto: aa, avOv: ao ?? null, av: ao ?? aa }; }) : []; };
+  const setOv = M => (name, k, v) => { if (v == null) { if (M[name]) { delete M[name][k]; if (!Object.keys(M[name]).length) delete M[name]; } } else (M[name] = M[name] || {})[k] = v; };
+  const setAvail = setOv(AVOV);
   const setDeadline = (name, k, v) => { if (v == null) { if (DLOV[name]) { delete DLOV[name][k]; if (!Object.keys(DLOV[name]).length) delete DLOV[name]; } } else (DLOV[name] = DLOV[name] || {})[k] = v; };
 
   /* ---------- chuyến đi chung thật (để biết tuyến hiện nay) ---------- */
@@ -244,7 +247,12 @@ function Core(D, REF) {
   const durMin = (i, q, n) => q * work(i).w * P.fteH * 60 / n;                      // phút để n người làm q đơn của điểm i
   const travel = (i, j) => i === j ? 0 : (kmPt(i, j) ?? P.hubKm) / P.hubSpd * 60;   // nhóm hub đi giữa 2 điểm (phút)
   /* hàng của một lượt có từ: giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở) → FTE riêng tái hiện đúng giờ hiện nay */
-  const avail = (i, w, q) => Math.max(openOf(i), w.arr - durMin(i, q, fteN(i)));
+  /* giờ có hàng chỉnh tay theo điểm × COT (seller báo kho có hàng từ giờ đó) ưu tiên hơn giờ suy từ chuyến xe thật */
+  const availAuto = (i, w, q) => Math.max(openOf(i), w.arr - durMin(i, q, fteN(i)));
+  const avail = (i, w, q) => { const o = AVOV[nm(i)]; return o && o[w.k] != null ? o[w.k] : availAuto(i, w, q); };
+  /* FTE riêng / seller (PPS) làm lần lượt theo COT: lượt sau bắt đầu khi có hàng và đã xong lượt trước */
+  function ownReady(i) { const W = waves(i), sh = shareOf(i), o = {}; let t = -1e9;
+    W.w.slice().sort((a, b) => a.k - b.k).forEach(w => { const q = volPk(i) * sh(w), st = Math.max(avail(i, w, q), t); t = st + durMin(i, q, fteN(i)); o[w.k] = { st, end: t }; }); return o; }
   const shareOf = i => { const W = waves(i); const tot = W ? W.w.reduce((a, w) => a + w.up, 0) : 1; return w => w.up / tot; };
   /* các lượt của tuyến: một lượt cho mỗi COT (theo chỉ số COT của từng điểm), giờ lượt = giờ xe thật tới sớm nhất trong các điểm.
      (Trước đây gắn lượt theo giờ gần nhất → hai lượt của cùng một điểm có thể rơi vào một lượt tuyến và mất hạn COT sớm.) */
@@ -267,7 +275,7 @@ function Core(D, REF) {
     for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
       const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf))).t);
-      const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : avail(i, w[i], q[i]) + durMin(i, q[i], fteN(i));
+      const own = {}, ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : (own[i] || (own[i] = ownReady(i)))[w[i].k].end;
       const run1 = pts => { let t = null, prev = null, lt = -1e9; const st = [];
         pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
           const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
@@ -342,7 +350,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: [...ban], packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, run, dlInfo, setDeadline, DLOV, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { P, VEH, REGIONS, S, run, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

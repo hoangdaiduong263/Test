@@ -45,7 +45,7 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
 - Phần không sort (quét, bàn giao) tính theo `prodHand`.
 - Người-ngày/đơn = phần sort ÷ năng suất sort + phần không sort ÷ `prodHand`.
 
-**Mô phỏng ngày đông** (`simRoute`), từng lượt xe:
+**Mô phỏng ngày đông** (`simRoute`), từng lượt xe (giờ có hàng sửa tay được theo điểm × COT bằng `setAvail`; FTE riêng / seller làm lần lượt theo COT, `ownReady`):
 - **Hàng có từ:** giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở).
 - **Xe:** tới điểm đầu lúc hàng sẵn, chờ hàng ở điểm sau; thời gian đứng = cố định + phút/đơn (đo từ chuyến thật). Mỗi lượt tự chọn thứ tự ghé (trễ ít nhất, rồi về sớm nhất).
 - **Trễ** = giờ xe rời − hạn COT (Packed) của lượt. Hạn sửa tay được theo điểm × COT (`setDeadline`, bảng "Hạn COT" trong màn live); bản sửa tay ưu tiên hơn mọi quy tắc.

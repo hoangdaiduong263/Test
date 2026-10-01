@@ -24,7 +24,7 @@ function Live(C, root, opts) {
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
-          if (a.m !== "H") { const st = z.ready - C.durMin(z.i, z.q, C.fteN(z.i)); sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${C.fteN(z.i)} FTE riêng` });
+          if (a.m !== "H") { const st = C.ownReady(z.i)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${C.fteN(z.i)} FTE riêng` });
             ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
           else teams.set(a.team.id, a.team); }); }); });
     teams.forEach(t => { const hg = C.geo(t.hub); if (hg) hubs[t.hub] = hg;
@@ -105,16 +105,22 @@ function Live(C, root, opts) {
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
   function dlTable(p, title) { const pts = M.pts, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
-    const why = x => x.ov != null ? "chỉnh tay" : x.close ? "giờ bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
-    root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Hạn COT dùng để tính trễ</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
-      <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}</th>`).join("")}</tr></thead><tbody>${pts.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const x = info[i].find(y => y.k === k);
-        return x ? `<td><input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="dl-${i}-${k}" data-i="${i}" data-k="${k}" value="${hm(x.dl)}" class="${x.ov != null ? "ov" : ""}" aria-label="Hạn COT${k + 1} ${esc(short(i))}"><small>${esc(why(x))}</small></td>` : `<td class="muted">–</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
-      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-dlrun">Chạy lại với hạn này</button><button type="button" class="btn ghost" id="lv-dlclr">Bỏ chỉnh tay các điểm này</button></div>`;
-    const send = clr => { const ch = []; root.querySelectorAll("#lv-dl input").forEach(e => { const i = +e.dataset.i, k = +e.dataset.k, x = info[i].find(y => y.k === k), v = toMin(e.value);
-      if (clr) { if (x.ov != null) ch.push({ name: C.nm(i), k, v: null }); } else if (v != null && v !== Math.round(x.dl)) ch.push({ name: C.nm(i), k, v: v === Math.round(x.auto) ? null : v }); });
+    const why = x => x.ov != null ? "chỉnh tay" : x.close ? "bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
+    const whyA = x => x.avOv != null ? "chỉnh tay" : `suy từ xe tới ${hm(x.arr)}`;
+    const inp = (i, k, f, v, cls, lab) => `<input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="${f}-${i}-${k}" data-i="${i}" data-k="${k}" data-f="${f}" value="${hm(v)}" class="${cls}" aria-label="${lab}">`;
+    root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Giờ có hàng &amp; hạn COT</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
+      <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}<br><span class="muted">có hàng từ → hạn</span></th>`).join("")}</tr>
+        <tr class="all"><td>Áp cho cả gói</td>${ks.map(k => `<td><div class="dlp"><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="có hàng" data-allk="${k}" data-allf="av" aria-label="Có hàng COT${k + 1} cả gói"><span class="muted">→</span><input type="text" inputmode="numeric" maxlength="5" size="5" placeholder="hạn" data-allk="${k}" data-allf="dl" aria-label="Hạn COT${k + 1} cả gói"></div></td>`).join("")}</tr></thead><tbody>${pts.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const x = info[i].find(y => y.k === k);
+        return x ? `<td><div class="dlp">${inp(i, k, "av", x.av, x.avOv != null ? "ov" : "", `Có hàng COT${k + 1} ${esc(short(i))}`)}<span class="muted">→</span>${inp(i, k, "dl", x.dl, x.ov != null ? "ov" : "", `Hạn COT${k + 1} ${esc(short(i))}`)}</div><small>${esc(whyA(x))} · ${esc(why(x))}</small></td>` : `<td class="muted">–</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-dlrun">Chạy lại với giờ này</button><button type="button" class="btn ghost" id="lv-dlclr">Bỏ chỉnh tay các điểm này</button></div>`;
+    root.querySelectorAll("#lv-dl [data-allk]").forEach(e => { e.oninput = () => { if (toMin(e.value) == null) return;
+      root.querySelectorAll(`#lv-dl tbody input[data-k="${e.dataset.allk}"][data-f="${e.dataset.allf}"]`).forEach(x => { x.value = e.value; x.classList.add("chg"); }); }; });
+    const send = clr => { const ch = []; root.querySelectorAll("#lv-dl tbody input").forEach(e => { const i = +e.dataset.i, k = +e.dataset.k, f = e.dataset.f, x = info[i].find(y => y.k === k), v = toMin(e.value);
+      const cur = f === "av" ? x.av : x.dl, auto = f === "av" ? x.avAuto : x.auto, ov = f === "av" ? x.avOv : x.ov;
+      if (clr) { if (ov != null) ch.push({ f, name: C.nm(i), k, v: null }); } else if (v != null && v !== Math.round(cur)) ch.push({ f, name: C.nm(i), k, v: v === Math.round(auto) ? null : v }); });
       if (ch.length && opts && opts.onApply) opts.onApply(ch, pts); };
     root.querySelector("#lv-dlrun").onclick = () => send(false); root.querySelector("#lv-dlclr").onclick = () => send(true);
-    root.querySelectorAll("#lv-dl input").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
+    root.querySelectorAll("#lv-dl tbody input").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
   function stateOf(i, t) { const L = M.dls.filter(d => d.i === i).sort((a, b) => a.dep - b.dep), cur = L.find(d => d.dep > t);
