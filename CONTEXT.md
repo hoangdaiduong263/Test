@@ -280,3 +280,9 @@ Giờ có hàng / giờ người có mặt:
   - Nhãn cả gói: "Cần làm cả tuyến xe + nhóm người" / "Tuyến xe và nhóm người làm riêng được" / "Chỉ cần đổi tuyến xe" / "Chỉ cần đổi nhóm người" / "Sửa chỗ hiện đang trễ".
 - Một công tắc bật/tắt cả gói (mọi phần). Mỗi phần có link "xem →" mở popup tuyến/nhóm.
 - Kiểm tra nhất quán thêm: tổng các gói = tổng kế hoạch; mọi thay đổi trong kế hoạch nằm trong một gói. Hiện: North 7 gói, South 5, HN 3, HCM 3; tổng khớp mọi vùng; 0 lỗi.
+
+## Cập nhật: mỗi gói luôn có lõi bắt buộc
+- Quy tắc gắn nhãn trong `netPlan` (P.up): nếu gói có phần phụ thuộc tuyến xe (`dep`) hoặc phần buộc phải sửa (`forced`) thì mọi phần đều **Bắt buộc**. Nếu không, phần có lợi lớn nhất là **lõi** (Bắt buộc, `core`), các phần còn lại là **Nên làm**.
+- `gMust` = lợi của phần bắt buộc; `mustIds` = id của phần bắt buộc. Công tắc gói bật mustIds (tắt gói thì tắt hết). Mỗi phần "Nên làm" có công tắc riêng (`data-togit`); bật nó sẽ bật kèm lõi (`data-req`).
+- Thẻ: kiểu "Lõi + phần gắn thêm" hiện "phần bắt buộc · cả gói". Lõi chỉ ghi "Lõi của gói."; lý do "phải đổi theo" chỉ hiện cho phần `forced`.
+- Kiểm tra: mọi vùng đều 0 gói thiếu phần bắt buộc; planAudit 0 lỗi.
