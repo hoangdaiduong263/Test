@@ -362,3 +362,8 @@ Giờ có hàng / giờ người có mặt:
   - thay đổi bắt buộc không bớt trễ;
   - làm rồi trễ hơn cả khi không làm lẫn thực tế (`lateA > max(lateB, realLate, 0) + tol`).
 - Thẻ gói: mỗi phần ghi "Giờ ngày TB: không làm … → làm …".
+
+## Cập nhật: "người/ngày" tính trên ngày chạy
+- `nvHc` trước đây chia người-ngày cả kỳ cho mọi ngày trong kỳ, còn "đơn/ngày" chia cho ngày có hàng, tức hai mẫu số khác nhau. Ví dụ Flash Cu Chi (Mini/CP, chạy 7/31 ngày, 7.865 đơn/ngày chạy): hiển thị "1 người", trong khi ngày chạy cần 1–11 người, bình quân 4,3.
+- Nay `nvHc` = bình quân trên các ngày nhóm có hàng; bảng chỉnh người hàng loạt (`hcA`) cũng vậy.
+- `nvHcCal` (cách cũ) chỉ còn dùng làm số người khởi điểm khi mô phỏng nhóm, nên kế hoạch không đổi.
