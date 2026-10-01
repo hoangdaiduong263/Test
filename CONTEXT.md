@@ -286,3 +286,15 @@ Giờ có hàng / giờ người có mặt:
 - `gMust` = lợi của phần bắt buộc; `mustIds` = id của phần bắt buộc. Công tắc gói bật mustIds (tắt gói thì tắt hết). Mỗi phần "Nên làm" có công tắc riêng (`data-togit`); bật nó sẽ bật kèm lõi (`data-req`).
 - Thẻ: kiểu "Lõi + phần gắn thêm" hiện "phần bắt buộc · cả gói". Lõi chỉ ghi "Lõi của gói."; lý do "phải đổi theo" chỉ hiện cho phần `forced`.
 - Kiểm tra: mọi vùng đều 0 gói thiếu phần bắt buộc; planAudit 0 lỗi.
+
+## Cập nhật: kiểm chứng gói độc lập, số trên thẻ gói là số thật
+- Kiểm tra: không gói nào có điểm chung với gói khác. Bật từng gói riêng rồi cộng lại = bật tất cả một lần (North 83,4 · South 112,7 · HN 570,5 · HCM 136,8 tr). Lợi của một gói không đổi khi các gói khác đang bật hay tắt.
+- planAudit thêm lỗi "các gói không độc lập" khi tổng từng gói (tính lại cả mạng) ≠ netVerify(R).
+- Số trên thẻ gói/phần trước đây lấy từ mô hình (netTC/netLC), có chỗ lệch so với kịch bản thật: North Gói "Nguyen Lieu Pha Che + TiemTraRumi" ghi +12,4 nhưng thật +5,7, trong đó tuyến xe "nên làm" ghi +6,2 nhưng thật chỉ +0,8.
+  - Nay `netPlan` tính lại bằng `netWith` (computeOnce cả mạng):
+    - `u.g` = cả gói; `u.gMust` = phần bắt buộc;
+    - `it.gr`: với phần bắt buộc là phần đóng góp, với phần nên làm là lợi THÊM khi bật kèm lõi;
+    - `weak` nếu ≤ 0,5 tr.
+  - Số mô hình giữ ở `gModel`.
+  - Lõi được chọn lại theo lợi thật khi bật một mình.
+- netTC: chỉ giữ tiền xe thật ("đi chung ≥80% ngày") khi chuyến thật không chở thêm điểm ngoài nhóm. Nếu một điểm rời chuyến, tiền xe chia cho ít điểm hơn nên không giữ nguyên được.

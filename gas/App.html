@@ -1238,7 +1238,9 @@ function netTM(g){const key=gkey(g),C=NET.tm||(NET.tm={});if(key in C)return C[k
 function netTC(g){const key=gkey(g),C=NET.tc||(NET.tc={});if(key in C)return C[key];
   const per={};g.forEach(i=>{per[i]=0;});const real=G.truckSrc==="real";
   const full=g.every(i=>tKeyOf(i)===tKeyOf(g[0]))&&g.length===S.filter((_,j)=>netTNode(j)&&tKeyOf(j)===tKeyOf(g[0])).length;
-  const together=g.length>1&&g.every((i,k)=>g.slice(k+1).every(j=>coOf(i,j)>=0.8*Math.min(...[i,j].map(x=>ACT.filter(d=>BASE.rows[x][d].vol>0).length))));   // đi chung ≥80% số ngày có hàng
+  const nd=x=>ACT.filter(d=>BASE.rows[x][d].vol>0).length,co8=(i,j)=>coOf(i,j)>=0.8*Math.min(nd(i),nd(j));
+  /* đi chung ≥80% số ngày có hàng, VÀ chuyến thật không chở thêm điểm ngoài nhóm (nếu có điểm rời đi thì tiền xe thật chia lại cho ít điểm hơn → không giữ tiền xe thật được) */
+  const together=g.length>1&&g.every((i,k)=>g.slice(k+1).every(j=>co8(i,j)))&&g.every(i=>S.every((_,j)=>j===i||g.includes(j)||S[j].R!==S[i].R||!(coOf(i,j)>=3)||!co8(i,j)));
   for(const d of ACT){const act=g.filter(i=>BASE.rows[i][d].vol>0);if(!act.length)continue;
     if(full||(real&&together)){act.forEach(i=>{per[i]+=BASE.rows[i][d].truck;});continue;}   /* các điểm đã đi chung chuyến thật hằng ngày (kể cả xe FM Hub ghé): giữ tiền xe thật, không tính tiết kiệm ảo */
     const m=grpModel(act,d);
@@ -1376,6 +1378,19 @@ function netPlan(R){const K=NET.plan||(NET.plan={});if(K[R])return K[R];
     const need=its.every(x=>x.tag==="must"&&x.why==="late")?"fix":kinds.size>1?(must?"both":"either"):(kinds.has("xe")?"xe":"nguoi");
     const mi=its.filter(x=>x.tag==="must");
     return {items:its.sort((a,b)=>(b.tag==="must")-(a.tag==="must")||b.pk.g-a.pk.g),g:its.reduce((a,x)=>a+x.pk.g,0),gMust:mi.reduce((a,x)=>a+x.pk.g,0),pts:srtN([...new Set(its.flatMap(x=>x.pk.pts.concat(x.pk.cut.flat())))]),need,ids:its.map(x=>x.pk.id),mustIds:mi.map(x=>x.pk.id),R};}).sort((a,b)=>b.g-a.g);
+  /* số thật của từng gói: tính lại cả mạng bằng computeOnce (đúng như khi bật ở kịch bản), không dùng số mô hình */
+  {const b=BASE.tot.map(t=>t.net),rv=ids=>{const acts=ids.map(parseAct).filter(Boolean);if(!acts.length)return 0;const n=netWith(acts);return n.reduce((a,v,i)=>a+v-b[i],0);};
+   up.forEach(u=>{u.gModel=u.g;
+     /* gói có lõi tự chọn (không có phần phụ thuộc): lõi = phần có lợi THẬT lớn nhất khi bật một mình */
+     if(u.items.some(x=>x.core)&&u.items.length>1){u.items.forEach(x=>{x.ga=rv([x.pk.id]);});const c=u.items.slice().sort((a,b)=>b.ga-a.ga)[0];
+       u.items.forEach(x=>{x.core=x===c;x.tag=x===c?"must":"nice";});u.items.sort((a,b)=>(b.tag==="must")-(a.tag==="must"));u.mustIds=u.items.filter(x=>x.tag==="must").map(x=>x.pk.id);}
+     u.g=rv(u.ids);u.gMust=u.mustIds.length===u.ids.length?u.g:rv(u.mustIds);
+     const ms=u.items.filter(x=>x.tag==="must");
+     u.items.forEach(it=>{it.gModel=it.pk.g;
+       if(it.tag==="nice")it.gr=rv(u.mustIds.concat([it.pk.id]))-u.gMust;                       /* phần gắn thêm: lợi thêm khi bật kèm lõi */
+       else it.gr=ms.length===1?u.gMust:u.gMust-rv(u.mustIds.filter(x=>x!==it.pk.id));});      /* phần bắt buộc: phần đóng góp trong phần bắt buộc */
+     u.items.forEach(it=>{if(it.tag==="nice"&&it.gr<=5e5)it.weak=true;});});
+   up.sort((a,b)=>b.g-a.g);}
   return K[R]={R,T0,T1,L0,L1,up,tp:tp.sort((a,b)=>b.gm-a.gm),lp:lp.sort((a,b)=>b.g-a.g),tsz:[sz(T0),sz(T1)],lsz:[sz(L0),sz(L1)],
     tg:tp.reduce((a,p)=>a+p.g,0),tgm:tp.reduce((a,p)=>a+p.gm,0),lg:lp.reduce((a,p)=>a+p.g,0)};}
 /* tác động thật (tính lại cả mạng bằng computeOnce) khi bật cả kế hoạch mạng của vùng */
@@ -2043,7 +2058,9 @@ function planAudit(R){const K=NET.aud||(NET.aud={});if(K[R])return K[R];const P=
   /* 3. nhóm người mới / bị đụng tuyến phải kịp */
   P.L1.filter(g=>g.length>1).forEach(g=>{const sm=teamSim(g);if(!sm||!sm.fail)return;const isNew=!l0.has(gkey(g));(isNew?out.err:out.warn).push({k:"nhóm",g,msg:`${isNew?"nhóm người mới":"nhóm người giữ nguyên"} không kịp giờ ở ngày TB (trễ ${Math.round(sm.late)}')`});});
   /* 4. tổng các gói kế hoạch = tổng kế hoạch (không có thay đổi nào nằm ngoài gói / không được tính tiền) */
-  {const su=(P.up||[]).reduce((a2,u)=>a2+u.g,0),tt=P.tg+P.lg;if(Math.abs(su-tt)>5e5)out.err.push({k:"gói",g:[],msg:`tổng các gói ${sgT(su)} tr khác tổng kế hoạch ${sgT(tt)} tr`});
+  {const su=(P.up||[]).reduce((a2,u)=>a2+(u.gModel??u.g),0),tt=P.tg+P.lg;if(Math.abs(su-tt)>5e5)out.err.push({k:"gói",g:[],msg:`tổng các gói ${sgT(su)} tr khác tổng kế hoạch ${sgT(tt)} tr`});
+   /* các gói phải độc lập: bật từng gói riêng rồi cộng lại = bật cả kế hoạch một lần (tính lại cả mạng) */
+   const sr=(P.up||[]).reduce((a2,u)=>a2+u.g,0),vr=netVerify(R).g;if((P.up||[]).length&&Math.abs(sr-vr)>5e5)out.err.push({k:"gói",g:[],msg:`các gói không độc lập: cộng từng gói ${sgT(sr)} tr ≠ bật cả kế hoạch ${sgT(vr)} tr`});
    const inPk=new Set((P.up||[]).flatMap(u=>u.pts)),chg=[...P.T1,...P.L1].filter(g=>g.length>1&&!P.T0.concat(P.L0).some(h=>gkey(h)===gkey(g)));
    chg.forEach(g=>{if(!g.every(i=>inPk.has(i)))out.err.push({k:"gói",g,msg:"thay đổi trong kế hoạch nhưng không nằm trong gói nào (không được tính tiền / không có thẻ)"});});}
   out.err.forEach(x=>x.n=x.g.length?nm(x.g):"Tổng kế hoạch");out.warn.forEach(x=>x.n=nm(x.g));return K[R]=out;}
@@ -2402,13 +2419,13 @@ function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=
 function nvPackCards(st){const {P,sc}=st,inS=new Set(sc.pts),L=(P.up||[]).filter(u=>u.pts.some(i=>inS.has(i)));
   if(!L.length)return `<p class="note">Không có gói nào trong phạm vi này${sc.q?` (lọc "${esc(ui.q3)}")`:""}.</p>`;
   const nm=g=>g.map(i=>shortN(S[i].n));
-  const needTx={fix:["Sửa chỗ hiện đang trễ","Không để tiết kiệm: hiện trạng mô phỏng không kịp giờ, gói này sửa lại."],both:["Cần làm cả tuyến xe + nhóm người","Phần bắt buộc phải làm cùng thì gói mới khả thi."],either:["Lõi + phần gắn thêm","Phần bắt buộc là lõi của gói; phần “nên làm” độc lập, gắn thêm thì lợi hơn, bỏ đi gói vẫn chạy."],xe:["Chỉ cần đổi tuyến xe",""],nguoi:["Chỉ cần đổi nhóm người",""]};
+  const needTx={fix:["Sửa chỗ hiện đang trễ","Không để tiết kiệm: hiện trạng mô phỏng không kịp giờ, gói này sửa lại."],both:["Cần làm cả tuyến xe + nhóm người","Phần bắt buộc phải làm cùng thì gói mới khả thi."],either:["Lõi + phần gắn thêm","Phần bắt buộc là lõi của gói; phần “nên làm” không bắt buộc: số của nó là lợi THÊM khi bật kèm lõi, bỏ đi gói vẫn chạy."],xe:["Chỉ cần đổi tuyến xe",""],nguoi:["Chỉ cần đổi nhóm người",""]};
   const itemRow=it=>{const p=it.pk,xe=it.kind==="xe",kd=xe?"Tuyến xe":"Nhóm người",tag=it.tag==="must"?`<span class="pk-tag must" title="Phần lõi của gói, hoặc phải làm cùng để gói khả thi">Bắt buộc · Compulsory</span>`:`<span class="pk-tag nice" title="Gắn thêm vào gói: tự có lợi, bỏ đi gói vẫn chạy">Nên làm · Nice-to-have</span>`;
     const newG=p.gs.filter(g=>g.length>1),cutG=p.cut.filter(g=>g.length>1&&!newG.some(h=>gkey(h)===gkey(g)));
     const what=[...newG.map(g=>`${xe?"tuyến ghép trọn":"nhóm người chung"} <b>${esc(nm(xe?(routeSched(g).order||g):g).join(xe?" → ":" + "))}</b> ${nvOpenBtn(it.kind,g,"xem →")}`),
       ...cutG.filter(g=>g.every(i=>{const a=p.gs.find(h=>h.includes(i));return !a||a.length===1;})).map(g=>`tách ${xe?"tuyến":"nhóm"} ${esc(nm(g).join(" + "))} → ${xe?"đi riêng":"người riêng"} ${nvOpenBtn(it.kind,g,"xem hiện nay →")}`)];
-    return `<li class="pk-it ${it.tag}"><div class="pk-ih">${tag}<span class="pk-kind ${it.kind}">${kd}</span><b class="${cls(p.g)}">${sgT(p.g)} tr/kỳ</b></div>
-      <div class="pk-iw">${what.join("<br>")||esc(p.title)}</div>${it.tag==="nice"?`<label class="sw sm" style="margin-top:3px" title="Bật phần gắn thêm (kèm phần bắt buộc của gói)"><input type="checkbox" data-togit="${esc(encodeURIComponent(p.id))}" data-req="${esc(it.req)}"${isOn(p.id)?" checked":""} aria-label="Bật phần nên làm"><span></span></label> <span class="mini">bật phần này</span>`:""}${it.core?`<p class="mini" style="margin:2px 0 0;white-space:normal">Lõi của gói.</p>`:""}${it.dep&&p.g>5e4?`<p class="mini" style="margin:2px 0 0;white-space:normal">Phải làm cùng tuyến xe trong gói: nhóm người hiện nay của các điểm này không còn kịp giờ với tuyến xe mới. (Riêng phần này cũng có lợi.)</p>`:it.pk.forced?`<p class="mini" style="margin:2px 0 0;white-space:normal">${it.why==="late"?`${xe?"Tuyến":"Nhóm"} hiện nay mô phỏng đã không kịp giờ (trễ hơn thực tế) → kế hoạch sửa lại cho kịp. Tốn thêm, không tự tiết kiệm.`:`${xe?"Tuyến":"Nhóm"} hiện nay không còn kịp giờ khi ${xe?"nhóm người":"tuyến xe"} trong kế hoạch đổi → phải đổi theo. Không tự tiết kiệm.`}</p>`:""}</li>`;};
+    return `<li class="pk-it ${it.tag}"><div class="pk-ih">${tag}<span class="pk-kind ${it.kind}">${kd}</span><b class="${cls(it.gr)}" title="Số thật khi bật ở kịch bản${it.tag==="nice"?" (lợi thêm khi bật kèm phần bắt buộc)":""} · ước tính mô hình ${sgT(it.gModel)}">${sgT(it.gr)} tr/kỳ</b></div>
+      <div class="pk-iw">${what.join("<br>")||esc(p.title)}</div>${it.tag==="nice"?`<label class="sw sm" style="margin-top:3px" title="Bật phần gắn thêm (kèm phần bắt buộc của gói)"><input type="checkbox" data-togit="${esc(encodeURIComponent(p.id))}" data-req="${esc(it.req)}"${isOn(p.id)?" checked":""} aria-label="Bật phần nên làm"><span></span></label> <span class="mini">bật phần này</span>`:""}${it.core?`<p class="mini" style="margin:2px 0 0;white-space:normal">Lõi của gói.</p>`:""}${it.weak?`<p class="mini" style="margin:2px 0 0;white-space:normal;color:var(--neg,#b42318)">Bật kèm gần như không thêm lợi (${sgT(it.gr)} tr/kỳ khi tính lại cả mạng) — không nên bật.</p>`:""}${it.dep&&p.g>5e4?`<p class="mini" style="margin:2px 0 0;white-space:normal">Phải làm cùng tuyến xe trong gói: nhóm người hiện nay của các điểm này không còn kịp giờ với tuyến xe mới. (Riêng phần này cũng có lợi.)</p>`:it.pk.forced?`<p class="mini" style="margin:2px 0 0;white-space:normal">${it.why==="late"?`${xe?"Tuyến":"Nhóm"} hiện nay mô phỏng đã không kịp giờ (trễ hơn thực tế) → kế hoạch sửa lại cho kịp. Tốn thêm, không tự tiết kiệm.`:`${xe?"Tuyến":"Nhóm"} hiện nay không còn kịp giờ khi ${xe?"nhóm người":"tuyến xe"} trong kế hoạch đổi → phải đổi theo. Không tự tiết kiệm.`}</p>`:""}</li>`;};
   return `<div class="pk-list">${L.map((u,k)=>{const on=u.mustIds.every(isOn),some=u.ids.some(isOn),nt=needTx[u.need];u.items.forEach(it=>{it.req=u.mustIds.map(encodeURIComponent).join(",");});
     return `<article class="pk"><header><div class="pk-t"><b>Gói ${k+1}</b><span class="pk-need ${u.need}">${nt[0]}</span><span class="mini">${u.pts.length} điểm · ${u.items.length} phần</span></div>
       <b class="pk-g ${cls(u.gMust)}">${sgT(u.gMust)}<small>${Math.abs(u.g-u.gMust)>5e4?`phần bắt buộc · cả gói ${sgT(u.g)}`:"tr/kỳ cả gói"}</small></b><label class="sw" title="Bật/tắt gói (phần bắt buộc; tắt thì tắt cả phần gắn thêm)"><input type="checkbox" data-togpk="${esc(u.mustIds.map(encodeURIComponent).join(","))}" data-all="${esc(u.ids.map(encodeURIComponent).join(","))}"${on?" checked":""}${!on&&some?' data-part="1"':""} aria-label="Bật gói ${k+1}"><span></span></label></header>
