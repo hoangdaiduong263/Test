@@ -330,3 +330,16 @@ Giờ có hàng / giờ người có mặt:
   - mới / giữ nguyên / **hiện nay · kế hoạch tách**;
   - `D.x.split` = nơi các điểm đi sau khi tách.
 - Tóm tắt trong popup ghi: "Đây là nhóm HIỆN NAY. Kế hoạch tách: … → người riêng; người/ngày a → b". Nhãn giờ thêm "nếu giữ nguyên:". Link trên thẻ gói đổi thành "xem vì sao tách →".
+
+## Cập nhật: lịch chạy Trước / Sau trong popup, gộp tab
+- Popup tuyến/nhóm chỉ còn 2 tab:
+  - **Lịch chạy**: có nút Trước / Sau (`ui.nvdBA`), mỗi nút kèm trạng thái giờ;
+  - **Điểm & hiện trạng**: bảng điểm (chỉnh giờ đóng cửa) + nvBefore.
+- "Nhân sự / Nhóm làm gì" nằm trong ô gập `.nvd-more` (`ui.nvMore`) dưới lịch Sau. Với nhóm người còn có "Một ngày của nhóm".
+- `nvSimWith(focus,Ts,Ls)`: mô phỏng ngày trung bình cho một bố trí tuyến/nhóm bất kỳ.
+  - Lấy cả tuyến và cả nhóm dính tới điểm; người/nhóm = teamSim(t).h.
+- TRƯỚC = nếu KHÔNG làm thay đổi này: thay các nhóm/tuyến kế hoạch của các điểm bằng nhóm/tuyến cũ (T0/L0), phần còn lại theo kế hoạch.
+  - Với nhóm bị tách thì TRƯỚC = giữ nhóm.
+  - SAU = theo kế hoạch.
+- `nvCotSecs(sim,o)`: khối COT tách ra từ nvDetail. Chỉ lịch Sau của tuyến/nhóm mới có ô chỉnh giờ xe (`o.edit`).
+- Ví dụ South, Masan + Gooby: giữ nhóm trễ +188', tách → kịp, dư 14'.
