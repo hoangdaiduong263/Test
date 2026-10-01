@@ -287,13 +287,16 @@ function Core(D, REF) {
      F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
      H (nhóm FM Hub): hàng sẵn khi nhóm làm xong lượt đó
      xe tới điểm đầu lúc hàng sẵn, chờ hàng ở điểm sau; trễ = giờ xe rời điểm − hạn COT của lượt */
-  function simRoute(g, A, order) { const sl = slotsOf(g); if (!sl) return null; const R = S[g[0]].R, rows = []; let late = -1e9;
+  /* giờ xe tới điểm đầu chỉnh tay theo tuyến × COT (khóa = tên các điểm của tuyến) */
+  const TROV = {}, rkey = g => g.map(nm).sort().join(" | ");
+  const setTruck = (rk, k, v) => { if (v == null) { if (TROV[rk]) { delete TROV[rk][k]; if (!Object.keys(TROV[rk]).length) delete TROV[rk]; } } else (TROV[rk] = TROV[rk] || {})[k] = v; };
+  function simRoute(g, A, order) { const sl = slotsOf(g); if (!sl) return null; const tov = TROV[rkey(g)] || {}; const R = S[g[0]].R, rows = []; let late = -1e9;
     for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
       const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf))).t);
       const own = {}, ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i))))[w[i].k].end;
       const run1 = pts => { let t = null, prev = null, lt = -1e9; const st = [];
-        pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
+        pts.forEach(i => { const rd = ready(i), arr = prev == null ? (tov[s.k] ?? rd) : t + legMin(prev, i), ls = Math.max(arr, rd);
           const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
           st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
       /* thứ tự ghé chọn riêng cho từng lượt: trễ ít nhất, rồi về sớm nhất (order = null) — hoặc theo thứ tự cho trước */
@@ -351,6 +354,7 @@ function Core(D, REF) {
     return { A, teams, routes: out, cost, lab: Object.values(cost).reduce((a, c) => a + c, 0) }; }
   /* nhãn cách dùng người của một điểm */
   const modeTxt = (a, i) => a.m === "H" ? `Hub nhóm ${a.team.id} (${a.team.n} người)` : a.m === "P" ? "PPS" : `FTE riêng${a.n ? ` ${a.n} người` : ""}${a.n && i != null && a.n > fteBase(i) ? ` (+${a.n - fteBase(i)})` : ""}`;
+  const truckOv = g => TROV[rkey(g)] || {};
   const setHC = (name, v) => { if (v == null) delete HCOV[name]; else HCOV[name] = v; };
 
   /* ---------- gom thay đổi thành gói: tuyến mới + tuyến cũ bị cắt, nối qua điểm chung ---------- */
@@ -380,7 +384,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, COTW, run, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { P, VEH, REGIONS, S, COTW, run, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

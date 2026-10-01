@@ -89,6 +89,7 @@ function Live(C, root, opts) {
         <input type="range" id="lv-scrub" min="${M.t0}" max="${M.t1}" step="1" value="${M.t0}" aria-label="Thời gian">
         <label class="muted" for="lv-speed">Tốc độ</label><select id="lv-speed"><option value="15">15 phút/giây</option><option value="30">30 phút/giây</option><option value="60" selected>1 giờ/giây</option><option value="120">2 giờ/giây</option></select></div>
       <div class="lv-dlw" id="lv-dl"></div>
+      <div class="lv-dlw" id="lv-tr"></div>
       <div class="lv-grid"><div class="lv-map"><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ gói"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
         <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
@@ -105,7 +106,7 @@ function Live(C, root, opts) {
       const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
     M.teamEl = {}; [...new Set(M.moves.map(m => m.id))].forEach(id => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 8 }, g); el("text", { y: 3.5, class: "c" }, g).textContent = "H" + id; M.teamEl[id] = g; });
     M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = tk.n > 1 ? "×" + tk.n : "xe"; return g; });
-    dlTable(r, p); invDraw(M); wire(); draw(); }
+    dlTable(r, p); trTable(r, p); invDraw(M); wire(); draw(); }
 
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
@@ -130,6 +131,24 @@ function Live(C, root, opts) {
       if (ch.length && opts && opts.onApply) opts.onApply(ch, pts); };
     root.querySelector("#lv-dlrun").onclick = () => send(false); root.querySelector("#lv-dlclr").onclick = () => send(true);
     root.querySelectorAll("#lv-dl tbody input").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
+
+  /* ---------- bảng LỊCH XE: mỗi tuyến × lượt COT, sửa giờ xe tới điểm đầu ---------- */
+  function trTable(r, p) { const rows = [];
+    p.nw.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return; const ov = C.truckOv(g), rk = C.rkey(g);
+      h.sim.rows.forEach(s => { const z0 = s.st[0];
+        rows.push(`<tr><td class="mono">${gi + 1}</td><td>COT${s.k + 1}<br><span class="muted mono">${s.nTr} xe</span></td>
+          <td><input type="text" inputmode="numeric" maxlength="5" size="5" data-rk="${esc(rk)}" data-k="${s.k}" data-v0="${Math.round(z0.arr)}" value="${hm(z0.arr)}" class="${ov[s.k] != null ? "ov" : ""}" aria-label="Xe tới điểm đầu tuyến ${gi + 1} COT${s.k + 1}">
+            <small>${ov[s.k] != null ? "chỉnh tay" : `lúc hàng sẵn ở ${esc(short(z0.i))}`}</small></td>
+          <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
+    const el2 = root.querySelector("#lv-tr"); if (!rows.length) { el2.innerHTML = ""; return; }
+    el2.innerHTML = `<div class="lv-ih"><h3>Lịch xe</h3><span class="muted" style="font-size:12px">sửa giờ xe tới điểm đầu của lượt · xe tới trước giờ hàng sẵn thì đứng chờ</span></div>
+      <div class="scroll"><table class="lv-dlt lv-trt"><thead><tr><th>Tuyến</th><th>Lượt</th><th>Xe tới điểm đầu</th><th>Thứ tự ghé · giờ tới / rời từng điểm</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
+      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-trrun">Chạy lại với giờ xe này</button><button type="button" class="btn ghost" id="lv-trclr">Bỏ chỉnh giờ xe</button></div>`;
+    const send = clr => { const ch = []; el2.querySelectorAll("input[data-rk]").forEach(e => { const rk = e.dataset.rk, k = +e.dataset.k, v = toMin(e.value), has = (C.TROV[rk] || {})[k] != null;
+      if (clr) { if (has) ch.push({ f: "tr", rk, k, v: null }); } else if (v != null && e.classList.contains("chg") && v !== +e.dataset.v0) ch.push({ f: "tr", rk, k, v }); });
+      if (ch.length && opts && opts.onApply) opts.onApply(ch, M.pts); };
+    el2.querySelector("#lv-trrun").onclick = () => send(false); el2.querySelector("#lv-trclr").onclick = () => send(true);
+    el2.querySelectorAll("input[data-rk]").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
   function stateOf(i, t) { const L = M.dls.filter(d => d.i === i).sort((a, b) => a.dep - b.dep), cur = L.find(d => d.dep > t);

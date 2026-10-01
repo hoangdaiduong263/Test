@@ -17,8 +17,8 @@
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
   /* hạn COT chỉnh tay: lưu trên trình duyệt, nạp lại khi mở trang */
   try { const o = JSON.parse(localStorage.getItem("d2s-core-dl") || "{}"), ld = (M, f) => Object.entries(M || {}).forEach(([n, m]) => Object.entries(m).forEach(([k, v]) => f(n, +k, v)));
-    if (o.dl || o.av || o.hc) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); Object.entries(o.hc || {}).forEach(([n, v]) => C.setHC(n, v)); } else ld(o, C.setDeadline); } catch (e) {}
-  const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => c.f === "hc" ? C.setHC(c.name, c.v) : (c.f === "av" ? C.setAvail : C.setDeadline)(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify({ dl: C.DLOV, av: C.AVOV, hc: C.HCOV })); } catch (e) {}
+    if (o.dl || o.av || o.hc || o.tr) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); Object.entries(o.hc || {}).forEach(([n, v]) => C.setHC(n, v)); ld(o.tr, C.setTruck); } else ld(o, C.setDeadline); } catch (e) {}
+  const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => c.f === "tr" ? C.setTruck(c.rk, c.k, c.v) : c.f === "hc" ? C.setHC(c.name, c.v) : (c.f === "av" ? C.setAvail : C.setDeadline)(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify({ dl: C.DLOV, av: C.AVOV, hc: C.HCOV, tr: C.TROV })); } catch (e) {}
     const R = ST.R; delete ST.res[R]; ST.open.clear(); document.querySelector(".wrap").classList.add("busy");
     setTimeout(() => { const r = res(R); document.querySelector(".wrap").classList.remove("busy"); render();
       /* mở lại gói có nhiều điểm chung nhất với gói đang xem (kế hoạch có thể đổi sau khi chạy lại) */
