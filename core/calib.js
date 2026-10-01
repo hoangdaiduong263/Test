@@ -24,13 +24,21 @@ function Calib(C, REF) {
       if (!pk.length) continue; const pts = pk.map(p => ix[String(C.TRN[p[0]]).trim()]); if (pts.some(i => i == null) || C.S[pts[0]].R !== R) continue;
       let tm = pk[0][4], prev = null;
       pk.forEach((p, k) => { const i = pts[k], arr = prev == null ? p[4] : tm + C.legMin(prev, i), dep = Math.max(arr, p[4]) + C.dwell(i, p[2] || 0);
-        if (p[5] != null) stops.push({ i, e: dep - p[5], first: k === 0, wait: p[5] - p[4] - C.dwell(i, p[2] || 0) }); tm = dep; prev = i; });
-      const sc = P5.find(p => p[1] === 2 && p[4] != null), last = pk[pk.length - 1];
-      if (sc && last[5] != null) socs.push({ e: (last[5] + C.toSoc(pts[pts.length - 1])) - sc[4] }); }
+        if (p[5] != null) stops.push({ i, g: i + "|" + cot(i, p[5]), e: dep - p[5], real: p[5] - p[4], first: k === 0, wait: p[5] - p[4] - C.dwell(i, p[2] || 0) }); tm = dep; prev = i; });
+      const sc = P5.find(p => p[1] === 2 && p[4] != null), last = pk[pk.length - 1], il = pts[pts.length - 1];
+      if (sc && last[5] != null) socs.push({ g: il + "|" + cot(il, last[5]), e: (last[5] + C.toSoc(il)) - sc[4], real: sc[4] - last[5] }); }
     const pctIn = L => L.length ? L.filter(x => Math.abs(x.e) <= T.calTime).length / L.length * 100 : null;
+    /* lệch hệ thống: gom theo điểm × COT, lấy trung vị lệch của nhóm; % lần dừng thuộc nhóm có |trung vị lệch| ≤ calTime */
+    const sys = L => { const G = {}; L.forEach(x => { (G[x.g] = G[x.g] || []).push(x); }); const m = {}; for (const k in G) m[k] = med(G[k].map(x => x.e));
+      return L.length ? L.filter(x => Math.abs(m[x.g]) <= T.calTime).length / L.length * 100 : null; };
+    /* trần của mọi mô hình tất định: đoán mỗi lần dừng bằng trung vị thật của nhóm điểm × COT → % lệch ≤ calTime. Phần còn lại là dao động thật */
+    const ceil = L => { const G = {}; L.forEach(x => { (G[x.g] = G[x.g] || []).push(x.real); }); const m = {}; for (const k in G) m[k] = med(G[k]);
+      return L.length ? L.filter(x => Math.abs(x.real - m[x.g]) <= T.calTime).length / L.length * 100 : null; };
     const after = stops.filter(x => !x.first);
-    return { n: stops.length, dep: pctIn(stops), depMed: med(stops.map(x => x.e)), next: pctIn(after), nNext: after.length, soc: pctIn(socs), socMed: med(socs.map(x => x.e)), nSoc: socs.length,
+    return { n: stops.length, dep: pctIn(stops), depSys: sys(stops), depCeil: ceil(stops), depMed: med(stops.map(x => x.e)), next: pctIn(after), nNext: after.length,
+      soc: pctIn(socs), socSys: sys(socs), socCeil: ceil(socs), socMed: med(socs.map(x => x.e)), nSoc: socs.length,
       waitMed: med(stops.map(x => x.wait)), waitBig: stops.length ? stops.filter(x => x.wait > 30).length / stops.length * 100 : null }; }
+  const cot = (i, dep) => { const L = C.cotsOf(i); for (let k = 0; k < L.length; k++) if (L[k].p >= dep - 45) return k; return L.length - 1; };
 
   /* nguồn dữ liệu của các điểm: data hay giả định */
   function sources(N) { const c = (f) => N.filter(f).length, nm = i => C.nm(i), R = C.S[N[0]] && C.S[N[0]].R;
@@ -49,7 +57,7 @@ function Calib(C, REF) {
   function run(R) { const T0 = C.baseRoutes(R), rows = T0.map(route).sort((a, b) => Math.abs(b.mc - b.rc) - Math.abs(a.mc - a.rc));
     const rc = rows.reduce((a, r) => a + r.rc, 0), mc = rows.reduce((a, r) => a + r.mc, 0), gap = rc > 0 ? (mc - rc) / rc * 100 : 0;
     const rt = rows.reduce((a, r) => a + r.rtd, 0), mt = rows.reduce((a, r) => a + r.mtd, 0), ph = physics(R);
-    return { R, rows, rc, mc, gap, rt, mt, ph, ok: { cost: Math.abs(gap) <= T.calCost, time: ph.dep != null && ph.dep >= T.calShare }, src: sources(C.nodes(R)) }; }
+    return { R, rows, rc, mc, gap, rt, mt, ph, ok: { cost: Math.abs(gap) <= T.calCost, time: ph.depSys != null && ph.depSys >= T.calShare && ph.socSys >= T.calShare }, src: sources(C.nodes(R)) }; }
   return { T, run };
 }
 if (typeof module !== "undefined") module.exports = { Calib };

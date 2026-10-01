@@ -86,7 +86,7 @@
 
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
   const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
-    ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/kỳ", 1e6], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1],
+    ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/kỳ", 1e6], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1], ["Xe", "vehMin", "As-is: chỉ dùng loại xe chiếm ≥", "% chuyến", 1], ["Xe", "vehFree", "Đòn bẩy đổi loại xe (1 = mọi loại)", "", 1],
     ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Xe", "closeMin", "Chốt xe sau khi hàng cuối sẵn", "phút", 1], ["Xe", "early", "Xe đi sớm, dồn đơn chưa xong sang COT sau (1 = bật, 0 = chờ đủ đơn)", "", 1], ["Xe", "rollMax", "Mỗi lượt-điểm dồn tối đa", "% đơn", 1], ["Người", "maxExtra", "Tuyến trễ: thêm FTE riêng tối đa mỗi điểm", "người", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodChute", "Mỗi chute thêm ngoài 1", "−%", 1], ["Năng suất (theo đặc điểm seller)", "prodBulky", "Mỗi 10 điểm % hàng to lệch 10%", "−%", 1],
@@ -105,9 +105,10 @@
         <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dựng lại tuyến hiện nay</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng</dt><dd>±${T.calCost}%</dd></dl></div>
       <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
         <dl class="kv"><dt>Lệch</dt><dd>${c.rt ? ((c.mt - c.rt) / c.rt * 100).toFixed(0) : 0}%</dd></dl></div>
-      <div class="step"><h2>Vật lý mô phỏng ${pass(c.ok.time)}</h2><div class="big ${c.ok.time ? "pos" : "neg"}">${pf(p.dep)}</div>
-        <dl class="kv"><dt>Giờ rời điểm lệch ≤ ${T.calTime}' (${p.n} lần dừng)</dt><dd>${pf(p.dep)}</dd><dt>Giờ tới SOC lệch ≤ ${T.calTime}' (${p.nSoc} chuyến)</dt><dd>${pf(p.soc)}</dd><dt>Ngưỡng</dt><dd>≥ ${T.calShare}%</dd></dl>
-        <p class="note2">Phát lại từng chuyến thật: xe tới điểm đầu đúng giờ thật, model tính thời gian chất và chạy.</p></div>
+      <div class="step"><h2>Vật lý mô phỏng ${pass(c.ok.time)}</h2><div class="big ${c.ok.time ? "pos" : "neg"}">${pf(Math.min(p.depSys, p.socSys))}</div>
+        <dl class="kv"><dt>Giờ rời điểm: nhóm điểm × COT lệch ≤ ${T.calTime}' (${p.n} lần dừng)</dt><dd>${pf(p.depSys)}</dd><dt>Giờ tới SOC: nhóm lệch ≤ ${T.calTime}' (${p.nSoc} chuyến)</dt><dd>${pf(p.socSys)}</dd><dt>Ngưỡng</dt><dd>≥ ${T.calShare}%</dd>
+        <dt>Từng lần dừng lệch ≤ ${T.calTime}' · trần</dt><dd>${pf(p.dep)} · ${pf(p.depCeil)}</dd><dt>Từng chuyến tới SOC · trần</dt><dd>${pf(p.soc)} · ${pf(p.socCeil)}</dd></dl>
+        <p class="note2">Phát lại từng chuyến thật. Trần = đoán mỗi lần bằng trung vị thật của nhóm; phần trên trần là dao động ngày-qua-ngày.</p></div>
       <div class="step res"><h2>Dư địa thấy ngay</h2><div class="big">${pf(p.waitBig)}</div>
         <dl class="kv"><dt>Lần dừng xe đứng chờ &gt; 30' ngoài thời gian chất</dt><dd>${pf(p.waitBig)}</dd></dl>
         <p class="note2">Model vật lý không đoán được phần chờ này. Đây là thời gian xe nằm ở seller, đòn bẩy cho to-be.</p></div></div>

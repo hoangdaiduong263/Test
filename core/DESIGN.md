@@ -77,4 +77,9 @@ Mỗi ngưỡng là tham số:
   - Vật lý mô phỏng: phát lại từng chuyến thật (giờ tới điểm đầu thật), so giờ rời từng điểm và giờ tới SOC. Thời gian chạy lấy trung vị thật theo cặp điểm và từ điểm về SOC; thiếu thì dùng tốc độ trung vị của vùng.
   - Bảng nguồn dữ liệu: data / giả định.
   - "Dư địa thấy ngay": tỷ lệ lần dừng xe đứng chờ quá 30 phút ngoài thời gian chất.
-  - Ngưỡng: tiền ±5%, ≥ 80% lần dừng lệch ≤ 15'.
+  - Ngưỡng: tiền ±5%; giờ rời điểm và giờ tới SOC: ≥ 80% lần dừng thuộc nhóm điểm × COT có trung vị lệch ≤ 15'.
+    - Không chấm từng lần dừng: kể cả đoán bằng trung vị thật của nhóm, HCM/South cũng chỉ ~55% lần dừng trong ±15'. Phần còn lại là dao động thật giữa các ngày (chờ hàng, dock). Trang vẫn hiện số từng lần dừng kèm trần đó.
+  - Gỡ lệch HCM (tiền −16% → −3%):
+    - As-is chỉ dùng loại xe điểm đang chạy thật (≥ 10% số chuyến). Đổi loại xe là đòn bẩy `vehFree`.
+    - Chuyến thật ghé cả hub ngoài mạng: tiền xe của mạng chỉ tính phần đơn của seller (`netOf`).
+  - Kết quả: cả 4 vùng đạt cổng (HN +0,1%, HCM −2,7%, North +4,7%, South −1,0%).
