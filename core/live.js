@@ -13,7 +13,7 @@ function Live(C, root, opts) {
     const geoP = i => C.geo(C.nm(i)), socs = {}, hubs = {}, teams = new Map();
     p.nw.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return;
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
-        socs[soc] = C.geo(soc); const tS0 = (C.kmSoc(z0.i) ?? 15) / spd, tS1 = (C.kmSoc(zl.i) ?? 15) / spd;
+        socs[soc] = C.geo(soc); const tS0 = C.toSoc(z0.i), tS1 = C.toSoc(zl.i);
         const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
         const tk = { id: `${gi + 1}.${si + 1}`, n: s.nTr, way, late, soc }; trucks.push(tk);
         ev.push({ t: way[0].t, k: "truck", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });

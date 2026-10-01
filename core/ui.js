@@ -15,6 +15,7 @@
   ST.R = ST.R || REGS[0];
 
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
+  const K = Calib(C, REF), CAL = {}; ST.line = "1"; try { ST.line = localStorage.getItem("d2s-core-line") || "1"; } catch (e) {}
   /* hạn COT chỉnh tay: lưu trên trình duyệt, nạp lại khi mở trang */
   try { const o = JSON.parse(localStorage.getItem("d2s-core-dl") || "{}"), ld = (M, f) => Object.entries(M || {}).forEach(([n, m]) => Object.entries(m).forEach(([k, v]) => f(n, +k, v)));
     if (o.dl || o.av || o.hc || o.tr) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); Object.entries(o.hc || {}).forEach(([n, v]) => C.setHC(n, v)); ld(o.tr, C.setTruck); } else ld(o, C.setDeadline); } catch (e) {}
@@ -96,18 +97,42 @@
       <div class="pbar"><button type="button" class="btn" id="prun">Chạy lại</button><button type="button" class="btn ghost" id="pdef">Về mặc định</button></div>`; }
   const DEF = Object.assign({}, P);
 
-  function render() { tabs(); const R = ST.R;
+  /* ---------- DÂY CHUYỀN 0: dữ liệu & kiểm định as-is ---------- */
+  const pass = ok => `<span class="chip ${ok ? "ok" : "bad"}">${ok ? "ĐẠT" : "CHƯA ĐẠT"}</span>`, pf = x => x == null ? "–" : Math.round(x) + "%";
+  function calib(R) { const c = CAL[R] || (CAL[R] = K.run(R)), p = c.ph, T = K.T;
+    $("calib").innerHTML = `<div class="gate">
+      <div class="step"><h2>Tiền xe as-is ${pass(c.ok.cost)}</h2><div class="big ${c.ok.cost ? "pos" : "neg"}">${c.gap >= 0 ? "+" : "−"}${Math.abs(c.gap).toFixed(1)}%</div>
+        <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dựng lại tuyến hiện nay</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng</dt><dd>±${T.calCost}%</dd></dl></div>
+      <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
+        <dl class="kv"><dt>Lệch</dt><dd>${c.rt ? ((c.mt - c.rt) / c.rt * 100).toFixed(0) : 0}%</dd></dl></div>
+      <div class="step"><h2>Vật lý mô phỏng ${pass(c.ok.time)}</h2><div class="big ${c.ok.time ? "pos" : "neg"}">${pf(p.dep)}</div>
+        <dl class="kv"><dt>Giờ rời điểm lệch ≤ ${T.calTime}' (${p.n} lần dừng)</dt><dd>${pf(p.dep)}</dd><dt>Giờ tới SOC lệch ≤ ${T.calTime}' (${p.nSoc} chuyến)</dt><dd>${pf(p.soc)}</dd><dt>Ngưỡng</dt><dd>≥ ${T.calShare}%</dd></dl>
+        <p class="note2">Phát lại từng chuyến thật: xe tới điểm đầu đúng giờ thật, model tính thời gian chất và chạy.</p></div>
+      <div class="step res"><h2>Dư địa thấy ngay</h2><div class="big">${pf(p.waitBig)}</div>
+        <dl class="kv"><dt>Lần dừng xe đứng chờ &gt; 30' ngoài thời gian chất</dt><dd>${pf(p.waitBig)}</dd></dl>
+        <p class="note2">Model vật lý không đoán được phần chờ này. Đây là thời gian xe nằm ở seller, đòn bẩy cho to-be.</p></div></div>
+      <section class="card"><header><h2>Nguồn dữ liệu · ${R}</h2><span class="muted" style="font-size:12px">as-is bám data, thiếu thì giả định, không sửa data gốc</span></header>
+        <div class="scroll"><table><thead><tr><th>Dữ liệu</th><th class="r">Điểm có data</th><th class="r">Điểm giả định</th><th>Nguồn · cách giả định</th></tr></thead><tbody>${c.src.map(([n, a, b, w]) =>
+          `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div></section>
+      <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
+        <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
+          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calCost ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
+  function lines() { document.querySelectorAll("#lines [data-line]").forEach(b => b.setAttribute("aria-pressed", b.dataset.line === ST.line)); $("calib").hidden = ST.line !== "0"; $("plan").hidden = ST.line === "0"; }
+
+  function render() { tabs(); lines(); const R = ST.R;
+    if (ST.line === "0") { if (!CAL[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { CAL[R] = K.run(R); document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
     const r = ST.res[R]; flow(r); packs(r); teams(r); bans(r); }
   /* tính dần các vùng còn lại để tab hiện số */
   function queue() { const R = REGS.find(x => !ST.res[x]); if (R) setTimeout(() => { res(R); tabs(); queue(); }, 30); }
 
   document.addEventListener("click", e => { const t = e.target;
+    const ln = t.closest("[data-line]"); if (ln) { ST.line = ln.dataset.line; try { localStorage.setItem("d2s-core-line", ST.line); } catch (x) {} render(); return; }
     const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
     const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
-      if (t.id === "pdef") pform(); LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); } });
+      if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("tr.pk")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();

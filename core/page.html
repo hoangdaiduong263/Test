@@ -100,6 +100,14 @@ details.prm[open]>summary::after{content:"▴"}
 .btn.ghost{background:none;color:var(--accent)}
 .empty{padding:16px;color:var(--muted)}
 .busy{opacity:.55;pointer-events:none}
+/* dây chuyền */
+.lines{display:flex;gap:6px;flex-wrap:wrap}
+.lines button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;font-weight:500}
+.lines button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+#calib{display:grid;gap:18px}#calib[hidden]{display:none}
+.gate{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.gate .step h2{justify-content:space-between}
+.note2{font-size:12px;color:var(--muted);margin:0}
 /* live */
 .play{border:1px solid var(--accent);background:none;color:var(--accent);border-radius:6px;width:26px;height:24px;font-size:11px;line-height:1}
 .play:hover{background:var(--accent);color:var(--panel)}
@@ -163,18 +171,23 @@ details.prm[open]>summary::after{content:"▴"}
 
 <div class="wrap">
   <div class="top">
-    <div class="brand"><h1>D2S Core</h1><span class="sub">[1] Linehaul tối ưu tiền xe → [2] Headcount: loại tuyến không kịp COT, chọn người rẻ nhất</span></div>
+    <div class="brand"><h1>D2S Core</h1><span class="sub">Dữ liệu &amp; kiểm định → Plan linehaul → Plan HC → Lọc khả thi → Live</span></div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Vùng"></div>
   </div>
+  <nav class="lines" id="lines" aria-label="Dây chuyền"><button type="button" data-line="0">0 · Dữ liệu &amp; kiểm định as-is</button><button type="button" data-line="1">1–4 · Kế hoạch, lọc &amp; live</button></nav>
+  <div id="calib" hidden></div>
+  <div id="plan">
   <div class="flow" id="flow"></div>
   <section class="card lv" id="live" hidden></section>
   <section class="card" id="packs"></section>
   <section class="card" id="teams"></section>
   <section class="card" id="bans"></section>
   <details class="card prm" id="prm"><summary>Tham số</summary><div id="pform"></div></details>
+  </div>
 </div>
 
 <script>/*DATA*/</script>
 <script>/*ENGINE*/</script>
+<script>/*CALIB*/</script>
 <script>/*LIVE*/</script>
 <script>/*UI*/</script>

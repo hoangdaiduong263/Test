@@ -70,3 +70,11 @@ Mỗi ngưỡng là tham số:
 3. **Dây chuyền 3:** bộ lọc khả thi và độ phức tạp.
 4. **Dây chuyền 4:** live mọi ngày, chế độ thử chỉnh, cận dưới.
 5. Nạp volume theo mốc pickup từ BI khi có.
+
+## Trạng thái
+- **Dây chuyền 0 — đã có** (`calib.js`, tab "0 · Dữ liệu & kiểm định as-is"):
+  - Tiền xe và số chuyến: model dựng lại tuyến hiện nay cho từng ngày, so với chuyến thật.
+  - Vật lý mô phỏng: phát lại từng chuyến thật (giờ tới điểm đầu thật), so giờ rời từng điểm và giờ tới SOC. Thời gian chạy lấy trung vị thật theo cặp điểm và từ điểm về SOC; thiếu thì dùng tốc độ trung vị của vùng.
+  - Bảng nguồn dữ liệu: data / giả định.
+  - "Dư địa thấy ngay": tỷ lệ lần dừng xe đứng chờ quá 30 phút ngoài thời gian chất.
+  - Ngưỡng: tiền ±5%, ≥ 80% lần dừng lệch ≤ 15'.

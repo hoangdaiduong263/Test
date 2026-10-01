@@ -136,6 +136,11 @@ function Core(D, REF) {
     /* legs: số xe tách theo SOC đích trong một lượt (trung vị); spt: số SOC trên một chuyến (xe trả nhiều SOC) */
     return STC[i] = { w, dw: fitDwell(dw), legs: Math.max(1, Math.round(med(legs) || 1)), spt: Math.max(1, Math.round(med(spt) || 1)) }; }
   const nWaves = i => { const w = waves(i); return w ? w.w.length : 1; };
+  /* lượt xe THẬT của điểm trong một ngày (theo COT): giờ tới sớm nhất, giờ rời muộn nhất, số xe, số đơn lên */
+  function dayWaves(i, d) { const W = {}; ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t) return;
+      t[5].forEach(p => { if (p[1] !== 0 || String(TRN[p[0]]).trim() !== nm(i) || p[4] == null) return; const dep = p[5] ?? p[4], k = cotIdx(i, dep), x = W[k] || (W[k] = { k, arr: p[4], dep, n: 0, up: 0 });
+        x.arr = Math.min(x.arr, p[4]); x.dep = Math.max(x.dep, dep); x.n++; x.up += p[2] || 0; }); });
+    return Object.values(W).sort((a, b) => a.k - b.k); }
   const legsOf = i => { const w = waves(i); return w ? w.legs : 1; };
   const sptOf = i => { const w = waves(i); return w ? w.spt : 1; };
   /* tốc độ xe & thời gian dừng chung (trung vị toàn mạng) cho điểm thiếu data */
@@ -145,7 +150,20 @@ function Core(D, REF) {
       if (km > 2 && a[5] != null && b[4] != null && b[4] > a[5]) v.push(km / (b[4] - a[5])); } }
     return SK = { rate: med(r) ?? 0.05, fix: med(f) ?? 15, spd: Math.min(1.2, Math.max(0.2, med(v) ?? 0.5)) }; }
   const dwell = (i, q) => { const w = waves(i), d = w && w.dw ? w.dw : simK(); return d.fix + d.rate * q; };
-  const legMin = (i, j) => 5 + (kmPt(i, j) ?? 10) / simK().spd;
+  /* THỜI GIAN CHẠY từ chuyến thật: trung vị theo cặp điểm đi nối nhau, và từ điểm về SOC (≥ 3 lần); thiếu thì km ÷ tốc độ trung vị của vùng */
+  let TT = null;
+  function travelData() { if (TT) return TT; const ix = {}; S.forEach((s, i) => { ix[nm(i)] = i; }); const pr = {}, so = {}, vr = {};
+    for (const c in TRP) { const P5 = TRP[c][5]; let pv = null;
+      P5.forEach(p => { const i = p[1] === 0 ? ix[String(TRN[p[0]]).trim()] : null;
+        if (p[1] === 0 && i != null) { if (pv && pv.dep != null && p[4] != null && p[4] > pv.dep) { const k = Math.min(pv.i, i) + "-" + Math.max(pv.i, i), m = p[4] - pv.dep; (pr[k] = pr[k] || []).push(m);
+            const km = kmPt(pv.i, i); if (km > 2) (vr[S[i].R] = vr[S[i].R] || []).push(km / m); }
+          pv = { i, dep: p[5] ?? p[4] }; }
+        else if (p[1] === 2 && pv && pv.dep != null && p[4] != null && p[4] > pv.dep) { (so[pv.i] = so[pv.i] || []).push(p[4] - pv.dep); const km = kmSoc(pv.i); if (km > 2) (vr[S[pv.i].R] = vr[S[pv.i].R] || []).push(km / (p[4] - pv.dep)); pv = null; } }); }
+    const md = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, med(v)]));
+    return TT = { pair: md(pr), soc: md(so), spd: Object.fromEntries(Object.entries(vr).map(([k, v]) => [k, Math.min(1.2, Math.max(0.2, med(v)))])) }; }
+  const spdR = i => travelData().spd[S[i].R] || simK().spd;
+  const legMin = (i, j) => { const d = travelData().pair[Math.min(i, j) + "-" + Math.max(i, j)]; return d != null ? d : 5 + (kmPt(i, j) ?? 10) / spdR(i); };
+  const toSoc = i => { const d = travelData().soc[i]; return d != null ? d : (kmSoc(i) ?? 15) / spdR(i); };
   const openOf = i => REF.OPENT[nm(i)] ?? Math.min(P.open, (() => { const w = waves(i); return w ? Math.min(...w.w.map(x => x.arr)) - 60 : 1e9; })());
   /* hạn của một lượt = giờ Packed của COT; nếu hiện nay xe đã đi muộn hơn thì hạn = giờ đi hiện nay (không bắt tốt hơn thực tế) */
   /* hạn chỉnh tay theo điểm × COT (phút từ 0h), ưu tiên hơn mọi quy tắc trên */
@@ -270,8 +288,10 @@ function Core(D, REF) {
   const fteBase = i => HCOV[nm(i)] ?? fteN(i);
   const nOf = (i, a) => a && a.n ? a.n : fteBase(i);
   /* người ở điểm làm lần lượt theo COT; n người (mặc định FTE riêng của điểm); PPS: seller tự đóng như hiện nay */
-  function ownReady(i, n) { n = n || fteN(i); const W = waves(i), sh = shareOf(i), o = {}; let t = -1e9;
-    W.w.slice().sort((a, b) => a.k - b.k).forEach(w => { const q = volPk(i) * sh(w), st = Math.max(avail(i, w, q), t); t = Math.max(winEnd(i, w), st + durMin(i, q, n)); o[w.k] = { st, end: t }; }); return o; }
+  /* đơn của điểm: ngày đông (day = null) hoặc đúng ngày day */
+  const qOf = (i, day) => day == null ? volPk(i) : (S[i].v[day] || 0);
+  function ownReady(i, n, day) { n = n || fteN(i); const W = waves(i), sh = shareOf(i), o = {}; let t = -1e9;
+    W.w.slice().sort((a, b) => a.k - b.k).forEach(w => { const q = qOf(i, day) * sh(w), st = Math.max(avail(i, w, q), t); t = Math.max(winEnd(i, w), st + durMin(i, q, n)); o[w.k] = { st, end: t }; }); return o; }
   const shareOf = i => { const W = waves(i); const tot = W ? W.w.reduce((a, w) => a + w.up, 0) : 1; return w => w.up / tot; };
   /* các lượt của tuyến: một lượt cho mỗi COT (theo chỉ số COT của từng điểm), giờ lượt = giờ xe thật tới sớm nhất trong các điểm.
      (Trước đây gắn lượt theo giờ gần nhất → hai lượt của cùng một điểm có thể rơi vào một lượt tuyến và mất hạn COT sớm.) */
@@ -293,11 +313,12 @@ function Core(D, REF) {
   /* giờ xe tới điểm đầu chỉnh tay theo tuyến × COT (khóa = tên các điểm của tuyến) */
   const TROV = {}, rkey = g => g.map(nm).sort().join(" | ");
   const setTruck = (rk, k, v) => { if (v == null) { if (TROV[rk]) { delete TROV[rk][k]; if (!Object.keys(TROV[rk]).length) delete TROV[rk]; } } else (TROV[rk] = TROV[rk] || {})[k] = v; };
-  function simRoute(g, A, order) { const sl = slotsOf(g); if (!sl) return null; const tov = TROV[rkey(g)] || {}; const R = S[g[0]].R, rows = []; let late = -1e9;
-    for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
+  function simRoute(g, A, order, day) { const sl = slotsOf(g); if (!sl) return null; const tov = TROV[rkey(g)] || {}; const R = S[g[0]].R, rows = []; let late = -1e9;
+    for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + qOf(x.i, day) * x.sh; w[x.i] = x.w; });
+      if (!g.some(i => q[i] > 0)) continue;
       const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf))).t);
-      const own = {}, ow = i => (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i))))[w[i].k];
+      const own = {}, ow = i => (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i), day)))[w[i].k];
       const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] : ow(i).st;
       /* XE CHẤT DẦN: tới nơi là chất phần đã sort (không trước lúc bắt đầu sort); rời khi chất xong cả lượt và đã qua lúc hàng cuối sẵn + closeMin.
          Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc hàng cuối sẵn + closeMin */
@@ -410,7 +431,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, COTW, run, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
-    reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
+  return { P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+    reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };
