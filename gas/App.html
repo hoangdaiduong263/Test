@@ -1416,6 +1416,8 @@ function netPlan(R){const K=NET.plan||(NET.plan={});if(K[R])return K[R];
      hoặc "Nên làm" (Nice-to-have: tự có lợi). */
   const items=[...tp.map(p=>({kind:"xe",pk:p})),...lp.map(p=>({kind:"nguoi",pk:p}))],par=items.map((_,k)=>k),fd=k=>par[k]===k?k:(par[k]=fd(par[k])),own={};
   items.forEach((it,k)=>it.pk.pts.concat(it.pk.cut.flat()).forEach(i=>{if(own[i]!=null)par[fd(k)]=fd(own[i]);else own[i]=k;}));
+  /* phần chạm vào cùng một nhóm người / tuyến xe đang chung (không đổi) cũng gộp một gói: lịch của nhóm/tuyến đó phụ thuộc mọi điểm của nó, tách ra thì cộng các gói ≠ bật cả kế hoạch */
+  [L1,T1].forEach(GG=>GG.forEach(g=>{if(g.length<2)return;let f=null;items.forEach((it,k)=>{if(!it.pk.pts.concat(it.pk.cut.flat()).some(i=>g.includes(i)))return;if(f==null)f=k;else par[fd(k)]=fd(f);});}));
   /* lý do phần bắt buộc: điểm của nó đổi tuyến xe / đổi nhóm người trong kế hoạch, hay chỉ vì hiện nay mô phỏng đã trễ */
   const chgL=new Set();L1.forEach(g=>{const k=gkey(g);g.forEach(i=>{const b=L0.find(h=>h.includes(i));if(!b||gkey(b)!==k)chgL.add(i);});});
   /* phần nhóm người là BẮT BUỘC đi kèm tuyến xe nếu nhóm cũ có điểm đổi tuyến và nhóm cũ không còn kịp giờ với tuyến mới (kể cả khi tự nó cũng có lợi) */
@@ -1458,7 +1460,10 @@ function netPlan(R){const K=NET.plan||(NET.plan={});if(K[R])return K[R];
     const cands=solo.map(i=>({id:actId.one("size",i),pts:[i]})).concat(grps.map(g=>({id:actId.net("net",R,[g]),pts:g})));
     if(cands.length){const acts=cands.map(c=>parseAct(c.id)).filter(Boolean),n=netWith(acts),bb=BASE.tot.map(t=>t.net);
       cands.forEach(c=>{c.d=c.pts.reduce((x,i)=>x+n[i]-bb[i],0);});
-      const keep=cands.filter(c=>c.d>2e5);
+      /* đổi cỡ xe ở điểm có chung nhóm người với điểm của gói khác: lịch nhóm phụ thuộc cả hai → nếu bật chung lệch quá 0,2 tr thì không đưa vào gói đổi cỡ xe (vẫn chỉnh được từng điểm) */
+      const tmOf=i=>L1.find(g=>g.includes(i))||[i],oth=up.filter(u=>!u.size);
+      const keep=cands.filter(c=>{if(!(c.d>2e5))return false;const near=new Set(c.pts.flatMap(tmOf)),us=oth.filter(u=>u.pts.some(i=>near.has(i)));if(!us.length)return true;
+        const ids=us.flatMap(u=>u.ids);return Math.abs(rv(ids.concat([c.id]))-rv(ids)-c.d)<=2e5;});
       if(keep.length){const ids=keep.map(c=>c.id),g=rv(ids),pts=keep.flatMap(c=>c.pts),rows=keep.map(c=>({i:c.pts[0],pts:c.pts,d:c.d})).sort((x,y)=>y.d-x.d);
         const pk={id:ids[0],size:true,gs:keep.map(c=>c.pts),cut:keep.map(c=>c.pts),pts,g,gm:g,rows};
         up.push({items:[{kind:"xe",tag:"must",core:true,pk,gr:g,gModel:g}],g,gMust:g,gModel:g,pts,need:"xe",ids,mustIds:ids,R,size:true});}}}

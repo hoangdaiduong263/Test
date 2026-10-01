@@ -470,3 +470,8 @@ Giờ có hàng / giờ người có mặt:
 - `G.truck.ca` (mặc định false): chỉ khi bật mới so thuê chuyến với thuê ca 12H cho điểm/tuyến ≥2 lượt/ngày. Tắt = mọi xe tính giá thuê chuyến như hiện nay; "Đổi cỡ xe" chỉ đổi loại xe.
 - Công tắc ở Cấu hình › Xe ("Cho thuê xe theo ca 12H").
 - Mặc định sau khi tắt: North +191,4 · South +253,4 · HN +615,1 · HCM +354,1 tr/kỳ.
+
+## Gói độc lập: gộp theo nhóm người / tuyến xe chung
+- Lỗi: Cross kho 24 (gói tuyến A) và Hannah-Seyo (gói tuyến B) chung một nhóm người không đổi → lịch nhóm phụ thuộc cả hai xe → cộng gói ≠ cả kế hoạch (South, số chỗ chất hàng = 2: 276,4 vs 273,6).
+- Sửa: netPlan gộp mọi phần chạm cùng một nhóm L1 / tuyến T1 nhiều điểm vào một gói. Gói đổi cỡ xe bỏ dòng có tương tác >0,2 tr với gói khác qua nhóm người chung (vẫn chỉnh từng điểm được).
+- Mặc định: South +249,4 (bỏ Duc Hi+Thao Van đổi cỡ xe); vùng khác không đổi. Cộng gói = cả kế hoạch ở mọi vùng.
