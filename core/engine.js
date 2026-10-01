@@ -264,18 +264,19 @@ function Core(D, REF) {
      xe tới điểm đầu lúc hàng sẵn, chờ hàng ở điểm sau; trễ = giờ xe rời điểm − hạn COT của lượt */
   function simRoute(g, A, order) { const sl = slotsOf(g); if (!sl) return null; const R = S[g[0]].R, rows = []; let late = -1e9;
     for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
-      const pts = order.filter(i => q[i] > 0), Q = pts.reduce((a, i) => a + q[i], 0), beta = Q ? pts.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
-      const nTr = Math.max(1, fleet(Q, beta, R, tripKm(pts), Math.min(...pts.map(fillOf))).t);
+      const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
+      const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf))).t);
       const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : avail(i, w[i], q[i]) + durMin(i, q[i], fteN(i));
-      let t = null, prev = null; const st = [];
-      pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
-        const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
-        st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); late = Math.max(late, dep - dl); t = dep; prev = i; });
-      rows.push({ t: s.t, nTr, st }); }
+      const run1 = pts => { let t = null, prev = null, lt = -1e9; const st = [];
+        pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
+          const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
+          st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
+      /* thứ tự ghé chọn riêng cho từng lượt: trễ ít nhất, rồi về sớm nhất (order = null) — hoặc theo thứ tự cho trước */
+      let best = null; for (const o of order ? [order.filter(i => q[i] > 0)] : (inS.length <= 5 ? perms(inS) : [routeOrder(inS)])) { const x = run1(o); if (!best || x.lt < best.lt - 1e-9 || (Math.abs(x.lt - best.lt) < 1e-9 && x.end < best.end)) best = x; }
+      late = Math.max(late, best.lt); rows.push({ t: s.t, nTr, st: best.st }); }
     return { rows, late }; }
-  /* thứ tự ghé tốt nhất (trễ ít nhất) */
-  function routeEval(g, A) { const ords = g.length <= 4 ? perms(g) : [routeOrder(g)]; let best = null;
-    for (const o of ords) { const r = simRoute(g, A, o); if (!r) return null; if (!best || r.late < best.sim.late) best = { order: o, sim: r, late: r.late }; } return best; }
+  /* mỗi lượt tự chọn thứ tự ghé tốt nhất */
+  function routeEval(g, A) { const r = simRoute(g, A, null); if (!r) return null; return { order: r.rows[0] ? r.rows[0].st.map(z => z.i) : g, sim: r, late: r.late }; }
   const runD = i => active(i).length;
   const ppsCost = i => active(i).reduce((a, d) => a + S[i].v[d], 0) * P.ppsRate;
   const fCost = i => fteN(i) * P.ftePay * runD(i);
