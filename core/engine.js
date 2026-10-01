@@ -22,6 +22,7 @@ function Core(D, REF) {
     peakP: 90,         // ngày đông = phân vị này của đơn/ngày
     maxExtra: 0,       // tuyến trễ: cho thêm tối đa bấy nhiêu FTE riêng mỗi điểm để kịp COT (0 = không thêm)
     lateTol: 60,       // cho trễ COT tối đa (phút)
+    closeMin: 5,       // xe chất dần hàng đã sort; sau khi hàng cuối sẵn cần thêm bấy nhiêu phút để chốt xe rời
     prodBase: 2000,    // năng suất sort lý tưởng: đơn/người/ngày (1 chute, 10% hàng to)
     prodHand: 2000,    // năng suất phần không sort (quét, bàn giao, xếp xe): đơn/người/ngày
     prodChute: 10,     // mỗi chute chia thêm ngoài 1: −% năng suất sort
@@ -279,10 +280,10 @@ function Core(D, REF) {
   /* NHÓM FM HUB: n người đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; sang điểm khác mất km ÷ hubSpd */
   function teamReady(pts, n) { const tasks = [];
     pts.forEach(i => { const W = waves(i); if (!W) return; const sh = shareOf(i); W.w.forEach(w => { const q = volPk(i) * sh(w); tasks.push({ i, w, q, av: avail(i, w, q), be: winEnd(i, w), dl: deadline(i, w) }); }); });
-    tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {}, seg = [];
-    tasks.forEach(x => { const from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = Math.max(x.be, st + durMin(x.i, x.q, n)); at = x.i; rd[x.i + "|" + x.w.k] = t;
+    tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {}, rs = {}, seg = [];
+    tasks.forEach(x => { const from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = Math.max(x.be, st + durMin(x.i, x.q, n)); at = x.i; rd[x.i + "|" + x.w.k] = t; rs[x.i + "|" + x.w.k] = st;
       seg.push({ i: x.i, k: x.w.k, from, leave, av: x.av, start: st, end: t, q: x.q }); });
-    return { rd, seg }; }
+    return { rd, rs, seg }; }
   /* mô phỏng ngày đông của tuyến g theo cách dùng người A[i] = {m: "F" | "P" | "H", team}
      F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
      H (nhóm FM Hub): hàng sẵn khi nhóm làm xong lượt đó
@@ -294,10 +295,14 @@ function Core(D, REF) {
     for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
       const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf))).t);
-      const own = {}, ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i))))[w[i].k].end;
+      const own = {}, ow = i => (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i))))[w[i].k];
+      const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] : ow(i).st;
+      /* XE CHẤT DẦN: tới nơi là chất phần đã sort (không trước lúc bắt đầu sort); rời khi chất xong cả lượt và đã qua lúc hàng cuối sẵn + closeMin.
+         Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc hàng cuối sẵn + closeMin */
       const run1 = pts => { let t = null, prev = null, lt = -1e9; const st = [];
-        pts.forEach(i => { const rd = ready(i), arr = prev == null ? (tov[s.k] ?? rd) : t + legMin(prev, i), ls = Math.max(arr, rd);
-          const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
+        pts.forEach(i => { const rd = ready(i), dwq = dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0);
+          const arr = prev == null ? (tov[s.k] ?? Math.max(sortSt(i), Math.min(rd, rd + P.closeMin - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
+          const dep = Math.max(ls + dwq, rd + P.closeMin), dl = deadline(i, w[i]);
           st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
       /* thứ tự ghé chọn riêng cho từng lượt: trễ ít nhất, rồi về sớm nhất (order = null) — hoặc theo thứ tự cho trước */
       let best = null; for (const o of order ? [order.filter(i => q[i] > 0)] : (inS.length <= 5 ? perms(inS) : [routeOrder(inS)])) { const x = run1(o); if (!best || x.lt < best.lt - 1e-9 || (Math.abs(x.lt - best.lt) < 1e-9 && x.end < best.end)) best = x; }
@@ -334,7 +339,7 @@ function Core(D, REF) {
     const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
     function tryTeam(pts) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) return null;
       const n0 = Math.max(1, Math.ceil(pts.reduce((a, i) => a + volPk(i) * work(i).w, 0) - 1e-9));
-      for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
+      for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, rs: tr.rs, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
         if (okWith(pts, A2)) { t.c = tCost(t); return t; } } return null; }
     const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
     const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h && HCOV[nm(i)] == null).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });

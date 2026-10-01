@@ -21,7 +21,7 @@ function Live(C, root, opts) {
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
           dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready });
           ev.push({ t: z.ready, k: "ready", txt: `Hàng sẵn · ${nm} (${Math.round(z.q)} đơn)` });
-          ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : ""}` });
+          ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : z.ready > z.arr + 0.5 ? ` · chất dần, chờ đơn cuối (${hm(z.ready)})` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
           if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, n: nn, p0: st, p1: 1e9, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
@@ -139,7 +139,7 @@ function Live(C, root, opts) {
         rows.push(`<tr><td class="mono">${gi + 1}</td><td>COT${s.k + 1}<br><span class="muted mono">${s.nTr} xe</span></td>
           <td><input type="text" inputmode="numeric" maxlength="5" size="5" data-rk="${esc(rk)}" data-k="${s.k}" data-v0="${Math.round(z0.arr)}" value="${hm(z0.arr)}" class="${ov[s.k] != null ? "ov" : ""}" aria-label="Xe tới điểm đầu tuyến ${gi + 1} COT${s.k + 1}">
             <small>${ov[s.k] != null ? "chỉnh tay" : `lúc hàng sẵn ở ${esc(short(z0.i))}`}</small></td>
-          <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
+          <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : z.ready > z.arr + 0.5 ? ` (chất dần tới ${hm(z.ready)})` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
     const el2 = root.querySelector("#lv-tr"); if (!rows.length) { el2.innerHTML = ""; return; }
     el2.innerHTML = `<div class="lv-ih"><h3>Lịch xe</h3><span class="muted" style="font-size:12px">sửa giờ xe tới điểm đầu của lượt · xe tới trước giờ hàng sẵn thì đứng chờ</span></div>
       <div class="scroll"><table class="lv-dlt lv-trt"><thead><tr><th>Tuyến</th><th>Lượt</th><th>Xe tới điểm đầu</th><th>Thứ tự ghé · giờ tới / rời từng điểm</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
