@@ -106,7 +106,7 @@ function Live(C, root, opts) {
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
   function dlTable(p, title) { const pts = M.pts, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
     const why = x => x.ov != null ? "chỉnh tay" : x.close ? "bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
-    const whyA = x => x.avOv != null ? "chỉnh tay" : `suy từ xe tới ${hm(x.arr)}`;
+    const whyA = x => x.avOv != null ? "chỉnh tay" : x.win ? `nhận đơn ${hm(x.a)}→${hm(x.b - 1)}` : `suy từ xe tới ${hm(x.arr)}`;
     const inp = (i, k, f, v, cls, lab) => `<input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="${f}-${i}-${k}" data-i="${i}" data-k="${k}" data-f="${f}" value="${hm(v)}" class="${cls}" aria-label="${lab}">`;
     root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Giờ có hàng &amp; hạn COT</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
       <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}<br><span class="muted">có hàng từ → hạn</span></th>`).join("")}</tr>

@@ -68,6 +68,19 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
    - Số người của nhóm = nhỏ nhất mà vẫn kịp.
    - Tiền nhóm chia cho từng điểm theo khối việc.
 
+## COT có khung nhận đơn (`COTW`)
+Vùng có trong `COTW` (hiện là HN) dùng COT theo khung nhận đơn, thay cho COT theo deck và giờ bàn giao cuối:
+
+| COT | DOP Received | FM_LH Packed (hạn) |
+|---|---|---|
+| COT1 | 21:00 D-1 → 13:59 | 14:59 |
+| COT2 | 14:00 → 17:59 | 18:59 |
+| COT3 | 18:00 → 20:59 | 21:59 |
+
+- Hàng của COT có từ đầu khung (không trước giờ seller mở). Lượt chỉ sort xong khi đã hết khung (đơn cuối tới).
+- Hạn = Packed. Hiện nay xe rời muộn hơn thì hạn = giờ rời hiện nay.
+- Bước lặp: tuyến chứa trọn một tuyến đã bị loại cũng bị loại. Hết vòng mà còn tuyến không khả thi thì tách tuyến đó về đi riêng.
+
 ## Chưa có (cố ý bỏ để gọn)
 - Trần số người tại điểm / số người hub cấp được.
 - Năng suất theo % đủ diện tích và bàn giao pallet (đang coi là đủ diện tích, bàn giao lẻ).
