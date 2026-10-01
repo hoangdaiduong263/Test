@@ -343,3 +343,12 @@ Giờ có hàng / giờ người có mặt:
   - SAU = theo kế hoạch.
 - `nvCotSecs(sim,o)`: khối COT tách ra từ nvDetail. Chỉ lịch Sau của tuyến/nhóm mới có ô chỉnh giờ xe (`o.edit`).
 - Ví dụ South, Masan + Gooby: giữ nhóm trễ +188', tách → kịp, dư 14'.
+
+## Cập nhật: lịch một ngày của nhóm người — không mất điểm, nói rõ lúc chờ, bỏ lỗi "lùi xe" làm nhóm đứng không
+- Lịch "Trước" (nvSimWith) trước đây chỉ giữ các lượt có điểm đang xem, nên mất việc của nhóm ở điểm khác. Ví dụ nhóm 6 điểm cũ mất HAPAS / BOXME, trông như nhóm đi 16' mà 1,5h sau mới sort.
+  - Nay có `rowsT` = mọi lượt có điểm của các nhóm dính tới điểm đang xem; dùng cho biểu đồ nhóm và "Một ngày của nhóm".
+- teamDay: khoảng trống của nhóm ghi rõ lý do: "chờ hàng của X sẵn (seller có hàng từ hh:mm) · n phút", hoặc "chờ xe tới". Chờ ≥ 30' tô màu cảnh báo.
+- simRun:
+  - Bước cuối "lùi giờ xe cho khớp lúc hàng sẵn" giữ lịch nhóm cố định nên có thể đổi thứ tự việc của nhóm. Hệ quả là xe khác chờ tới 2h (South sociolla: xe tới 16:50 mà 18:43 mới chất), vẫn được nhận vì không trễ COT. Nay chỉ nhận khi tổng phút xe chờ giảm và nhóm không đứng không nhiều hơn (`idleOf`).
+  - `plan` xếp lại lịch nhóm theo giờ xe tới thật của lịch vừa có (tối đa 3 vòng).
+- Kết quả không đổi: kế hoạch, kiểm tra nhất quán, kiểm chứng với thực tế (141/160). Nhóm South không còn phút đứng không.

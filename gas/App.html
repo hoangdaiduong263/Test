@@ -270,7 +270,7 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
   /* lịch nhóm người (tham lam theo thời gian): biết giờ xe dự kiến tới từng điểm (chạy thử không có nhóm),
      nhóm luôn làm việc có xe tới sớm nhất; trong lúc chờ xe ở một điểm, nếu kịp đi sort trước điểm khác rồi quay về trước khi xe tới thì đi.
      Mỗi điểm: sort xong mới được chất; chất hàng khi xe tới (nhóm phải có mặt), xe rời thì nhóm đi tiếp. */
-  const plan1=(XS,byR)=>{if(!tm)return null;const eta=runAll(XS,null),M=new Map();
+  const plan1=(XS,byR,E)=>{if(!tm)return null;const eta=E||runAll(XS,null),M=new Map();
    tms.forEach(tt=>{const T=[];
     eta.forEach(R=>R.st.forEach(z=>{if(!tt.set.has(z.i))return;const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);
       T.push({J:R.J,i:z.i,eta:z.arr,p:c.p,op:openW(z.i,x.w,c.p),dur:sortPD(z.i)*(vol(z.i)>0?(R.J.qi.get(z.i)||0)/vol(z.i):0)*pH/tt.h,ld:dwellMin(z.i,z.q),done:false,sorted:false});}));
@@ -287,7 +287,15 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
     T.forEach(u=>{if(u.s0==null){u.s0=u.s1=u.at??u.eta;}if(u.at==null)u.at=u.s1;if(u.le==null)u.le=Math.max(u.at,u.eta)+u.ld;if(!M.has(u.J))M.set(u.J,new Map());M.get(u.J).set(u.i,u);});});return M;};
   /* xếp lịch nhóm theo 2 cách (theo giờ xe tới / theo lúc việc làm được), giữ cách ít trễ hơn (tổng phút trễ so với hạn COT, rồi trễ lớn nhất) */
   const lateSum=rs=>{let s=0,m=-1e9;rs.forEach(R=>R.st.forEach(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w),e=Math.max(z.dep-c.p,z.s1!=null&&z.s1-z.s0>=1?z.s1-c.r:-1e9);if(e>0)s+=e;m=Math.max(m,e);}));return [s,m];};
-  const plan=XS=>{if(!tm)return null;const A=plan1(XS,false),B=plan1(XS,true),la=lateSum(runAll(XS,A)),lb=lateSum(runAll(XS,B));return (lb[0]<la[0]-0.5||(Math.abs(lb[0]-la[0])<=0.5&&lb[1]<la[1]))?B:A;};
+  const better=(a,b)=>a[0]<b[0]-0.5||(Math.abs(a[0]-b[0])<=0.5&&a[1]<b[1]-0.5);
+  const plan=XS=>{if(!tm)return null;const A=plan1(XS,false),B=plan1(XS,true),la=lateSum(runAll(XS,A)),lb=lateSum(runAll(XS,B));let P=better(lb,la)?B:A,lp=better(lb,la)?lb:la;
+    /* xếp lại lịch nhóm theo giờ xe tới THẬT trong lịch vừa có (xe đã chờ nhóm ở điểm trước nên tới muộn hơn ước tính không nhóm):
+       tránh lịch nhóm lệch giờ xe rồi phải "lùi cả lịch phía sau" (nhóm đứng không ở điểm sau dù hàng đã sẵn) */
+    for(let k=0;k<3;k++){const E=runAll(XS,P);let ch=false;for(const by of [false,true]){const C=plan1(XS,by,E),lc=lateSum(runAll(XS,C));if(!better(lp,lc)&&(better(lc,lp)||idleOf(runAll(XS,C))<idleOf(runAll(XS,P))-1)){P=C;lp=lc;ch=true;}}if(!ch)break;}
+    return P;};
+  /* tổng phút nhóm đứng không (giữa lúc tới điểm và lúc bắt đầu sort, khi hàng đã sẵn) — để chọn lịch nhóm gọn hơn khi trễ như nhau */
+  const idleOf=rs=>{let m=0;(tms||[]).forEach(tt=>{const ev=[];rs.forEach(R=>R.st.forEach(z=>{if(z.s0==null||!tt.set.has(z.i))return;if(z.s1-z.s0>=1)ev.push({a:z.s0,b:z.s1,i:z.i,r:z.rdy??-1e9,s:1});ev.push({a:z.l0??z.ls,b:z.dep,i:z.i,r:-1e9,s:0});}));
+      ev.sort((x,y)=>x.a-y.a);for(let k=1;k<ev.length;k++){const p0=ev[k-1],e=ev[k];if(!e.s)continue;const r0=Math.max(p0.b+(p0.i===e.i?0:legMin(p0.i,e.i)),e.r);if(e.a>r0+1)m+=e.a-r0;}});return m;};
   /* lượt xe có nguy cơ rời điểm sau giờ COT chuẩn (nhất là giờ seller đóng cửa): cho cả lượt chạy sớm hơn, tối đa G.truck.shiftMax phút */
   const XS=new Map();let TP=plan(XS),rows=runAll(XS,TP);
   for(let it=0;it<(quick?0:6);it++){let pch=false;
@@ -311,7 +319,9 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
     const lr=rs=>{const m=new Map();rs.forEach(R=>m.set(R.J,Math.max(-1e9,...R.st.map(z=>{const x=xOf(R.J,z.i),c=cotOfWave(z.i,x.w);return z.dep-c.p;}))));return m;},b0=lr(rows);
     let r2=runAll(XS,TP);for(let k=0;k<12;k++){const b1=lr(r2);let bad=false;b1.forEach((v,J)=>{if(v>Math.max(b0.get(J)??-1e9,0)+0.5&&PL.get(J)!==snap.get(J)){if(snap.has(J))PL.set(J,snap.get(J));else PL.delete(J);bad=true;}});if(!bad)break;r2=runAll(XS,TP);}
     const b2=lr(r2);let worse=false;b2.forEach((v,J)=>{if(v>Math.max(b0.get(J)??-1e9,0)+0.5)worse=true;});
-    if(!worse&&lateOf(r2)<=Math.max(l0,0)+0.5)rows=r2;else{PL.clear();snap.forEach((v,k)=>PL.set(k,v));break;}}
+    /* chỉ nhận khi tổng phút xe chờ thật sự giảm và nhóm không phải đứng không nhiều hơn (lùi xe có thể đổi thứ tự việc của nhóm → xe khác chờ lâu hơn) */
+    const wS=rs=>rs.reduce((a,R)=>a+R.st.reduce((b,z)=>b+Math.max(0,z.ls-z.arr),0),0);
+    if(!worse&&lateOf(r2)<=Math.max(l0,0)+0.5&&wS(r2)<wS(rows)-1&&idleOf(r2)<=idleOf(rows)+1)rows=r2;else{PL.clear();snap.forEach((v,k)=>PL.set(k,v));break;}}
   /* xe điều theo yêu cầu (G.truck.onCall): xe tới điểm đầu đúng lúc bắt đầu chất — bỏ phần chờ ở điểm đầu; giờ chất, rời, các điểm sau không đổi */
   if(G.truck.onCall!==false)rows.forEach(R=>{if(R.J.fix)return;const z0=R.st[0],d=z0?z0.ls-z0.arr:0;if(d>0.5){z0.arr=z0.ls;R.X-=d;}});
   rows.forEach(({J,X,st,soc})=>{X=X;
@@ -2108,7 +2118,9 @@ function nvSimWith(focus,Ts,Ls){const F=new Set(focus),rOf=i=>Ts.find(h=>h.inclu
   const runs=poolRuns([...pts],{ro:i=>{const r=rOf(i);return r.length>1?r:null;}});if(!runs.length)return null;
   const hs=tms.map(t=>{const x=teamSim(t);return x&&x.h?x.h:Math.max(1,Math.round(nvHc(t)));});
   const sm=simRun(runs,tms.length?{teams:tms.map((t,k)=>({set:new Set(t),h:hs[k]}))}:null,adoOf,avgSort);
-  const rows=sm.rows.filter(r=>r.st.some(z=>F.has(z.i)));return Object.assign({},sm,{rows,tms:tms.filter(t=>t.some(i=>F.has(i))),allT:tms});}
+  const fT=tms.filter(t=>t.some(i=>F.has(i))),FT=new Set(focus.concat(fT.flat()));
+  const rows=sm.rows.filter(r=>r.st.some(z=>F.has(z.i))),rowsT=sm.rows.filter(r=>r.st.some(z=>FT.has(z.i)));   /* rowsT: mọi việc của các nhóm dính tới điểm (để "một ngày của nhóm" không mất điểm nào) */
+  return Object.assign({},sm,{rows,rowsT,tms:fT,allT:tms});}
 /* các khối lịch theo COT (biểu đồ + bảng giờ) cho một kết quả mô phỏng; o: {team, teams, ord, staff, fleet, edit} */
 function nvCotSecs(sim,o){if(!sim||!sim.rows||!sim.rows.length)return "";const tol=G.truck.cotTol??30,grp=new Map();sim.rows.forEach(r=>{const k=r.st[0].cot.k;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(r);});let n0=0;
     return [...grp.values()].sort((a,b)=>a[0].t-b[0].t).map(rows=>{const z0=rows[0].st[0],cc=z0.cot,Q=rows.reduce((a,r)=>a+r.st.reduce((b,z)=>b+z.q,0),0),w=Math.max(...rows.flatMap(r=>r.st.map(z=>z.late))),sh=Math.max(0,...rows.map(r=>r.shift||0));
@@ -2166,7 +2178,7 @@ function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;co
       const cur=tabs.some(t=>t[0]===ui.nvdTab)?ui.nvdTab:"lich";
       const labB=sp?(xe?"Trước: giữ tuyến":"Trước: giữ nhóm chung"):(xe?"Trước: tuyến hiện nay":"Trước: nhóm hiện nay"),labA=sp?(xe?"Sau: tách tuyến":"Sau: tách theo kế hoạch"):"Sau: theo kế hoạch";
       const ba=hasB?`<div class="nvd-ba" role="group" aria-label="Xem lịch trước hoặc sau"><button type="button" data-nvba="b" aria-pressed="${mode==="b"}">${labB}<span class="${sB[0]}">${sB[1]}</span></button><button type="button" data-nvba="a" aria-pressed="${mode==="a"}">${labA}<span class="${sA[0]}">${sA[1]}</span></button></div>`:"";
-      const lichB=hasB?`<p class="note" style="margin:0">${sp?`Nếu <b>giữ</b> ${xe?"tuyến":"nhóm"} này như hiện nay, các ${xe?"nhóm người":"tuyến xe"} khác theo kế hoạch:`:`Nếu <b>không</b> làm ${xe?"tuyến":"nhóm"} này: các điểm giữ ${xe?"tuyến xe":"nhóm người"} hiện nay, phần còn lại theo kế hoạch:`}</p>${lichH(simB,{team:!!simB.allT.length,teams:simB.tms,ord,staff:true,fleet:false,edit:false})}${xe?"":teamDay(simB,ord)}`:"";
+      const lichB=hasB?`<p class="note" style="margin:0">${sp?`Nếu <b>giữ</b> ${xe?"tuyến":"nhóm"} này như hiện nay, các ${xe?"nhóm người":"tuyến xe"} khác theo kế hoạch:`:`Nếu <b>không</b> làm ${xe?"tuyến":"nhóm"} này: các điểm giữ ${xe?"tuyến xe":"nhóm người"} hiện nay, phần còn lại theo kế hoạch:`}</p>${lichH(xe?simB:Object.assign({},simB,{rows:simB.rowsT}),{team:!!simB.allT.length,teams:simB.tms,ord,staff:true,fleet:false,edit:false})}${xe?"":teamDay({rows:simB.rowsT},ord)}`:"";
       const lichA=(sp?`<p class="note" style="margin:0">Theo kế hoạch: ${spTx}. Lịch các tuyến chở hàng của ${g.length} điểm này với người theo kế hoạch:</p>${lichH(simA,{team:!!(simA&&simA.allT&&simA.allT.length),teams:simA&&simA.tms,ord,staff:true,fleet:false,edit:false})}`:plan)
         +`<details class="nvd-more"${ui.nvMore?" open":""}><summary>${xe?"Nhân sự thực hiện tuyến":"Nhóm này làm gì · tuyến xe gắn liền"}</summary><div class="nvd-pane">${xe?nvStaffLinks(g,ord)+stopPlan(sim,ord,rp):teamExplain(g,ord,hB,hA,Pb,sim)+nvRouteLinks(g,ord)}</div></details>${xe||sp?"":teamDay(sim,ord)}`;
       const pane=(k,h)=>`<div class="nvd-pane" data-pane="${k}"${k===cur?"":" hidden"}>${h}</div>`;
@@ -2192,8 +2204,11 @@ function teamEvents(rows){const ev=[];rows.forEach((r,n)=>r.st.forEach(z=>{if(z.
 function teamDay(sim,ord){if(!sim||!sim.rows.length)return "";const ev=teamEvents(sim.rows);if(!ev.length)return "";
   const no=i=>ord.indexOf(i)>=0?`<span class="nvd-pt">${ord.indexOf(i)+1}</span>`:`<span class="nvd-pt o">·</span>`,out=[];let prev=null;
   ev.forEach(e=>{const nm=esc(shortN(S[e.i].n));
-    if(prev&&prev.i!==e.i)out.push(`<li class="m"><time>${hhmm(prev.b)}</time><span>đi sang ${nm} · khoảng ${Math.round(legMin(prev.i,e.i))} phút</span></li>`);
-    else if(prev&&e.a-prev.b>=1)out.push(`<li class="m"><time>${hhmm(prev.b)}</time><span>chờ xe tới ${Math.round(e.a-prev.b)} phút</span></li>`);
+    /* khoảng trống của nhóm: nói rõ đang chờ gì (hàng chưa sẵn / xe chưa tới) */
+    const why=(t0,m)=>e.k==="s"?(e.z.rdy!=null&&e.a<=e.z.rdy+1?`chờ hàng của ${nm} sẵn (seller có hàng từ ${hhmm(e.z.rdy)}) · ${Math.round(m)} phút`:`chờ ${Math.round(m)} phút rồi sort (sort sát giờ xe tới)`):`chờ xe tới ${Math.round(m)} phút`;
+    const wl=(t0,m)=>`<li class="m${m>=30?" wt":""}"><time>${hhmm(t0)}</time><span>${why(t0,m)}</span></li>`;
+    if(prev&&prev.i!==e.i){const lg=legMin(prev.i,e.i),ar=prev.b+lg;out.push(`<li class="m"><time>${hhmm(prev.b)}</time><span>đi sang ${nm} · khoảng ${Math.round(lg)} phút</span></li>`);if(e.a-ar>=1)out.push(wl(ar,e.a-ar));}
+    else if(prev&&e.a-prev.b>=1)out.push(wl(prev.b,e.a-prev.b));
     if(e.k==="s")out.push(`<li class="s"><time>${hhmm(e.a)}–${hhmm(e.b)}</time><span>${no(e.i)} Sort tại <b>${nm}</b> · ${f0(e.z.q)} đơn</span></li>`);
     else{const w=Math.max(0,e.a-e.z.arr);out.push(`<li class="x"><time>${hhmm(e.a)}–${hhmm(e.b)}</time><span>${no(e.i)} Xe ${e.n+1} tới lúc ${hhmm(e.z.arr)}, nhóm <b>chất ${f0(e.z.q)} đơn lên xe</b>, xe rời ${hhmm(e.b)}${w>=1?` · <em>xe chờ nhóm ${Math.round(w)}'</em>`:""}</span></li>`);}
     prev=e;});
