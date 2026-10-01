@@ -254,3 +254,9 @@ Giờ có hàng / giờ người có mặt:
 - Sau khi có cả kế hoạch xe và người: tuyến xe MỚI được kiểm với đúng bố trí người của kế hoạch (nhiều nhóm cùng lúc); không kịp thì các điểm của tuyến rời nhóm chung (vd. Cross kho 24 → Hannah-Seyo → MASAN).
 - `simRun`: (1) người riêng sort theo thứ tự COT, tính sẵn (`thrM`) — trước đây theo thứ tự xe được xử lý: xe COT1 bị lùi sau xe COT2 thì hàng COT1 sort sau, xe chờ, bị lùi tiếp (Song Lo: xe COT1 NongSan3Mien bị lùi 521' tới 17:47). (2) Chỗ chất hàng theo khung giờ (khe trống sớm nhất), không xếp hàng theo thứ tự xử lý. (3) Chỉ cho cả lượt chạy sớm khi chính xe là nút thắt (không chờ hàng/người/chỗ ở điểm trễ hoặc trước đó) — trước đây với xe theo yêu cầu, lượt bị đẩy sớm 706' vô ích.
 - Kiểm với data thật: vẫn khớp 141/160, giờ xe rời lệch trung vị −10'. Kết quả: gốc −332; North 43/65, South 105/41, HN 482/0, HCM 177/8. Kiểm tra nhất quán: 0 lỗi mọi vùng; lưu ý North 11, HN 4 (tuyến/nhóm giữ nguyên; phần lớn là ngày đông, 2 chỗ mô phỏng lệch xa thực tế: KhoPhiHung → Si Le và nhóm GaoChungTri).
+
+## Cập nhật 01/10: ghép chuyến = ghép trọn
+- Vận hành xác nhận: tuyến ghép phải chở hết hàng của các điểm ghép, mọi xe của tuyến ghé tất cả các điểm (không "ghép nửa vời": xe đầy hàng một điểm đi thẳng + xe gom phần lẻ). `truck.fullGhep` (mặc định bật): mỗi điểm chia hàng cho mọi xe của lượt theo sức chở; tiền đi vòng tính cho mọi xe (`PR_DS`=1). Tắt thì về kiểu dùng chung đội xe (điểm lớn lên trọn xe, chỉ gom phần lẻ; tiền đi vòng chỉ cho phần xe ghép ước tính `PR_DS`).
+- Hiển thị: thẻ tuyến ghi "Ghép trọn: n xe/ngày đông, xe nào cũng ghé đủ k điểm" (hoặc số xe đi thẳng / xe ghép nếu tắt); đầu mỗi COT trong popup liệt kê xe đi thẳng / xe ghép.
+- Cụm MASAN + xiaomi + Cross kho 24 + Hannah-Seyo (5/7 xe mỗi COT đi thẳng MASAN) không còn được đề xuất.
+- Kết quả: gốc −335; North 43/66, South 76/41, HN 571/0, HCM 129/8 → sau kế hoạch +599. Kiểm tra nhất quán 0 lỗi; khớp data thật 141/160.
