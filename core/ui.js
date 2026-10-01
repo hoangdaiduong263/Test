@@ -15,7 +15,14 @@
   ST.R = ST.R || REGS[0];
 
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
-  const LV = Live(C, $("live"));
+  /* hạn COT chỉnh tay: lưu trên trình duyệt, nạp lại khi mở trang */
+  try { const o = JSON.parse(localStorage.getItem("d2s-core-dl") || "{}"); Object.entries(o).forEach(([n, m]) => Object.entries(m).forEach(([k, v]) => C.setDeadline(n, +k, v))); } catch (e) {}
+  const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => C.setDeadline(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify(C.DLOV)); } catch (e) {}
+    const R = ST.R; delete ST.res[R]; ST.open.clear(); document.querySelector(".wrap").classList.add("busy");
+    setTimeout(() => { const r = res(R); document.querySelector(".wrap").classList.remove("busy"); render();
+      /* mở lại gói có nhiều điểm chung nhất với gói đang xem (kế hoạch có thể đổi sau khi chạy lại) */
+      let best = -1, bn = 0; r.packs.forEach((p, k) => { const n = p.nw.flat().filter(i => pts.includes(i)).length; if (n > bn) { bn = n; best = k; } });
+      if (best >= 0) LV.open(r, r.packs[best], `Gói ${best + 1} · ${R}`); else LV.close(); }, 20); } });
   const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
   function tabs() {

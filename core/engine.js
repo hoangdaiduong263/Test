@@ -138,7 +138,14 @@ function Core(D, REF) {
   const legMin = (i, j) => 5 + (kmPt(i, j) ?? 10) / simK().spd;
   const openOf = i => REF.OPENT[nm(i)] ?? Math.min(P.open, (() => { const w = waves(i); return w ? Math.min(...w.w.map(x => x.arr)) - 60 : 1e9; })());
   /* hạn của một lượt = giờ Packed của COT; nếu hiện nay xe đã đi muộn hơn thì hạn = giờ đi hiện nay (không bắt tốt hơn thực tế) */
-  function deadline(i, w) { const c = cotsOf(i)[w.k]; return w.dep > c.p && !c.close ? w.dep : c.p; }
+  /* hạn chỉnh tay theo điểm × COT (phút từ 0h), ưu tiên hơn mọi quy tắc trên */
+  const DLOV = {};
+  const dlAuto = (i, w) => { const c = cotsOf(i)[w.k]; return w.dep > c.p && !c.close ? w.dep : c.p; };
+  function deadline(i, w) { const o = DLOV[nm(i)]; return o && o[w.k] != null ? o[w.k] : dlAuto(i, w); }
+  /* bảng hạn của một điểm: mỗi lượt xe thật → giờ Packed của COT, giờ rời hiện nay, hạn tự tính, hạn chỉnh tay */
+  const dlInfo = i => { const W = waves(i); return W ? W.w.map(w => { const c = cotsOf(i)[w.k], o = (DLOV[nm(i)] || {})[w.k];
+    return { k: w.k, p: c.p, close: !!c.close, dep: w.dep, auto: dlAuto(i, w), ov: o ?? null, dl: o ?? dlAuto(i, w) }; }) : []; };
+  const setDeadline = (name, k, v) => { if (v == null) { if (DLOV[name]) { delete DLOV[name][k]; if (!Object.keys(DLOV[name]).length) delete DLOV[name]; } } else (DLOV[name] = DLOV[name] || {})[k] = v; };
 
   /* ---------- chuyến đi chung thật (để biết tuyến hiện nay) ---------- */
   let CO = null;
@@ -333,7 +340,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: [...ban], packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, run, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { P, VEH, REGIONS, S, run, dlInfo, setDeadline, DLOV, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

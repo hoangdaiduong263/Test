@@ -1,6 +1,6 @@
 /* LIVE: phát lại mô phỏng ngày đông của một gói theo đồng hồ — bản đồ (điểm, SOC, FM Hub, xe, nhóm hub) + nhật ký sự kiện.
    Mọi mốc giờ lấy từ kết quả mô phỏng (r.hc(g).sim, nhóm hub t.seg): đây là phát lại, không tính lại. */
-function Live(C, root) {
+function Live(C, root, opts) {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const hm = m => { const x = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(x / 60)).padStart(2, "0") + ":" + String(x % 60).padStart(2, "0"); };
   const short = i => C.nm(i).replace(/^(HN|HCM|DNCH|North|South)\s*(SPC|Seller)?\s*[-_]\s*/i, "").trim();
@@ -83,6 +83,7 @@ function Live(C, root) {
         <span class="lv-clock mono" id="lv-clock">${hm(M.t0)}</span>
         <input type="range" id="lv-scrub" min="${M.t0}" max="${M.t1}" step="1" value="${M.t0}" aria-label="Thời gian">
         <label class="muted" for="lv-speed">Tốc độ</label><select id="lv-speed"><option value="15">15 phút/giây</option><option value="30">30 phút/giây</option><option value="60" selected>1 giờ/giây</option><option value="120">2 giờ/giây</option></select></div>
+      <div class="lv-dlw" id="lv-dl"></div>
       <div class="lv-grid"><div class="lv-map"><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ gói"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
         <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
@@ -99,7 +100,21 @@ function Live(C, root) {
       const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
     M.teamEl = {}; [...new Set(M.moves.map(m => m.id))].forEach(id => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 8 }, g); el("text", { y: 3.5, class: "c" }, g).textContent = "H" + id; M.teamEl[id] = g; });
     M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = tk.n > 1 ? "×" + tk.n : "xe"; return g; });
-    invDraw(M); wire(); draw(); }
+    dlTable(p, title); invDraw(M); wire(); draw(); }
+
+  /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
+  const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
+  function dlTable(p, title) { const pts = M.pts, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
+    const why = x => x.ov != null ? "chỉnh tay" : x.close ? "giờ bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
+    root.querySelector("#lv-dl").innerHTML = `<div class="lv-ih"><h3>Hạn COT dùng để tính trễ</h3><span class="muted" style="font-size:12px">sửa giờ rồi bấm chạy lại · lưu trên trình duyệt này</span></div>
+      <div class="scroll"><table class="lv-dlt"><thead><tr><th>Điểm</th>${ks.map(k => `<th>COT${k + 1}</th>`).join("")}</tr></thead><tbody>${pts.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const x = info[i].find(y => y.k === k);
+        return x ? `<td><input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="dl-${i}-${k}" data-i="${i}" data-k="${k}" value="${hm(x.dl)}" class="${x.ov != null ? "ov" : ""}" aria-label="Hạn COT${k + 1} ${esc(short(i))}"><small>${esc(why(x))}</small></td>` : `<td class="muted">–</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>
+      <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-dlrun">Chạy lại với hạn này</button><button type="button" class="btn ghost" id="lv-dlclr">Bỏ chỉnh tay các điểm này</button></div>`;
+    const send = clr => { const ch = []; root.querySelectorAll("#lv-dl input").forEach(e => { const i = +e.dataset.i, k = +e.dataset.k, x = info[i].find(y => y.k === k), v = toMin(e.value);
+      if (clr) { if (x.ov != null) ch.push({ name: C.nm(i), k, v: null }); } else if (v != null && v !== Math.round(x.dl)) ch.push({ name: C.nm(i), k, v: v === Math.round(x.auto) ? null : v }); });
+      if (ch.length && opts && opts.onApply) opts.onApply(ch, pts); };
+    root.querySelector("#lv-dlrun").onclick = () => send(false); root.querySelector("#lv-dlclr").onclick = () => send(true);
+    root.querySelectorAll("#lv-dl input").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
   function stateOf(i, t) { const L = M.dls.filter(d => d.i === i).sort((a, b) => a.dep - b.dep), cur = L.find(d => d.dep > t);
