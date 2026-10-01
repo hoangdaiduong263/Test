@@ -48,11 +48,12 @@ function Live(C, root, opts) {
       return ts.map(t => { const a = A(t); if (t >= so.p0 && t < so.p1) S = Math.min(a, S + r * dt); if (t >= d.ready) S = q;
         /* xe chất với tốc độ chất thật (cả lượt mất dwq phút) nhưng chỉ chất được phần đã sort; rời lúc dep thì đã chất hết */
         const Ld = t < d.ls ? 0 : t >= d.dep ? q : q * (t - d.ls) / Math.max(1, d.dwq || d.dep - d.ls), L = Math.min(S, Ld);
-        const u = Math.max(0, a - S), s2 = Math.max(0, S - L); return { u, s: s2, late: t > d.dl && t < d.dep ? u + s2 : 0 }; }); };
+        const u = Math.max(0, a - S), s2 = Math.max(0, S - L); return { u, s: s2, late: t > d.dl && t < d.dep ? u + s2 : 0, a }; }); };
     const add = (A, B) => A.map((v, k) => ({ u: v.u + B[k].u, s: v.s + B[k].s, late: v.late + B[k].late })), zero = ts.map(() => ({ u: 0, s: 0, late: 0 })), pc = {};
-    const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => add(acc, series(i, d)), zero) } : null; }).filter(Boolean);
+    const wave = {};   // chuỗi tồn của từng lượt (điểm|COT) để ghi nhãn trên bản đồ
+    const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => { const sr = wave[i + "|" + d.k] = series(i, d); return add(acc, sr); }, zero) } : null; }).filter(Boolean);
     const tot = { i: null, v: rows.reduce((acc, r) => add(acc, r.v), zero) };
-    return { ts, rows: [tot].concat(rows), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
+    return { ts, wave, idx: t => Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt))), rows: [tot].concat(rows), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
   function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, H = I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
     const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
     const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
@@ -157,7 +158,8 @@ function Live(C, root, opts) {
     if (t > cur.dl) return ["s-late", `trễ ${Math.round(t - cur.dl)}'`];
     if (t >= cur.ls) return ["s-load", "đang chất"];
     if (t >= cur.ready) return ["s-ready", t >= cur.arr ? "xe chờ…" : "chờ xe"];
-    const so = M.sorts.find(s => s.i === i && t >= s.a && t < s.b); if (so) return ["s-sort", `${Math.round((t - so.a) / (so.b - so.a) * 100)}%`];
+    /* đang sort: nhãn theo số đơn — còn bao nhiêu đơn chờ sort, hay đã sort kịp phần đơn đã về (đơn của lượt còn về tiếp) */
+    const sr = M.inv && M.inv.wave[i + "|" + cur.k]; if (sr) { const v = sr[M.inv.idx(t)]; if (v.a > 0.5) return v.u >= 1 ? ["s-sort", `còn ${Math.round(v.u).toLocaleString("vi-VN")} chờ sort`] : ["s-sort", `sort kịp · ${Math.round(v.a / Math.max(1, cur.q) * 100)}% đơn đã về`]; }
     return ["s-idle", ""]; }
   function draw() { const t = M.t, F = M.F; invUpd(M);
     root.querySelector("#lv-clock").textContent = hm(t); root.querySelector("#lv-scrub").value = Math.round(t);
