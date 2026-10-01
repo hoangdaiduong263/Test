@@ -260,3 +260,9 @@ Giờ có hàng / giờ người có mặt:
 - Hiển thị: thẻ tuyến ghi "Ghép trọn: n xe/ngày đông, xe nào cũng ghé đủ k điểm" (hoặc số xe đi thẳng / xe ghép nếu tắt); đầu mỗi COT trong popup liệt kê xe đi thẳng / xe ghép.
 - Cụm MASAN + xiaomi + Cross kho 24 + Hannah-Seyo (5/7 xe mỗi COT đi thẳng MASAN) không còn được đề xuất.
 - Kết quả: gốc −335; North 43/66, South 76/41, HN 571/0, HCM 129/8 → sau kế hoạch +599. Kiểm tra nhất quán 0 lỗi; khớp data thật 141/160.
+
+## Cập nhật 01/10: SOC thiếu + tiết kiệm ảo của điểm đã đi chung xe; vạch nhân sự thống nhất
+- Gói dữ liệu artifact thiếu SOC cho 16 điểm (chuyến của các điểm này có ghé FM Hub trên đường về SOC). `fillSoc`: điểm thiếu SOC lấy SOC mà chuyến xe thật giao tới nhiều nhất (14/16 điểm; 2 điểm không có chuyến tới SOC). Ảnh hưởng: luật ghép cùng SOC, giá theo km, SOC trên thẻ/popup.
+- Gia dung Duc Hi + Gia dung Thao Van ngày nào cũng lên cùng một xe 5T chạy vòng FM Hub (Chợ Mới 02 → Chợ Mới → SW SOC), nhưng cấu hình ghi "đi riêng" → kế hoạch đề xuất "tuyến mới" và tính tiết kiệm ảo. Sửa: `netTBase` coi các điểm "đi riêng" mà đi chung chuyến thật ≥80% số ngày (cùng SOC) là đang đi chung; `netTC` giữ tiền xe thật cho nhóm như vậy.
+- Biểu đồ lịch popup tuyến: mỗi điểm có một vạch nhân sự cố định ở đáy hàng (người riêng: lúc sort phần đơn từng xe, số người ghi một lần; nhóm chung: lúc nhóm sort ở điểm), thay cho thanh rải theo làn xe. Dòng mô tả xe gộp xe giống nhau ("xe nào cũng ghé: …").
+- Kết quả: gốc −335; North 28/66, South 79/41, HN 571/0, HCM 129/8 → sau kế hoạch +518. Kiểm tra nhất quán 0 lỗi.
