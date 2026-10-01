@@ -19,7 +19,7 @@ function Live(C, root, opts) {
         ev.push({ t: way[0].t, k: "truck", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
-          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready });
+          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq });
           ev.push({ t: z.ready, k: "ready", txt: `Hàng sẵn · ${nm} (${Math.round(z.q)} đơn)` });
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : z.ready > z.arr + 0.5 ? ` · chất dần, chờ đơn cuối (${hm(z.ready)})` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
@@ -46,7 +46,8 @@ function Live(C, root, opts) {
       const win = x.avOv == null && x.win, A = t => win ? q * Math.min(1, Math.max(0, (t - x.a) / Math.max(1, x.b - x.a))) : (t >= (x.avOv ?? so.av ?? so.a) ? q : 0);
       const r = q / Math.max(0.1, C.durMin(i, q, so.n || 1)); let S = 0;
       return ts.map(t => { const a = A(t); if (t >= so.p0 && t < so.p1) S = Math.min(a, S + r * dt); if (t >= d.ready) S = q;
-        const Ld = t < d.ls ? 0 : t >= d.dep ? q : q * (t - d.ls) / Math.max(1, d.dep - d.ls), L = Math.min(S, Ld);
+        /* xe chất với tốc độ chất thật (cả lượt mất dwq phút) nhưng chỉ chất được phần đã sort; rời lúc dep thì đã chất hết */
+        const Ld = t < d.ls ? 0 : t >= d.dep ? q : q * (t - d.ls) / Math.max(1, d.dwq || d.dep - d.ls), L = Math.min(S, Ld);
         const u = Math.max(0, a - S), s2 = Math.max(0, S - L); return { u, s: s2, late: t > d.dl && t < d.dep ? u + s2 : 0 }; }); };
     const add = (A, B) => A.map((v, k) => ({ u: v.u + B[k].u, s: v.s + B[k].s, late: v.late + B[k].late })), zero = ts.map(() => ({ u: 0, s: 0, late: 0 })), pc = {};
     const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => add(acc, series(i, d)), zero) } : null; }).filter(Boolean);

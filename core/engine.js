@@ -303,7 +303,7 @@ function Core(D, REF) {
         pts.forEach(i => { const rd = ready(i), dwq = dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0);
           const arr = prev == null ? (tov[s.k] ?? Math.max(sortSt(i), Math.min(rd, rd + P.closeMin - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
           const dep = Math.max(ls + dwq, rd + P.closeMin), dl = deadline(i, w[i]);
-          st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
+          st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, dwq, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
       /* thứ tự ghé chọn riêng cho từng lượt: trễ ít nhất, rồi về sớm nhất (order = null) — hoặc theo thứ tự cho trước */
       let best = null; for (const o of order ? [order.filter(i => q[i] > 0)] : (inS.length <= 5 ? perms(inS) : [routeOrder(inS)])) { const x = run1(o); if (!best || x.lt < best.lt - 1e-9 || (Math.abs(x.lt - best.lt) < 1e-9 && x.end < best.end)) best = x; }
       late = Math.max(late, best.lt); rows.push({ t: s.t, k: s.k, nTr, st: best.st }); }
