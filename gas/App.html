@@ -2639,7 +2639,7 @@ function nvPackCards(st){const {P,sc}=st,inS=new Set(sc.pts),L=(P.up||[]).filter
   const nm=g=>g.map(i=>shortN(S[i].n));
   const needTx={size:["Đổi cỡ xe vừa hàng (tuyến giữ nguyên)",""],fix:["Sửa chỗ hiện đang trễ","Không để tiết kiệm: hiện trạng mô phỏng không kịp giờ, gói này sửa lại."],both:["Cần làm cả tuyến xe + nhóm người","Phần bắt buộc phải làm cùng thì gói mới khả thi."],either:["Lõi + phần gắn thêm","Phần bắt buộc là lõi của gói; phần “nên làm” không bắt buộc: số của nó là lợi THÊM khi bật kèm lõi, bỏ đi gói vẫn chạy."],xe:["Chỉ cần đổi tuyến xe",""],nguoi:["Chỉ cần đổi nhóm người",""]};
   const itemRow=it=>{if(it.pk.size){const p=it.pk;return `<li class="pk-it must"><div class="pk-ih"><span class="pk-tag must">Bắt buộc · Compulsory</span><span class="pk-kind xe">Đổi cỡ xe</span><b class="${cls(it.gr)}">${sgT(it.gr)} tr/kỳ</b></div>
-      <div class="dx-v" style="margin-top:3px">${p.rows.map(r=>`<span class="dx-g solo" title="${esc((()=>{const i=r.i,d=ACT.filter(x=>BASE.rows[i][x].vol>0),R0=BASE.rows[i][d[0]]||{},tr=d.reduce((a,x)=>a+(BASE.rows[i][x].trips||0),0)/Math.max(1,d.length),ot=d.reduce((a,x)=>a+(BASE.rows[i][x].opt?BASE.rows[i][x].opt.t:0),0)/Math.max(1,d.length);return `${S[i].n.trim()} · hiện nay ${f1(tr)} chuyến/ngày (${R0.veh||"–"}) → đúng cỡ ${f1(ot)} chuyến/ngày (${R0.opt?R0.opt.v:"–"})`;})())}"><span class="dx-p">${esc(r.pts.map(j=>shortN(S[j].n)).join(r.pts.length>1?" + ":""))}</span><small>${r.pts.length>1?"tuyến · ":""}${sgT(r.d)}</small></span>`).join("")}</div></li>`;}
+      <div class="dx-v" style="margin-top:3px">${p.rows.map(r=>`<span class="dx-g solo" title="${esc((()=>{const i=r.i,d=ACT.filter(x=>BASE.rows[i][x].vol>0),R0=BASE.rows[i][d[0]]||{},tr=d.reduce((a,x)=>a+(BASE.rows[i][x].trips||0),0)/Math.max(1,d.length),ot=d.reduce((a,x)=>a+(BASE.rows[i][x].opt?BASE.rows[i][x].opt.t:0),0)/Math.max(1,d.length);return `${S[i].n.trim()} · hiện nay ${f1(tr)} chuyến/ngày (${R0.veh||"–"}) → đúng cỡ ${f1(ot)} chuyến/ngày (${R0.opt?R0.opt.v:"–"})`;})())}"><span class="dx-p">${esc(r.pts.map(j=>shortN(S[j].n)).join(r.pts.length>1?" + ":""))}</span><small>${r.pts.length>1?"tuyến · ":""}${sgT(r.d)}</small>${(()=>{const F=fillStats(r.pts);return `<button type="button" class="fl-btn" data-fillv="${r.pts.join(",")}" title="Lấp đầy xe: hiện nay → đổi cỡ xe (theo số đơn)">${fpc(F.fN)} → ${fpc(F.fA)}</button>`;})()}</span>`).join("")}</div></li>`;}
     const p=it.pk,xe=it.kind==="xe",kd=xe?"Tuyến xe":"Nhóm người",tag=it.tag==="must"?`<span class="pk-tag must" title="${it.core?"Lõi của gói":"Phải làm cùng để gói khả thi"}">Bắt buộc · Compulsory</span>`:`<span class="pk-tag nice" title="Gắn thêm vào gói: tự có lợi, bỏ đi gói vẫn chạy">Nên làm · Nice-to-have</span>`;
     const newG=p.gs.filter(g=>g.length>1),cutG=p.cut.filter(g=>g.length>1&&!newG.some(h=>gkey(h)===gkey(g)));
     const what=[...newG.map(g=>`${xe?"tuyến ghép trọn":"nhóm người chung"} <b>${esc(nm(xe?(routeSched(g).order||g):g).join(xe?" → ":" + "))}</b> ${nvOpenBtn(it.kind,g,"xem →")}`),
@@ -3481,6 +3481,41 @@ function tripPath(t,vs){
     return `<li${me?' class="me"':""}><b>${esc(x.n)}</b> <span class="mini" style="display:inline">${ty}${me?" · điểm này":""}</span><br>
       ${x.up?`lên ${f0(x.up)} đơn${x.to?` (${f0(x.to)} TO)`:""}`:""}${x.up&&x.dn?" · ":""}${x.dn?`xuống ${f0(x.dn)} đơn`:""}${!x.up&&!x.dn?"không lên/xuống đơn":""}
       <span class="mini" style="display:inline"> · đến ${x.a!=null?hm(x.a):"–"}${x.ak!=null?` (KH ${hm(x.ak)}${late!=null&&Math.abs(late)>=5?`, ${late>0?"trễ":"sớm"} ${Math.abs(late)} phút`:""})`:""}${x.dp!=null?` · đi ${hm(x.dp)}`:""}</span></li>`;}).join("")}</ol>`;}
+/* LẤP ĐẦY XE theo số đơn (chưa có m³/kg): hiện nay = đơn lên xe ÷ sức chứa các chuyến thật; đổi cỡ xe = đơn ÷ sức chứa phương án đúng cỡ (BASE.rows opt) — cùng số với gói đổi cỡ xe */
+const pmx=(t,acc,f)=>{String(t||"").replace(/([\d.]+)×(\w+)/g,(_,n,k)=>{const kk=k==="KHAC"?"VAN":k;acc[kk]=(acc[kk]||0)+(+n)*(f||1);});return acc;};
+const cap100=(k,beta)=>{const v=vehBy(k);return v&&v.n>0&&v.b>0?1/((1-beta)/v.n+beta/v.b):0;};
+function fillStats(pts){PR_R=S[pts[0]].R;const days=[];
+  ACT.forEach(d=>{const rs=pts.map(i=>BASE.rows[i][d]),vol=rs.reduce((a,r)=>a+(r.vol||0),0);if(vol<=0)return;
+    const load=rs.reduce((a,r)=>a+(r.load||r.vol||0),0),bk=rs.reduce((a,r)=>a+(r.bk||0),0),beta=bk/vol;
+    const real=rs.every(r=>!(r.vol>0)||(r.src==="real"&&r.fillAct>0));
+    const nowCap=real?rs.reduce((a,r)=>a+(r.vol>0?(r.load||r.vol)/r.fillAct:0),0):null,nowMix={};rs.forEach(r=>{if(r.vol>0)pmx(r.veh,nowMix);});
+    const o=(rs.find(r=>r.vol>0&&r.opt)||{}).opt||{},aftMix=pmx(o.v,{}),oT=rs.reduce((a,r)=>a+(r.vol>0&&r.opt?r.opt.t:0),0);
+    /* đơn lên xe thật nhiều hơn file volume: phương án đúng cỡ nâng theo đơn thật (optL, cùng số dùng tính tiết kiệm) */
+    const aftT=rs.reduce((a,r)=>a+(r.vol>0&&(r.optL||r.opt)?(r.optL||r.opt).t:0),0),sc=oT>0?aftT/oT:1;Object.keys(aftMix).forEach(k=>{aftMix[k]*=sc;});
+    const aftCap=Object.entries(aftMix).reduce((a,[k,n])=>a+n*cap100(k,beta),0);
+    days.push({d,vol,load,beta,nowCap,nowT:rs.reduce((a,r)=>a+(r.vol>0?r.trips||0:0),0),nowMix,aftCap,aftT,aftMix,fN:nowCap?load/nowCap:null,fA:aftCap?load/aftCap:null});});
+  const W=(f,c)=>{const x=days.filter(z=>z[c]);const L=x.reduce((a,z)=>a+z.load,0),C=x.reduce((a,z)=>a+z[c],0);return C>0?L/C:null;};
+  const avgMix=k=>{const m={};days.forEach(z=>pmx(mixLabel(z[k]),m,1/days.length));return mixLabel(Object.fromEntries(Object.entries(m).filter(x=>x[1]>=0.05).sort((x,y)=>y[1]-x[1])));};
+  const sb=days.slice().sort((a,b)=>a.load-b.load),pk=sb.length?sb[Math.min(sb.length-1,Math.floor(0.9*sb.length))]:null;
+  const vol=days.reduce((a,z)=>a+z.vol,0),beta=vol>0?days.reduce((a,z)=>a+z.beta*z.vol,0)/vol:0;
+  return {days,fN:W(0,"nowCap"),fA:W(0,"aftCap"),pk,beta,nowL:avgMix("nowMix"),aftL:avgMix("aftMix"),
+    nowT:days.reduce((a,z)=>a+z.nowT,0)/Math.max(1,days.length),aftT:days.reduce((a,z)=>a+z.aftT,0)/Math.max(1,days.length),load:days.reduce((a,z)=>a+z.load,0)/Math.max(1,days.length)};}
+const fpc=v=>v==null?"–":Math.round(v*100)+"%";
+MR.fill=m=>{const pts=m.pts,F=fillStats(pts),fl=Math.min(...pts.map(flDef))/100;
+  const card=(h,f,pkf,t,lab,cls)=>`<div class="fl-c ${cls}"><div class="fl-h">${h}</div><div class="fl-v">${fpc(f)}</div><div class="fl-s">ngày đông ${fpc(pkf)}</div><div class="fl-s"><b>${f1(t)}</b> chuyến/ngày · ${esc(lab||"–")}</div></div>`;
+  const used=new Set([...Object.keys(pmx(F.nowL,{})),...Object.keys(pmx(F.aftL,{}))]);
+  const caps=vehList().map(v=>`<span class="fl-cap${used.has(v.k)?" on":""}"><b>${v.k}</b> ${f0(cap100(v.k,F.beta))}<small> · xếp ${Math.round(fl*100)}%: ${f0(cap100(v.k,F.beta)*fl)}</small></span>`).join("");
+  /* biểu đồ theo ngày: cột xám = hiện nay, cột màu = đổi cỡ xe; vạch 100% và vạch mức xếp tối đa */
+  const D0=F.days,n=D0.length,Wd=Math.max(560,n*22),H=170,top=12,bot=22,mx=Math.max(1.2,...D0.map(z=>Math.max(z.fN||0,z.fA||0)))*1.05,y=v=>top+(H-top-bot)*(1-v/mx),bw=Math.max(3,(Wd/n-6)/2);
+  let g=`<line x1="0" x2="${Wd}" y1="${y(1)}" y2="${y(1)}" class="fl-l100"/><text x="2" y="${y(1)-3}" class="fl-ax">100%</text><line x1="0" x2="${Wd}" y1="${y(fl)}" y2="${y(fl)}" class="fl-lfl"/><text x="2" y="${y(fl)+11}" class="fl-ax">xếp tối đa ${Math.round(fl*100)}%</text>`;
+  D0.forEach((z,k)=>{const x0=k*Wd/n+3;const tt=esc(`${dayLabel(z.d)} · ${f0(z.load)} đơn\nHiện nay: ${f1(z.nowT)} chuyến ${mixLabel(z.nowMix)} → đầy ${fpc(z.fN)}\nĐổi cỡ xe: ${f1(z.aftT)} chuyến ${mixLabel(z.aftMix)} → đầy ${fpc(z.fA)}`);
+    g+=`<g><title>${tt}</title>${z.fN!=null?`<rect x="${x0}" y="${y(z.fN)}" width="${bw}" height="${y(0)-y(z.fN)}" class="fl-bn"/>`:""}${z.fA!=null?`<rect x="${x0+bw}" y="${y(z.fA)}" width="${bw}" height="${y(0)-y(z.fA)}" class="fl-ba${z.fA>fl+0.005?" over":""}"/>`:""}${n<=40&&k%Math.ceil(n/16)===0?`<text x="${x0+bw}" y="${H-6}" text-anchor="middle" class="fl-ax">${dayLabel(z.d)}</text>`:""}</g>`;});
+  const pk=F.pk;
+  const body=`<div class="fl-cards">${card("Hiện nay",F.fN,pk&&pk.fN,F.nowT,F.nowL,"now")}<div class="fl-arr">→</div>${card("Đổi cỡ xe",F.fA,pk&&pk.fA,F.aftT,F.aftL,"aft")}</div>
+    <div class="fl-sec"><div class="fl-k">Một xe chở được (đơn · ${Math.round(F.beta*100)}% hàng to)</div><div class="fl-caps">${caps}</div></div>
+    <div class="fl-sec"><div class="fl-k">Theo ngày <span class="fl-key"><i class="n"></i>hiện nay <i class="a"></i>đổi cỡ xe</span></div><div class="fl-chart"><svg viewBox="0 0 ${Wd} ${H}" width="${Wd}" height="${H}" role="img" aria-label="Lấp đầy xe theo ngày">${g}</svg></div></div>
+    <p class="note expl">Tính theo số đơn (đơn thường / hàng to), chưa có m³ và kg. Hiện nay = đơn lên xe ÷ sức chứa các chuyến thật. Đổi cỡ xe = cùng số đơn ÷ sức chứa xe đề xuất, xếp tối đa ${Math.round(fl*100)}% mỗi xe.</p>`;
+  return {title:`Lấp đầy xe · ${esc(pts.map(i=>shortN(S[i].n)).join(" + "))}`,sub:`${f0(F.load)} đơn/ngày · ${n} ngày`,size:"md",body};};
 MR.trips=m=>{const i=m.i,s=S[i],vs=s.n.trim(),d=m.d,L=tripsOf(i,d),r=BASE.rows[i][d];
   const days=ACT.filter(x=>s.tc&&s.tc[x]&&s.tc[x].length),k=days.indexOf(d),prev=k>0?days[k-1]:null,next=k>=0&&k<days.length-1?days[k+1]:null;
   const byV={};L.forEach(t=>{byV[t.veh]=(byV[t.veh]||0)+t.frac;});
@@ -3925,6 +3960,7 @@ document.addEventListener("click",e=>{
   const bun=t.closest("[data-bunsel]");if(bun){delete (ui.bsel||{})[bun.dataset.bunsel];renderModals();return;}
   const bcl=t.closest("[data-bclr]");if(bcl){ui.bsel={};ui.bmsg="";renderModals();return;}
   const hbr=t.closest("[data-hubreset]");if(hbr){const [R,h]=hbr.dataset.hubreset.split("|");hubReset(R,h);return;}
+  const flv=t.closest("[data-fillv]");if(flv){openModal({k:"fill",pts:flv.dataset.fillv.split(",").map(Number)});return;}
   const nvd=t.closest("[data-nvd]");if(nvd){const [k,jj]=nvd.dataset.nvd.split("|"),D=(NVD[k]||{})[+jj];openModal({k:"nvd",kind:k,j:+jj,key:D?gkey(D.x.g):null,D});return;}
   const tvx=t.closest("[data-tovx]");if(tvx){if(G.tov)delete G.tov[tvx.dataset.tovx];saveCfg();refreshAll();return;}
   if(t.closest("[data-nvmore]")){ui.nvN=(ui.nvN||6)+6;const box=$("nvBox");if(box)box.outerHTML=netViz();return;}

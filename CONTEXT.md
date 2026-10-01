@@ -475,3 +475,8 @@ Giờ có hàng / giờ người có mặt:
 - Lỗi: Cross kho 24 (gói tuyến A) và Hannah-Seyo (gói tuyến B) chung một nhóm người không đổi → lịch nhóm phụ thuộc cả hai xe → cộng gói ≠ cả kế hoạch (South, số chỗ chất hàng = 2: 276,4 vs 273,6).
 - Sửa: netPlan gộp mọi phần chạm cùng một nhóm L1 / tuyến T1 nhiều điểm vào một gói. Gói đổi cỡ xe bỏ dòng có tương tác >0,2 tr với gói khác qua nhóm người chung (vẫn chỉnh từng điểm được).
 - Mặc định: South +249,4 (bỏ Duc Hi+Thao Van đổi cỡ xe); vùng khác không đổi. Cộng gói = cả kế hoạch ở mọi vùng.
+
+## Popup "Lấp đầy xe" (gói đổi cỡ xe)
+- Mỗi dòng của gói "Đổi cỡ xe" có nút `hiện nay% → đổi cỡ%` (data-fillv) mở MR.fill.
+- fillStats(pts): theo ngày; hiện nay = đơn lên xe (load) ÷ sức chứa 100% các chuyến thật (= fillAct); đổi cỡ = load ÷ sức chứa xe của BASE.rows opt (nâng theo optL khi đơn thật > file volume — cùng số dùng tính tiết kiệm). Sức chứa theo số đơn (đơn thường n / hàng to b), chưa có m³/kg.
+- Popup: 2 thẻ (TB + ngày đông p90 + chuyến/ngày + loại xe), sức chứa 1 xe theo % hàng to, biểu đồ cột theo ngày (vạch 100% và mức xếp tối đa flDef).

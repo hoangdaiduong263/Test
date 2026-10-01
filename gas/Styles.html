@@ -931,4 +931,35 @@ body:not(.expl-on) :is(.save-state,.nv-over .row>.mini,.nvd-pane>p.mini,.nvd-vd,
 @media (max-width:560px){.p{grid-template-columns:minmax(0,1fr)}.p .val{justify-content:flex-end}}
 body:not(.expl-on) .p .nm em{display:none}
 .mdl.xwide{width:min(1500px,calc(100vw - 24px))}
+/* lấp đầy xe (popup đổi cỡ xe) */
+.fl-btn{margin-left:6px;font:600 11px/1 var(--mono);padding:3px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap}
+.fl-btn:hover{border-color:var(--ink)}
+.fl-cards{display:flex;align-items:stretch;gap:10px;margin:0 0 14px}
+.fl-c{flex:1;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
+.fl-c.aft{border-color:var(--profit)}
+.fl-h{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fl-v{font:700 28px/1.2 var(--mono);margin:2px 0}
+.fl-c.aft .fl-v{color:var(--profit)}
+.fl-s{font-size:12px;color:var(--muted);margin-top:2px}
+.fl-s b{color:var(--ink)}
+.fl-arr{align-self:center;font-size:20px;color:var(--muted)}
+.fl-sec{margin:0 0 12px}
+.fl-k{font-size:12px;font-weight:600;margin:0 0 6px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.fl-caps{display:flex;flex-wrap:wrap;gap:6px}
+.fl-cap{font-size:12px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--muted)}
+.fl-cap b{color:var(--ink);margin-right:4px}
+.fl-cap.on{border-color:var(--ink);color:var(--ink)}
+.fl-cap small{color:var(--muted)}
+.fl-chart{overflow-x:auto;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--panel)}
+.fl-chart svg{display:block;max-width:none}
+.fl-bn{fill:var(--muted);opacity:.45}
+.fl-ba{fill:var(--profit)}
+.fl-ba.over{fill:var(--loss)}
+.fl-l100{stroke:var(--ink);stroke-width:1;opacity:.5}
+.fl-lfl{stroke:var(--profit);stroke-width:1;stroke-dasharray:4 3}
+.fl-ax{font-size:10px;fill:var(--muted);font-family:var(--sans)}
+.fl-key{font-weight:400;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.fl-key i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.fl-key i.n{background:var(--muted);opacity:.45}.fl-key i.a{background:var(--profit);margin-left:6px}
+@media (max-width:560px){.fl-cards{flex-direction:column}.fl-arr{transform:rotate(90deg)}}
 </style>
