@@ -7,16 +7,16 @@
 :root{
   --bg:#f4f6f9; --panel:#ffffff; --ink:#162033; --muted:#5a6579; --line:#dde2ea; --soft:#eef1f6;
   --accent:#2445c4; --accent-soft:#e7ecfb;
-  --ok:#1c7a4e; --ok-soft:#e3f3ea; --bad:#b3332a; --bad-soft:#fbe8e6;
+  --ok:#1c7a4e; --ok-soft:#e3f3ea; --bad:#b3332a; --bad-soft:#fbe8e6; --warn:#b26a00;
   --f-body:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0e131b; --panel:#151c27; --ink:#e5eaf2; --muted:#9aa4b6; --line:#273143; --soft:#1b2433;
-  --accent:#93a8ff; --accent-soft:#1e2846; --ok:#5ec48f; --ok-soft:#132c1e; --bad:#ff8c80; --bad-soft:#371a18; color-scheme:dark}}
+  --accent:#93a8ff; --accent-soft:#1e2846; --ok:#5ec48f; --ok-soft:#132c1e; --bad:#ff8c80; --bad-soft:#371a18; --warn:#f0a63a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0e131b; --panel:#151c27; --ink:#e5eaf2; --muted:#9aa4b6; --line:#273143; --soft:#1b2433;
-  --accent:#93a8ff; --accent-soft:#1e2846; --ok:#5ec48f; --ok-soft:#132c1e; --bad:#ff8c80; --bad-soft:#371a18; color-scheme:dark}
+  --accent:#93a8ff; --accent-soft:#1e2846; --ok:#5ec48f; --ok-soft:#132c1e; --bad:#ff8c80; --bad-soft:#371a18; --warn:#f0a63a; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body)}
 .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 56px;display:grid;gap:18px}
 h1{font-size:20px;font-weight:700;margin:0;letter-spacing:-.01em}
@@ -100,6 +100,42 @@ details.prm[open]>summary::after{content:"▴"}
 .btn.ghost{background:none;color:var(--accent)}
 .empty{padding:16px;color:var(--muted)}
 .busy{opacity:.55;pointer-events:none}
+/* live */
+.play{border:1px solid var(--accent);background:none;color:var(--accent);border-radius:6px;width:26px;height:24px;font-size:11px;line-height:1}
+.play:hover{background:var(--accent);color:var(--panel)}
+.lv>header .x{border:0;background:none;color:var(--muted);font-size:16px;margin-left:auto}
+.lv-ctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.lv-clock{font-size:24px;font-weight:600;min-width:76px}
+.lv-ctl input[type=range]{flex:1 1 220px;min-width:0;accent-color:var(--accent)}
+.lv-ctl select{font:inherit;background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.lv-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:0}
+@media (max-width:860px){.lv-grid{grid-template-columns:1fr}}
+.lv-map{padding:10px 12px;border-right:1px solid var(--line);min-width:0}
+.lv-map svg{width:100%;height:auto;display:block;background:var(--soft);border-radius:8px}
+.lv-route{fill:none;stroke:var(--line);stroke-width:2;stroke-dasharray:5 4}
+.lv-soc{fill:var(--ink)}.lv-hub{fill:var(--muted)}
+.lv-lab{font:600 11px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--soft);stroke-width:3px}
+.lv-lab.sm{font-weight:400;fill:var(--muted)}.c{text-anchor:middle}
+.lv-st{font:600 11px var(--f-mono);paint-order:stroke;stroke:var(--soft);stroke-width:3px;fill:var(--ink)}
+.lv-pt{stroke:var(--panel);stroke-width:2;transition:fill .2s}
+.lv-ring{fill:none;stroke-width:3;stroke:transparent}
+.s-idle{fill:var(--muted);background:var(--muted)}.s-sort{fill:var(--warn);background:var(--warn)}.s-ready{fill:var(--ok);background:var(--ok)}
+.s-load{fill:var(--accent);background:var(--accent)}.s-done{fill:var(--line);background:var(--line)}.s-late{fill:var(--bad);background:var(--bad)}
+.lv-ring.s-late{stroke:var(--bad);fill:none;animation:pulse 1s infinite}.lv-ring.s-load{stroke:var(--accent);fill:none}
+@keyframes pulse{50%{stroke-opacity:.2}}
+.lv-truck rect{fill:var(--accent)}.lv-truck.late rect{fill:var(--bad)}.lv-truck text{font:600 10px var(--f-mono);fill:var(--panel)}
+.lv-team circle{fill:var(--warn)}.lv-team text{font:600 8.5px var(--f-mono);fill:var(--panel)}
+.lv-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--muted);padding-top:8px}
+.lv-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.lv-side{display:grid;grid-template-rows:auto 1fr;min-width:0}
+.lv-kpi{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.lv-kpi div{background:var(--panel);padding:8px 12px;display:grid}
+.lv-kpi span{font-size:11px;color:var(--muted)}.lv-kpi b{font-size:18px}.lv-kpi .bad b{color:var(--bad)}
+.lv-log{list-style:none;margin:0;padding:6px 0;max-height:420px;overflow:auto;font-size:12.5px}
+.lv-log li{display:flex;gap:8px;padding:4px 12px;border-left:3px solid transparent}
+.lv-log li span{color:var(--muted);flex:none}
+.lv-log li.late{border-left-color:var(--bad);color:var(--bad)}.lv-log li.ok{border-left-color:var(--ok)}.lv-log li.sort{border-left-color:var(--warn)}
+.lv-log li.new{background:var(--accent-soft)}
 @media (prefers-reduced-motion:no-preference){.step,.card{transition:opacity .15s}}
 </style>
 
@@ -109,6 +145,7 @@ details.prm[open]>summary::after{content:"▴"}
     <div class="tabs" id="tabs" role="tablist" aria-label="Vùng"></div>
   </div>
   <div class="flow" id="flow"></div>
+  <section class="card lv" id="live" hidden></section>
   <section class="card" id="packs"></section>
   <section class="card" id="teams"></section>
   <section class="card" id="bans"></section>
@@ -117,4 +154,5 @@ details.prm[open]>summary::after{content:"▴"}
 
 <script>/*DATA*/</script>
 <script>/*ENGINE*/</script>
+<script>/*LIVE*/</script>
 <script>/*UI*/</script>

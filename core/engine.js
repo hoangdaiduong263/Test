@@ -247,8 +247,10 @@ function Core(D, REF) {
   /* NHÓM FM HUB: n người đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; sang điểm khác mất km ÷ hubSpd */
   function teamReady(pts, n) { const tasks = [];
     pts.forEach(i => { const W = waves(i); if (!W) return; const sh = shareOf(i); W.w.forEach(w => { const q = volPk(i) * sh(w); tasks.push({ i, w, q, av: avail(i, w, q), dl: deadline(i, w) }); }); });
-    tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {};
-    tasks.forEach(x => { const st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = st + durMin(x.i, x.q, n); at = x.i; rd[x.i + "|" + x.w.k] = t; }); return rd; }
+    tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {}, seg = [];
+    tasks.forEach(x => { const from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = st + durMin(x.i, x.q, n); at = x.i; rd[x.i + "|" + x.w.k] = t;
+      seg.push({ i: x.i, k: x.w.k, from, leave, start: st, end: t, q: x.q }); });
+    return { rd, seg }; }
   /* mô phỏng ngày đông của tuyến g theo cách dùng người A[i] = {m: "F" | "P" | "H", team}
      F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
      H (nhóm FM Hub): hàng sẵn khi nhóm làm xong lượt đó
@@ -287,7 +289,7 @@ function Core(D, REF) {
     const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
     function tryTeam(pts) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) return null;
       const n0 = Math.max(1, Math.ceil(pts.reduce((a, i) => a + volPk(i) * work(i).w, 0) - 1e-9));
-      for (let n = n0; n <= n0 + 6; n++) { const t = { pts, n, rd: teamReady(pts, n) }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
+      for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
         if (okWith(pts, A2)) { t.c = tCost(t); return t; } } return null; }
     const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
     const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
@@ -331,7 +333,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: [...ban], packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, run, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { P, VEH, REGIONS, S, run, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

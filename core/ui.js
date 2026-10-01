@@ -15,6 +15,7 @@
   ST.R = ST.R || REGS[0];
 
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
+  const LV = Live(C, $("live"));
   const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
   function tabs() {
@@ -55,7 +56,7 @@
   function packs(r) { const L = r.packs;
     if (!L.length) { $("packs").innerHTML = `<header><h2>Các gói</h2></header><p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`; return; }
     const body = L.map((p, k) => { const id = r.R + ":" + k, open = ST.open.has(id), lab = p.nw.flat().reduce((a, i) => a + r.L1.cost[i], 0) - p.cut.flat().reduce((a, i) => a + r.L0.cost[i], 0);
-      return `<tr class="pk" data-p="${id}" aria-expanded="${open}" tabindex="0"><td class="mono">${k + 1}</td>
+      return `<tr class="pk" data-p="${id}" aria-expanded="${open}" tabindex="0"><td class="mono">${k + 1} <button type="button" class="play" data-live="${k}" aria-label="Chạy live gói ${k + 1}" title="Chạy live">▶</button></td>
         <td><div class="grp">${p.cut.map(rt).join("")}</div></td>
         <td><div class="grp">${p.nw.map(g => `<div class="rt">${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
         <td class="r mono pos">${sg(p.gain)}</td><td class="r mono ${lab <= 0 ? "pos" : "neg"}">${sg(-lab)}</td></tr>
@@ -94,10 +95,11 @@
   function queue() { const R = REGS.find(x => !ST.res[x]); if (R) setTimeout(() => { res(R); tabs(); queue(); }, 30); }
 
   document.addEventListener("click", e => { const t = e.target;
-    const tb = t.closest("[data-r]"); if (tb) { ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
+    const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
+    const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
-      if (t.id === "pdef") pform(); C.reset(); ST.res = {}; ST.open.clear(); render(); } });
+      if (t.id === "pdef") pform(); LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("tr.pk")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();

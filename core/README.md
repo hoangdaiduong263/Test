@@ -14,6 +14,7 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
 |---|---|
 | `engine.js` | Toàn bộ logic. `Core(D, REF)` → `{P, run(R), …}`. Chạy được trên trình duyệt và Node |
 | `ui.js`, `page.html` | Trang hiển thị |
+| `live.js` | Live: phát lại mô phỏng ngày đông của một gói theo đồng hồ (bản đồ + nhật ký). Chỉ đọc kết quả mô phỏng, không tính lại |
 | `build.py` | Gộp data + engine + ui thành một trang: `python3 core/build.py <data.js> <out.html>` |
 | `extract.js` | Tách `data.js` từ app cũ: `node core/extract.js gas/App.html <app cũ .html> <data.js>` |
 | `test.js` | Chạy thử trên Node, in kết quả từng vùng: `node core/test.js <data.js> [vùng]` |
