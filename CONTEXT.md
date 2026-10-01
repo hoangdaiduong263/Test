@@ -323,3 +323,10 @@ Giờ có hàng / giờ người có mặt:
   - dòng Km đi vòng/ngày ghi thêm tiền đi vòng trước → sau (`vehMix(g).kmc` = Σ kmS của truckCost, nay truyền routeKm);
   - thêm dòng "Tiền xe (tr/kỳ)" (Σ netTC, đã gồm đi vòng).
 - HN mặc định: km 42 → 145/ngày, tiền đi vòng 5,3 → 24 tr/kỳ; tiền xe 2.617,8 → 2.047,1 tr/kỳ; chuyến 116,5 → 93,4/ngày.
+
+## Cập nhật: popup tuyến/nhóm bị tách ghi đúng là "hiện nay · kế hoạch tách"
+- Trước đây, link "xem hiện nay" của một nhóm/tuyến mà kế hoạch tách ra mở popup có nhãn "giữ nguyên" và mô tả như nhóm vẫn chung người. Lý do: popup chỉ xét "có trong hiện trạng" mà không xét "có trong kế hoạch sau".
+- Nay `data-nvopen` xét cả T1/L1:
+  - mới / giữ nguyên / **hiện nay · kế hoạch tách**;
+  - `D.x.split` = nơi các điểm đi sau khi tách.
+- Tóm tắt trong popup ghi: "Đây là nhóm HIỆN NAY. Kế hoạch tách: … → người riêng; người/ngày a → b". Nhãn giờ thêm "nếu giữ nguyên:". Link trên thẻ gói đổi thành "xem vì sao tách →".
