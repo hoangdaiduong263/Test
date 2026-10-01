@@ -389,3 +389,13 @@ Giờ có hàng / giờ người có mặt:
   - người: người/ngày chạy × số ngày = người-ngày → tiền; xe: loại xe, chuyến/ngày × ngày, km đi vòng (tiền);
   - phép tính "Hiện nay − Đề xuất = Tiết kiệm", kèm số trên thẻ (tính lại cả mạng) nếu lệch;
   - bảng từng điểm.
+
+## Cập nhật: mức ưu tiên từng điểm D2S trong FM Hub (Chỉnh người hàng loạt)
+- Lưu ở `G.prio["tên điểm"]`; chọn trong "Chỉnh người hàng loạt" → hàng "Mức ưu tiên", áp cho các điểm đã chọn. Có 3 mức:
+  - **⚓ Điểm neo** (`"neo"`): người đứng cố định tại điểm, không đi nhóm (`lKeep` = true), như Hub để người ở lại Cocoon Juno.
+  - **★ Ưu tiên** (`"uu"`): vẫn chung nhóm được, nhưng:
+    1. trong lịch nhóm (simRun plan1) việc của điểm ưu tiên được làm trước nếu sẵn trong `G.lab.prioMin` (60') phút;
+    2. một mức người chỉ "đạt" khi điểm ưu tiên kịp hạn COT và được sort ngay khi hàng sẵn (chậm ≤ `PRIO_WAIT` = 10'), qua `prioOk` dùng ở cả `poolHc0` (tiền người mỗi ngày) và `teamSim`. Không mức nào đạt thì tính như người riêng / kế hoạch không gom điểm đó.
+  - **Thường**: mặc định.
+- Tag ⚓ / ★ hiện ở dòng điểm trong bảng hàng loạt và trên ô "Hiện nay / Đề xuất" của thẻ gói.
+- Thử: BaonamShop ★ → North gói 4 đổi thành 1991shop + KhongMinhKien + Thugiangshop (+7,7). sociolla ★ → nhóm sociolla + TRUE CARE vẫn đạt (+15,1). Kiểm tra nhất quán 0 lỗi.

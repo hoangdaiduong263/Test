@@ -276,7 +276,7 @@ const out={ok:true,late:-1e9,rows:[]},jobs=[],tol=G.truck.cotTol??30,pH=(G.lab.p
       T.push({J:R.J,i:z.i,eta:z.arr,p:c.p,op:openW(z.i,x.w,c.p),dur:sortPD(z.i)*(vol(z.i)>0?(R.J.qi.get(z.i)||0)/vol(z.i):0)*pH/tt.h,ld:dwellMin(z.i,z.q),done:false,sorted:false});}));
     let now=-1e9,pos=-1;const mv=i=>pos<0||pos===i?0:legMin(pos,i),doSort=u=>{const a=now+mv(u.i);u.ar=a;u.s0=Math.max(a,u.op);u.s1=u.s0+u.dur;now=u.s1;pos=u.i;u.sorted=true;};
     /* thứ tự việc của nhóm: theo lúc việc làm được thật = max(giờ xe tới, lúc hàng sort xong sớm nhất) — xe tới sớm hơn cửa sổ sort (vd. xe COT sau được kéo sớm) không được chen trước điểm có xe đang chờ */
-    const rdy=u=>byR?Math.max(u.eta,u.op+u.dur):u.eta;
+    const rdy0=u=>byR?Math.max(u.eta,u.op+u.dur):u.eta,rdy=u=>rdy0(u)-(prioOf(u.i)==="uu"?(G.lab.prioMin??60):0);   /* điểm ưu tiên: nhóm làm trước nếu việc của nó sẵn trong vòng prioMin phút */
     for(let guard=0;guard<4*T.length+5;guard++){const L=T.filter(u=>!u.done).sort((a,b)=>rdy(a)-rdy(b)||a.p-b.p);if(!L.length)break;const nx=L[0];
       if(!nx.sorted){doSort(nx);continue;}
       /* lúc chờ xe: xét lần lượt mọi điểm chưa sort (xe tới sớm trước), làm điểm đầu tiên kịp sort xong và quay về trước khi xe tới */
@@ -366,7 +366,8 @@ function poolHc0(pm,wf,ctx){const L=G.lab,W=pm.reduce((a,i)=>a+wf(i),0);if(W<=0)
   const tol=G.truck.cotTol??30,r0=simRun(runs,null,ctx.vf,ctx.sf),lim=Math.max(tol,r0.late+1);
   /* số người: trong các mức đạt giờ, chọn mức có tổng tiền người + tiền xe đứng chờ nhóm thấp nhất (thử thêm tối đa 2 người sau mức đạt đầu tiên) */
   const wP=(G.truck.waitH??100000)/60,waitOf=r=>{const w={};let t=0;r.rows.forEach(R=>R.st.forEach(z=>{if(z.l0==null)return;const m=Math.max(0,z.ls-z.arr);w[z.i]=(w[z.i]||0)+m;t+=m;}));return {w,t};};
-  let best=null;for(let h=base;h<solo;h++){const r=simRun(runs,{set:new Set(pm),h},ctx.vf,ctx.sf);if(r.late>lim){if(best)break;continue;}
+  /* điểm ưu tiên (G.prio "uu"): mức người chỉ đạt khi điểm ưu tiên kịp hạn và được sort ngay khi hàng sẵn; không mức nào đạt thì tính như người riêng */
+  let best=null;for(let h=base;h<solo;h++){const r=simRun(runs,{set:new Set(pm),h},ctx.vf,ctx.sf);if(r.late>lim||!prioOk(r)){if(best)break;continue;}
     const W2=waitOf(r),c=laborCost(h)+W2.t*wP;if(!best||c<best.c-1)best={h,c,w:W2.w};if(h>=best.h+2)break;}
   if(best){ctx.tw=best.w;return best.h;}ctx.tw={};return solo;}
 function poolRuns(pm,ctx){const seen=new Set(),runs=[];pm.forEach(i=>{const g=(ctx.ro&&ctx.ro(i))||[i],k=gkey(g);if(seen.has(k))return;seen.add(k);
@@ -1283,7 +1284,12 @@ function netLC(g){const key=gkey(g),C=NET.lc||(NET.lc={});if(key in C)return C[k
 function netCtx(d){const m=NET.t1of;return dayCtx(BASE.set,BASE.rows,d,m?(i=>{const g=m[i];if(!g)return null;const a=g.filter(j=>BASE.rows[j][d].vol>0);return a.length>1?a:null;}):null);}
 /* dùng chung người chỉ trong cùng một FM Hub (KPI tính theo hub nên hub nào lo điểm của hub đó), và không quá xa nhau */
 /* điểm khóa "giữ người riêng" (G.lkeep theo tên điểm): kế hoạch mạng không ghép người của điểm này với điểm khác */
-const lKeep=i=>!!(G.lkeep&&G.lkeep[S[i].n.trim()]);
+/* MỨC ƯU TIÊN của điểm trong FM Hub (G.prio theo tên điểm): "neo" = điểm neo, người đứng cố định tại điểm, không đi nhóm (như khóa người riêng);
+   "uu" = ưu tiên: trong nhóm chung, nhóm làm điểm này trước khi có việc cùng lúc, xe ở điểm này không phải chờ nhóm quá PRIO_WAIT phút và không được trễ hạn COT */
+const prioOf=i=>(G.prio&&G.prio[S[i].n.trim()])||"",PRIO_WAIT=10;
+/* điểm ưu tiên trong một lịch nhóm: kịp hạn COT, và hàng sẵn là nhóm có mặt sort ngay (bắt đầu sort không quá PRIO_WAIT' sau lúc sort được sớm nhất) */
+const prioOk=sm=>sm.rows.every(r=>r.st.every(z=>prioOf(z.i)!=="uu"||z.s0==null||(z.late<=0.5&&(z.rdy==null||z.s0-Math.max(z.rdy,z.arr-(z.s1-z.s0))<=PRIO_WAIT))));
+const lKeep=i=>!!(G.lkeep&&G.lkeep[S[i].n.trim()])||prioOf(i)==="neo";
 function netLOk(i,j){const km=kmPt(i,j),L=G.lab;if(lKeep(i)||lKeep(j))return false;
   return !!(S[i].h&&S[i].h===S[j].h)&&(km==null||!(L.tKm>0)||km<=L.tKm);}
 /* tìm kiếm cục bộ trên cả vùng: mỗi vòng làm nước đi giảm tổng chi phí nhiều nhất */
@@ -2041,7 +2047,8 @@ const NVD={xe:{},nguoi:{}};
 function realLateOf(i){const T=stT(i);if(!T)return 0;return Math.max(0,...T.w.map(w=>{const c=cotsOf(i)[w.k];return c?w.dep-c.p:0;}));}
 function teamSim(g){const runs=poolRuns(g,{ro:i=>{const r=NET.t1of&&NET.t1of[i];return r&&r.length>1?r:null;}});if(!runs.length)return null;
   const tol=G.truck.cotTol??30,r0=simRun(runs,null,adoOf,avgSort),lim=Math.max(tol,Math.min(r0.late,Math.max(...g.map(realLateOf)))+1),W=g.reduce((a,i)=>a+avgSort(i),0);
-  let last=null;for(let h=Math.max(1,Math.round(nvHcCal(g)));h<=Math.max(2,Math.ceil(W)+g.length);h++){last=simRun(runs,{set:new Set(g),h},adoOf,avgSort);last.h=h;if(last.late<=lim)return last;}
+  const pOk=prioOk;
+  let last=null;for(let h=Math.max(1,Math.round(nvHcCal(g)));h<=Math.max(2,Math.ceil(W)+g.length);h++){last=simRun(runs,{set:new Set(g),h},adoOf,avgSort);last.h=h;if(last.late<=lim&&pOk(last))return last;}
   if(last)last.fail=true;return last;}
 /* dòng tóm tắt lịch trên thẻ: số xe, trạng thái giờ, chạy sớm */
 function nvSchedBrief(sim,real){if(real)return `<p class="nvc-brief">Đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay.</p>`;if(!sim||!sim.rows.length)return "";const tol=G.truck.cotTol??30;
@@ -2299,7 +2306,7 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
     return `<span class="bk-fq ${k}" data-tt="${esc(`Tần suất chạy D2S (cấu hình): ${DTN.filter((_,t)=>o[t]).join(" + ")||"không chạy"}<br>Ngày có hàng trong kỳ: ${DTN.map((n,t)=>n+" "+c[t]).join(" · ")}`)}">${l}</span>`;};
   const cb=(attr,val,on,lab,part)=>`<input type="checkbox" ${attr}="${esc(val)}"${on?" checked":""}${part?' data-part="1"':""} aria-label="${esc(lab)}">`;
   const ptRow=i=>{const pl=planOf(i);return `<div class="bk-pt${sel[i]?" sel":""}">${cb("data-bsel",i,sel[i],"Chọn "+S[i].n.trim())}
-      <span class="bk-nm">${frq(i)} ${esc(shortN(S[i].n))}${lKeep(i)?' <span class="bk-tag lk" data-tt="Khóa người riêng trong kế hoạch">🔒 khóa</span>':""}${S[i].hSrc==="tay"?' <span class="bk-tag">hub chỉnh tay</span>':""}${ovTeam(i)?' <span class="bk-tag ov">nhóm chỉnh tay</span>':""}</span>
+      <span class="bk-nm">${frq(i)} ${esc(shortN(S[i].n))}${prioOf(i)==="neo"?' <span class="bk-tag pr-neo" data-tt="Điểm neo: người cố định tại điểm, không đi nhóm">⚓ neo</span>':prioOf(i)==="uu"?' <span class="bk-tag pr-uu" data-tt="Ưu tiên: hàng sẵn là nhóm sort ngay (chậm ≤ '+PRIO_WAIT+'\'), không trễ COT">★ ưu tiên</span>':""}${lKeep(i)&&prioOf(i)!=="neo"?' <span class="bk-tag lk" data-tt="Khóa người riêng trong kế hoạch">🔒 khóa</span>':""}${S[i].hSrc==="tay"?' <span class="bk-tag">hub chỉnh tay</span>':""}${ovTeam(i)?' <span class="bk-tag ov">nhóm chỉnh tay</span>':""}</span>
       <span class="bk-num">${f0(nvAdo(i))}<small>đơn</small></span><span class="bk-num">${f1(hcA(i))}<small>người</small></span>
       <span class="bk-plan${pl.ch?" ch":""}"${pl.tt?` data-tt="${esc(pl.tt)}"`:""}>${pl.ch?"→ ":""}${pl.t}</span></div>`;};
   const hubBlock=h=>{const hp=pts.filter(i=>(S[i].h||"")===h).filter(vis);if(!hp.length)return "";
@@ -2323,6 +2330,7 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
   const body=`<div class="nvd bk">${emSeg()}
     <details class="bk-help"><summary>Cách dùng</summary><p class="note" style="margin:6px 0 0">① Chọn điểm: tick từng điểm, tick cả nhóm / cả hub, hoặc dán danh sách tên. ② Bấm một thao tác — áp cho tất cả điểm đã chọn, tính lại một lần.<br>
       <b>Người hiện trạng</b>: chế độ "Sửa cho đúng thực tế" → đổi đầu vào (gốc và "Hiện trạng trước điều chỉnh" đổi theo); "Thử thay đổi" → chỉ vào kịch bản. Nhóm A/B/C là nhóm trong cùng FM Hub của từng điểm.<br>
+      <b>Mức ưu tiên</b>: ⚓ <b>điểm neo</b> → người đứng cố định tại điểm, không đi nhóm (như Hub để người ở lại Cocoon); ★ <b>ưu tiên</b> → vẫn chung nhóm được, nhưng nhóm làm điểm này trước: hàng sẵn là nhóm có mặt sort ngay (chậm ≤ ${PRIO_WAIT} phút) và không trễ COT (không đạt thì nhóm thêm người hoặc kế hoạch không gom điểm này).<br>
       <b>Kế hoạch mạng</b>: 🔒 khóa → kế hoạch không ghép người của điểm đó. <b>FM Hub</b>: đổi hub cover của điểm.</p></details>
     <section class="bk-step"><h5><span class="bk-n">1</span>Chọn điểm</h5>
       <div class="row" style="gap:8px;align-items:flex-start"><textarea class="inp" id="bpaste" rows="2" style="flex:1;min-width:200px" placeholder="Dán tên điểm (mỗi dòng một điểm hoặc cách nhau bằng dấu phẩy), vd: GGGVIETNAM, mojistore">${esc(ui.bpaste||"")}</textarea>
@@ -2331,6 +2339,7 @@ MR.bulkp=m=>{const R=m.R,sel=ui.bsel||(ui.bsel={}),open=ui.bopen||(ui.bopen={}),
     <section class="bk-step bk-act"><h5><span class="bk-n">2</span>Thao tác cho <b>${nSel}</b> điểm đã chọn ${nSel?`<button type="button" class="linkish" data-bclr="1">bỏ chọn hết</button>`:""}</h5>
       ${nSel?`<div class="bk-selc">${selNames.map(i=>`<span class="bk-sc">${esc(shortN(S[i].n))}<button type="button" data-bunsel="${i}" aria-label="Bỏ chọn ${esc(S[i].n.trim())}">×</button></span>`).join("")}</div>`:`<p class="mini" style="margin:0">Chưa chọn điểm nào.</p>`}
       <div class="bk-ops"><div class="bk-op"><span class="bk-ol">Người hiện trạng</span>${btn("R","Người riêng","Đổi nhóm người hiện trạng thành người riêng")}${HUBG.map(L=>btn(L,"Nhóm "+L,"Dùng chung nhóm "+L+" trong cùng hub","g"+L)).join("")}${btn("clear","Bỏ chỉnh tay","Trả nhóm người về như dữ liệu gốc (cả chỉnh theo ngày)")}</div>
+        <div class="bk-op"><span class="bk-ol">Mức ưu tiên</span>${btn("pneo","⚓ Điểm neo","Người đứng cố định tại điểm, không đi nhóm sang điểm khác (như khóa người riêng). Dùng cho seller rất lớn / rất ưu tiên, vd. Cocoon Juno.","pr-neo")}${btn("puu","★ Ưu tiên","Ở trong nhóm chung vẫn được: nhóm làm điểm này trước khi có việc cùng lúc; hàng sẵn là nhóm có mặt sort ngay (chậm không quá "+PRIO_WAIT+" phút) và không trễ hạn COT — không đạt thì nhóm thêm người, hoặc kế hoạch không gom điểm này.","pr-uu")}${btn("pclr","Thường","Bỏ mức ưu tiên")}</div>
         <div class="bk-op"><span class="bk-ol">Kế hoạch mạng</span>${btn("lock","🔒 Khóa người riêng","Kế hoạch mạng giữ các điểm này dùng người riêng")}${btn("unlock","Bỏ khóa","Cho kế hoạch mạng ghép người lại")}</div>
         <div class="bk-op"><span class="bk-ol">FM Hub</span><input class="inp sm" id="bhub" list="bhubL" style="min-width:220px;flex:1" placeholder="chọn hoặc gõ tên hub" value="${esc(ui.bhub||"")}"><datalist id="bhubL">${[...new Set(S.filter(x=>x.R===R&&x.h).map(x=>x.h))].sort().map(h=>`<option value="${esc(h)}">`).join("")}</datalist>${btn("hub","Đổi hub","Các điểm đã chọn chuyển sang hub này")}${btn("hubx","Trả hub theo dữ liệu","Bỏ đổi hub trong app")}</div></div></section>
     <section class="bk-step"><h5><span class="bk-n">3</span>Danh sách theo FM Hub → nhóm người → điểm
@@ -2378,6 +2387,7 @@ function rdCopy(R){const pts=S.map((_,i)=>i).filter(i=>S[i].R===R&&BASE.tot[i].v
   try{navigator.clipboard.writeText(txt).then(()=>done(`Đã chép ${pts.length} dòng — dán vào Google Sheets, sửa giờ, rồi chép lại vào ô ở bước 1.`),()=>{ui.rdpaste=txt;done("Trình duyệt không cho chép tự động: bảng đã đặt vào ô ở bước 1, chọn hết và chép tay.");});}catch(e){ui.rdpaste=txt;done("Bảng đã đặt vào ô ở bước 1, chọn hết và chép tay.");}}
 function bulkApply(act,R){const sel=Object.keys(ui.bsel||{}).map(Number).filter(i=>S[i]&&S[i].R===R);if(!sel.length)return;
   if(act==="hub"||act==="hubx"){const h=act==="hub"?String(($("bhub")||{}).value||"").trim():"";if(act==="hub"&&!h)return;G.hubOv=G.hubOv||{};sel.forEach(i=>{const n=S[i].n.trim();if(h)G.hubOv[n]=h;else delete G.hubOv[n];});saveCfg();refreshAll();return;}
+  if(act==="pneo"||act==="puu"||act==="pclr"){G.prio=G.prio||{};sel.forEach(i=>{const n=S[i].n.trim();if(act==="pclr")delete G.prio[n];else G.prio[n]=act==="pneo"?"neo":"uu";});saveCfg();refreshAll();return;}
   if(act==="lock"||act==="unlock"){G.lkeep=G.lkeep||{};sel.forEach(i=>{const n=S[i].n.trim();if(act==="lock")G.lkeep[n]=1;else delete G.lkeep[n];});saveCfg();refreshAll();return;}
   const mode=ui.em;sel.forEach(i=>{const L=layer(i,mode);
     if(act==="clear"){delete L.s.team;Object.keys(L.d).forEach(d=>{if(L.d[d].team!=null){delete L.d[d].team;if(!Object.keys(L.d[d]).length)delete L.d[d];}});}
@@ -2539,7 +2549,7 @@ function pkDiff(p,kind){const xe=kind==="xe",pts=[...new Set(p.cut.flat().concat
   const ord=g=>xe&&g.length>1?(routeSched(g).order||g):g;
   const uniq=L=>[...new Map(L.map(g=>[gkey(g),g])).values()].sort((a,b)=>b.length-a.length);
   const lab={out:xe?"tách, đi riêng":"tách, người riêng",in:xe?"vào tuyến (trước đi riêng)":"vào nhóm (trước người riêng)",move:xe?"đổi tuyến":"đổi nhóm"};
-  const pt=(i,side)=>{const c=S2.get(i),hl=side==="a"&&(c==="out"||c==="in");return `<span class="dx-p${hl?" "+c:""}" title="${esc(S[i].n.trim())}${side==="a"&&c!=="keep"?" · "+lab[c]:""}">${esc(shortN(S[i].n))}</span>`;};
+  const pt=(i,side)=>{const c=S2.get(i),hl=side==="a"&&(c==="out"||c==="in");return `<span class="dx-p${hl?" "+c:""}" title="${esc(S[i].n.trim())}${side==="a"&&c!=="keep"?" · "+lab[c]:""}${prioOf(i)?" · "+(prioOf(i)==="neo"?"điểm neo":"ưu tiên"):""}">${prioOf(i)==="neo"?"⚓":prioOf(i)==="uu"?"★":""}${esc(shortN(S[i].n))}</span>`;};
   const grp=(g,side)=>g.length>1?`<span class="dx-g${side==="a"?" new":""}">${ord(g).map(i=>pt(i,side)).join(`<i>${xe?"→":"+"}</i>`)}${side==="a"?nvOpenBtn(kind,g,"↗"):p.gs.some(h=>gkey(h)===gkey(g))?"":nvOpenBtn(kind,g,"↗")}</span>`:`<span class="dx-g solo">${pt(g[0],side)}<small>${xe?"riêng":"người riêng"}</small></span>`;
   const sum=L=>{const m=L.filter(g=>g.length>1),o=L.filter(g=>g.length===1);return [m.length?`${m.length} ${xe?"tuyến":"nhóm"} ${m.map(g=>g.length).join("+")} điểm`:"",o.length?`${o.length} ${xe?"đi riêng":"người riêng"}`:""].filter(Boolean).join(" + ");};
   const bs=uniq(B),as=uniq(A),ch=[...S2.entries()].filter(([,c])=>c==="out"||c==="in");   /* chỉ nêu tên điểm tách ra / mới vào; điểm chỉ đổi bạn cùng nhóm thì nhìn ô đề xuất */
