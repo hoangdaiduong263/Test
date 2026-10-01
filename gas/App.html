@@ -2232,7 +2232,7 @@ function nvCotSecs(sim,o){if(!sim||!sim.rows||!sim.rows.length)return "";const t
         return `<label class="tov">${r.fix?"<b>chỉnh tay</b> · ":""}Xe tới ${esc(shortN(S[r.st[0].i].n))}${r.st.length>1?` <small>(${esc(nm)})</small>`:""} <input type="text" inputmode="numeric" maxlength="5" placeholder="hh:mm" class="inp sm tin" data-tov="${esc(r.rk)}" data-v0="${v.length===5?+v.slice(0,2)*60+ +v.slice(3):""}" value="${v.length===5?v:"00:00"}" aria-label="Giờ xe tới ${esc(nm)}" title="Gõ giờ rồi nhấn Enter (hoặc bấm ra ngoài) để áp dụng">${r.fix?`<button type="button" class="ghost sm" data-tovx="${esc(r.rk)}">Tự động</button>`:""}${why}</label>`;}).join("");
       const h=`<section class="nvd-cot"><div class="nvd-ch"><b>COT ${cc.k+1} · ${pa===pb?`hạn ${hhmm(pa)}${cc.close?" (đóng cửa)":""}`:`hạn từng điểm ${hhmm(pa)}–${hhmm(pb)}`}</b><span>${rows.length} xe${rows.some(r=>r.veh)?`: ${esc(Object.entries(rows.reduce((m,r)=>{if(r.veh)m[r.veh]=(m[r.veh]||0)+1;return m;},{})).map(([k,c])=>(c>1?c+"×":"")+k).join(" + "))}`:""} · ${f0(Q)} đơn${FO?` của ${o.focus.length} điểm này`:""}${Qx>=1?` (+${f0(Qx)} đơn điểm khác cùng xe/nhóm)`:""} · về SOC ${hhmm(Math.min(...rows.map(r=>r.soc)))}–${hhmm(Math.max(...rows.map(r=>r.soc)))}</span><span class="${st[0]}">${st[1]}</span>${sh>=1?`<span>chạy sớm ${Math.round(sh)}'</span>`:""}</div>
         ${o.fleet?`<p class="mini" style="margin:2px 0 4px;white-space:normal">${fleetMix(rows).txt}</p>`:""}
-        ${rks?`<div class="tov-row">${rks}</div>`:""}${schedHtml({rows},o.team,null,{W:780,bare:true,n0,ord:o.ord,staff:o.staff,teams:o.teams,span:o.spans&&o.spans.get(cc.k)})}${stopTimes(rows,n0)}</section>`;n0+=rows.length;return h;}).join("");}
+        ${rks?`<div class="tov-row">${rks}</div>`:""}${schedHtml({rows},o.team,null,{W:Math.max(780,Math.min(1440,(typeof window!=="undefined"?window.innerWidth:1100)-140)),bare:true,n0,ord:o.ord,staff:o.staff,teams:o.teams,span:o.spans&&o.spans.get(cc.k)})}${stopTimes(rows,n0)}</section>`;n0+=rows.length;return h;}).join("");}
 function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;const {x,Pb}=D,g=x.g,c=x.c,xe=kind==="xe";
   const ord=xe?(routeSched(g).order||routeOrder(g)):g.slice().sort((a,b)=>((waveTimes(a)||[1e9])[0])-((waveTimes(b)||[1e9])[0]));
   const ado=g.reduce((a,i)=>a+nvAdo(i),0),soc=xe?socMain(g):null,dk=xe?routeKm(g):0,real=xe&&realTogether(g);
@@ -2331,6 +2331,7 @@ function teamDay(sim,ord){if(!sim||!sim.rows.length)return "";const ev=teamEvent
 MR.nvd=m=>{const L=NVD[m.kind]||{};let D=m.key?Object.values(L).find(d=>gkey(d.x.g)===m.key):L[m.j];let gone=false;
   if(D)m.D=D;else if(m.D){D=m.D;gone=true;}
   const r=D?nvDetail(m.kind,null,D):null;if(!r)return {title:"",body:`<p class="note keep">Không còn dữ liệu cho mục này.</p>`};
+  r.size="xwide";   /* popup tuyến/nhóm rộng theo chiều ngang để biểu đồ lịch có chỗ */
   if(gone&&!m.adhoc)r.body=`<p class="nvd-warn">Sau lần chỉnh vừa rồi, kế hoạch tối ưu không còn chọn ${m.kind==="xe"?"tuyến":"nhóm"} này (model chọn cách khác tốt hơn). Lịch dưới đây vẫn tính cho ${m.kind==="xe"?"tuyến":"nhóm"} này theo giờ đã chỉnh để anh so.</p>`+r.body;
   return r;};
 /* ================= CHỈNH TAY NHÓM NGƯỜI TRONG MỘT FM HUB =================

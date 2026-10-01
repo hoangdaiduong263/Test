@@ -460,3 +460,7 @@ Giờ có hàng / giờ người có mặt:
 - Không còn đề xuất đổi cỡ xe cho MỘT điểm đang đi chung chuyến thật (leversFor bỏ "size" khi `t0Of(i)` nhiều điểm). Ví dụ sociolla: nay đổi cỡ xe cho cả tuyến HAPAS + sociolla + Cocoon + TRUE CARE (+71,6).
 - Kiểm tra: planAudit 0 lỗi; thẻ = popup; bật cả kế hoạch = bảng (HCM 601,2).
 - Lưu ý: phần lớn số lời đến từ giả định giá xe và thuê ca 12H (Top Gia HCM +358,7: hiện nay 16×5T/ngày).
+
+## Cập nhật: popup tuyến/nhóm rộng theo chiều ngang
+- Popup chi tiết tuyến/nhóm (`MR.nvd`) dùng `size:"xwide"`: rộng tới 1500px (hoặc màn hình − 24px).
+- Biểu đồ lịch trong popup vẽ rộng theo cửa sổ (W = innerWidth − 140, trong khoảng 780–1440) thay vì cố định 780, nên các khối xe / sort dài ra và số trong khối dễ đọc. Điện thoại không bị tràn.
