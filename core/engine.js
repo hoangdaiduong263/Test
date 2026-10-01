@@ -249,7 +249,7 @@ function Core(D, REF) {
     pts.forEach(i => { const W = waves(i); if (!W) return; const sh = shareOf(i); W.w.forEach(w => { const q = volPk(i) * sh(w); tasks.push({ i, w, q, av: avail(i, w, q), dl: deadline(i, w) }); }); });
     tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {}, seg = [];
     tasks.forEach(x => { const from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = st + durMin(x.i, x.q, n); at = x.i; rd[x.i + "|" + x.w.k] = t;
-      seg.push({ i: x.i, k: x.w.k, from, leave, start: st, end: t, q: x.q }); });
+      seg.push({ i: x.i, k: x.w.k, from, leave, av: x.av, start: st, end: t, q: x.q }); });
     return { rd, seg }; }
   /* mô phỏng ngày đông của tuyến g theo cách dùng người A[i] = {m: "F" | "P" | "H", team}
      F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
@@ -263,7 +263,7 @@ function Core(D, REF) {
       let t = null, prev = null; const st = [];
       pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
         const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
-        st.push({ i, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); late = Math.max(late, dep - dl); t = dep; prev = i; });
+        st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); late = Math.max(late, dep - dl); t = dep; prev = i; });
       rows.push({ t: s.t, nTr, st }); }
     return { rows, late }; }
   /* thứ tự ghé tốt nhất (trễ ít nhất) */

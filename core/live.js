@@ -19,16 +19,16 @@ function Live(C, root) {
         ev.push({ t: way[0].t, k: "truck", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe tuyến ${gi + 1} · lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
-          dls.push({ i: z.i, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready });
+          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready });
           ev.push({ t: z.ready, k: "ready", txt: `Hàng sẵn · ${nm} (${Math.round(z.q)} đơn)` });
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})` });
           if (z.dep > z.dl) ev.push({ t: z.dl, k: "late", txt: `⚠ Hạn COT ${hm(z.dl)} · ${nm}: xe chưa rời` });
-          if (a.m !== "H") { const st = z.ready - C.durMin(z.i, z.q, C.fteN(z.i)); sorts.push({ i: z.i, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${C.fteN(z.i)} FTE riêng` });
+          if (a.m !== "H") { const st = z.ready - C.durMin(z.i, z.q, C.fteN(z.i)); sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, who: a.m === "P" ? "seller đóng (PPS)" : `${C.fteN(z.i)} FTE riêng` });
             ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
           else teams.set(a.team.id, a.team); }); }); });
     teams.forEach(t => { const hg = C.geo(t.hub); if (hg) hubs[t.hub] = hg;
-      t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, a: sg.start, b: sg.end, who: `nhóm hub ${t.id} (${t.n} người)` });
+      t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, k: sg.k, av: sg.av, a: sg.start, b: sg.end, who: `nhóm hub ${t.id} (${t.n} người)` });
         ev.push({ t: sg.start, k: "sort", txt: `Nhóm hub ${t.id} (${t.n} người) bắt đầu sort · ${short(sg.i)}` });
         if (sg.from != null && sg.from !== sg.i && inP.has(sg.from)) { moves.push({ id: t.id, a: sg.leave, b: sg.leave + C.travel(sg.from, sg.i), p0: geoP(sg.from), p1: geoP(sg.i) });
           ev.push({ t: sg.leave, k: "team", txt: `Nhóm hub ${t.id} đi ${short(sg.from)} → ${short(sg.i)} (${Math.round(C.travel(sg.from, sg.i))}')` }); } }); });
@@ -36,6 +36,34 @@ function Live(C, root) {
     const t0 = Math.floor((Math.min(...ev.map(e => e.t)) - 20) / 30) * 30, t1 = Math.ceil((Math.max(...ev.map(e => e.t)) + 20) / 30) * 30;
     return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes: p.nw };
   }
+
+  /* ---------- TỒN tại điểm: mỗi lượt q đơn — có từ av (chờ sort) → sort a..b (chuyển dần sang chờ xe) → chất ls..dep (lên xe) ---------- */
+  function invOf(M) { const pc = {};
+    M.dls.forEach(d => { const so = M.sorts.find(s => s.i === d.i && s.k === d.k) || { av: d.ready, a: d.ready, b: d.ready }; (pc[d.i] = pc[d.i] || []).push({ q: d.q, av: so.av, a: so.a, b: so.b, ls: d.ls, dep: d.dep, dl: d.dl }); });
+    const at = (L, t) => { let u = 0, s = 0, late = 0; L.forEach(x => { const f = (t0, t1) => t1 > t0 ? Math.min(1, Math.max(0, (t - t0) / (t1 - t0))) : (t >= t1 ? 1 : 0);
+        if (t >= x.av && t < x.b) u += x.q * (1 - f(x.a, x.b)); if (t >= x.a && t < x.dep) s += x.q * (t < x.ls ? f(x.a, x.b) : 1 - f(x.ls, x.dep));
+        if (t > x.dl && t < x.dep) late += x.q * (t < x.ls ? 1 : 1 - f(x.ls, x.dep)); }); return { u, s, late }; };
+    const st = 2, ts = []; for (let t = M.t0; t <= M.t1; t += st) ts.push(t);
+    const rows = M.pts.filter(i => pc[i]).map(i => ({ i, L: pc[i], v: ts.map(t => at(pc[i], t)) }));
+    const tot = { i: null, v: ts.map((t, k) => rows.reduce((o, r) => ({ u: o.u + r.v[k].u, s: o.s + r.v[k].s, late: o.late + r.v[k].late }), { u: 0, s: 0, late: 0 })) };
+    return { ts, rows: [tot].concat(rows), at: (r, t) => r.i == null ? rows.reduce((o, x) => { const v = at(x.L, t); return { u: o.u + v.u, s: o.s + v.s, late: o.late + v.late }; }, { u: 0, s: 0, late: 0 }) : at(r.L, t), dl: pc }; }
+  function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, H = I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
+    const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
+    const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
+    for (let t = Math.ceil(M.t0 / 120) * 120; t <= M.t1; t += 120) { el("line", { x1: x(t), x2: x(t), y1: 0, y2: H - 16, class: "lv-grid" }, svg); el("text", { x: x(t), y: H - 4, class: "lv-ax c" }, svg).textContent = hm(t); }
+    M.invLab = I.rows.map((r, k) => { const y0 = k * (rh + gap), mx = Math.max(1, ...r.v.map(v => v.u + v.s)), y = v => y0 + rh - v / mx * (rh - 4);
+      el("text", { x: 0, y: y0 + 14, class: "lv-lab l" + (r.i == null ? "" : " sm") }, svg).textContent = r.i == null ? "Cả gói" : short(r.i).slice(0, 22);
+      const val = el("text", { x: 0, y: y0 + 30, class: "lv-val" }, svg);
+      el("line", { x1: lw, x2: W - 8, y1: y0 + rh, y2: y0 + rh, class: "lv-base" }, svg);
+      const g = el("g", { "clip-path": "url(#lv-clip)" }, svg), area = (f0, f1) => "M" + I.ts.map((t, j) => `${x(t).toFixed(1)},${y(f1(r.v[j])).toFixed(1)}`).join("L") + "L" + I.ts.slice().reverse().map((t, j) => `${x(t).toFixed(1)},${y(f0(r.v[I.ts.length - 1 - j])).toFixed(1)}`).join("L") + "Z";
+      el("path", { d: area(() => 0, v => v.u), class: "lv-a-u" }, g); el("path", { d: area(v => v.u, v => v.u + v.s), class: "lv-a-s" }, g);
+      el("path", { d: area(() => 0, v => Math.min(v.late, v.u + v.s)), class: "lv-a-late" }, g);
+      if (r.i != null) I.dl[r.i].forEach(d => { el("line", { x1: x(d.dl), x2: x(d.dl), y1: y0 + 2, y2: y0 + rh, class: "lv-dl" + (d.dep > d.dl ? " late" : "") }, svg); });
+      return val; });
+    M.invNow = el("line", { x1: lw, x2: lw, y1: 0, y2: H - 16, class: "lv-now" }, svg); M.invX = x; }
+  function invUpd(M) { const t = M.t, X = M.invX(t); M.clip.setAttribute("width", Math.max(0, X - 150)); M.invNow.setAttribute("x1", X); M.invNow.setAttribute("x2", X);
+    M.inv.rows.forEach((r, k) => { const v = M.inv.at(r, t), n = Math.round(v.u + v.s); M.invLab[k].textContent = n ? `${n.toLocaleString("vi-VN")} đơn${v.late > 0.5 ? " · quá hạn" : ""}` : "trống";
+      M.invLab[k].setAttribute("class", "lv-val" + (v.late > 0.5 ? " bad" : "")); }); }
 
   /* ---------- chiếu toạ độ vào khung SVG ---------- */
   function proj(M) { const all = M.pts.map(M.geoP).concat(Object.values(M.socs), Object.values(M.hubs)).filter(Boolean);
@@ -57,7 +85,9 @@ function Live(C, root) {
         <label class="muted" for="lv-speed">Tốc độ</label><select id="lv-speed"><option value="15">15 phút/giây</option><option value="30">30 phút/giây</option><option value="60" selected>1 giờ/giây</option><option value="120">2 giờ/giây</option></select></div>
       <div class="lv-grid"><div class="lv-map"><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ gói"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
-        <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>`;
+        <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
+      <div class="lv-invw"><div class="lv-ih"><h3>Tồn tại điểm</h3><div class="lv-leg"><span><i class="s-sort"></i>chờ sort</span><span><i class="s-ready"></i>đã sort, chờ xe / đang chất</span><span><i class="s-late"></i>quá hạn COT chưa đi</span><span><b class="lv-dlk"></b>hạn COT</span></div></div>
+        <div class="scroll"><svg id="lv-inv" role="img" aria-label="Tồn hàng tại từng điểm theo giờ"></svg></div></div>`;
     const svg = root.querySelector("#lv-svg");
     /* tuyến: đường nối các điểm theo thứ tự ghé rồi về SOC */
     M.trucks.forEach(tk => { el("polyline", { points: tk.way.map(w => F(w.xy).map(v => v.toFixed(1)).join(",")).join(" "), class: "lv-route" }, svg); });
@@ -69,7 +99,7 @@ function Live(C, root) {
       const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
     M.teamEl = {}; [...new Set(M.moves.map(m => m.id))].forEach(id => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 8 }, g); el("text", { y: 3.5, class: "c" }, g).textContent = "H" + id; M.teamEl[id] = g; });
     M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = tk.n > 1 ? "×" + tk.n : "xe"; return g; });
-    wire(); draw(); }
+    invDraw(M); wire(); draw(); }
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
   function stateOf(i, t) { const L = M.dls.filter(d => d.i === i).sort((a, b) => a.dep - b.dep), cur = L.find(d => d.dep > t);
@@ -79,7 +109,7 @@ function Live(C, root) {
     if (t >= cur.ready) return ["s-ready", t >= cur.arr ? "xe chờ…" : "chờ xe"];
     const so = M.sorts.find(s => s.i === i && t >= s.a && t < s.b); if (so) return ["s-sort", `${Math.round((t - so.a) / (so.b - so.a) * 100)}%`];
     return ["s-idle", ""]; }
-  function draw() { const t = M.t, F = M.F;
+  function draw() { const t = M.t, F = M.F; invUpd(M);
     root.querySelector("#lv-clock").textContent = hm(t); root.querySelector("#lv-scrub").value = Math.round(t);
     let late = 0, worst = 0, sorting = 0; M.pts.forEach(i => { const e = M.ptEl[i]; if (!e) return; const [c, txt] = stateOf(i, t); e.dot.setAttribute("class", "lv-pt " + c); e.ring.setAttribute("class", "lv-ring " + c); e.st.textContent = txt;
       if (c === "s-sort") sorting++; });
