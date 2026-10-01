@@ -377,3 +377,15 @@ Giờ có hàng / giờ người có mặt:
 - Thẻ gói: `align-items:start` (không kéo giãn thẻ ngắn); đầu thẻ một dòng "Gói k [loại]".
 - Điện thoại: thanh vùng / kỳ cuộn ngang một dòng, ẩn "Lưu trên trình duyệt", thanh tóm tắt một dòng; không trang nào cuộn ngang ở 400px.
 - CSS: `section{margin-top:36px}` (toàn cục) không còn áp vào section trong lưới / flex (`.an-lanes`, `.nvd`, …). Đây là lỗi khoảng trống ở "Mạng lưới sau điều chỉnh".
+
+## Cập nhật: thẻ gói ghi rõ hiện nay → đề xuất theo từng điểm, lý do chọn gói, tab Chi phí
+- `pkDiff(p,kind)`: trong mỗi phần của gói có hai hàng gọn:
+  - **Hiện nay**: các nhóm/tuyến cũ (p.cut), đi riêng / người riêng thì khung nét đứt;
+  - **Đề xuất**: các nhóm/tuyến mới (p.gs), nút ↗ mở popup; nhóm cũ bị giải tán cũng có ↗ ("vì sao tách").
+  - Điểm **tách ra** tô đỏ, điểm **mới vào** tô xanh. Dòng tóm tắt "1 nhóm 5 điểm → 2 nhóm 2+2 điểm + 1 người riêng · KhongMinhKien tách, người riêng".
+  - Bỏ các dòng chữ "nhóm người chung … xem →" và rút ngắn câu lý do.
+- `pkReasons(u)`: hàng chip lý do ở đầu thẻ gói: Tiết kiệm +x tr/kỳ · Kịp COT / Bớt trễ COT a' → b' · Trễ COT hơn (nếu có) · Bắt buộc để kế hoạch khả thi.
+- Popup tuyến/nhóm: tab **Chi phí** (`nvCostPane`) tính cho cả phần của gói chứa tuyến/nhóm (mọi nhóm/tuyến cũ bị cắt → mới):
+  - người: người/ngày chạy × số ngày = người-ngày → tiền; xe: loại xe, chuyến/ngày × ngày, km đi vòng (tiền);
+  - phép tính "Hiện nay − Đề xuất = Tiết kiệm", kèm số trên thẻ (tính lại cả mạng) nếu lệch;
+  - bảng từng điểm.

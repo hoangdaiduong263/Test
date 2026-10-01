@@ -2142,6 +2142,27 @@ function nvSimWith(focus,Ts,Ls){const F=new Set(focus),rOf=i=>Ts.find(h=>h.inclu
   const fT=tms.filter(t=>t.some(i=>F.has(i))),FT=new Set(focus.concat(fT.flat()));
   const rows=sm.rows.filter(r=>r.st.some(z=>F.has(z.i))),rowsT=sm.rows.filter(r=>r.st.some(z=>FT.has(z.i)));   /* rowsT: mọi việc của các nhóm dính tới điểm (để "một ngày của nhóm" không mất điểm nào) */
   return Object.assign({},sm,{rows,rowsT,tms:fT,allT:tms});}
+/* tab CHI PHÍ của popup tuyến/nhóm: tính ra tiền tiết kiệm (mô hình theo nhóm/tuyến, cả kỳ), từng nhóm/tuyến và từng điểm */
+function nvCostPane(g0,xe,Pb,sp,vReal){const nd=ACT.length,tr=v=>nf.format(Math.round(v/1e5)/10),L=G.lab;
+  /* tính cho cả phần của gói chứa tuyến/nhóm này (mọi tuyến/nhóm cũ bị cắt → mọi tuyến/nhóm mới), để số khớp với thẻ gói */
+  const Pn=netPlan(S[g0[0]].R),k0=gkey(g0),pk=(xe?Pn.tp:Pn.lp).find(q=>q.gs.some(h=>gkey(h)===k0)||q.cut.some(h=>gkey(h)===k0));
+  const it=pk&&(Pn.up||[]).flatMap(u=>u.items).find(x=>x.pk===pk);if(it)vReal=it.gr;
+  const g=pk?[...new Set(pk.cut.flat().concat(pk.gs.flat()))]:g0;
+  const befs=pk?pk.cut:[...new Map(g.map(i=>{const b=Pb.find(h=>h.includes(i))||[i];return [gkey(b),b];})).values()],afts=pk?pk.gs:(sp||[g]);
+  const cost=xe?netTC:netLC,nm=x=>x.map(i=>shortN(S[i].n)).join(xe?" → ":" + ");
+  const gRow=(x,lab)=>{const c=cost(x),part=g.reduce((a,i)=>a+(c.per[i]||0),0),out=x.filter(i=>!g.includes(i));
+    let d;if(xe){const m=vehMix(x),days=ACT.filter(dd=>x.some(i=>BASE.rows[i][dd].vol>0)).length;d=`${esc(String(m.v))} · ${f1(m.t)} chuyến/ngày × ${days} ngày${x.length>1&&routeKm(x)>0?` · đi vòng ${f1(routeKm(x))} km/chuyến (≈ ${tr(m.kmc||0)} tr)`:""}`;}
+    else{const h=nvHcDays(x);d=`${f1(h.n?h.s/h.n:0)} người/ngày chạy × ${h.n} ngày = ${f0(h.s)} người-ngày`;}
+    return `<tr><td class="l"><b>${lab}</b> ${esc(nm(x))}${x.length===1?` <small>${xe?"đi riêng":"người riêng"}</small>`:""}<small>${d}</small></td><td class="num">${tr(c.tot)}</td>${pk?"":`<td class="num">${out.length?tr(part):"—"}</td>`}</tr>`;};
+  const B=g.reduce((a,i)=>{const b=befs.find(h=>h.includes(i))||[i];return a+(cost(b).per[i]||0);},0),A=g.reduce((a,i)=>{const x=afts.find(h=>h.includes(i))||[i];return a+(cost(x).per[i]||0);},0);
+  const ptRows=g.map(i=>{const b=befs.find(h=>h.includes(i))||[i],x=afts.find(h=>h.includes(i))||[i],cb=cost(b).per[i]||0,ca=cost(x).per[i]||0;return `<tr><td class="l rowname">${esc(shortN(S[i].n))}</td><td class="num">${f0(nvAdo(i))}</td><td class="num">${tr(cb)}</td><td class="num">${tr(ca)}</td><td class="num ${cls(cb-ca)}">${sgT(cb-ca)}</td></tr>`;}).join("");
+  return `<div class="nvd-cost">
+    <p class="note" style="margin:0">${xe?`Tiền xe cả kỳ (${nd} ngày) theo bảng giá nhà xe: mỗi ngày chọn loại và số xe vừa hàng của cả tuyến, cộng đ/km đi vòng; tuyến ghép chia tiền cho các điểm theo chỗ chiếm trên xe.`:`Tiền người cả kỳ (${nd} ngày): mỗi ngày chạy, số người = khối lượng cả nhóm ÷ năng suất, cộng ${L.ovh}% đi lại khi dùng chung, làm tròn lên; × lương ${f0(L.payB/1e3)}k/người/ngày${L.payF!==L.payB?` (FTE ${f0(L.payF/1e3)}k)`:""}. Nhóm chung chia tiền cho các điểm theo khối lượng.`}</p>
+    ${pk?`<p class="mini" style="margin:0;white-space:normal">Tính cho cả phần ${xe?"tuyến xe":"nhóm người"} của gói: ${befs.filter(x=>x.length>1).length} ${xe?"tuyến":"nhóm"} hiện nay → ${afts.filter(x=>x.length>1).length} ${xe?"tuyến":"nhóm"} đề xuất, ${g.length} điểm.</p>`:""}
+    <div class="tablewrap"><table class="data nvd-t"><thead><tr><th class="l">${xe?"Tuyến":"Nhóm"}</th><th>Tiền cả kỳ (tr)</th>${pk?"":`<th>Phần các điểm này (tr)</th>`}</tr></thead><tbody>
+      ${befs.map(x=>gRow(x,"Hiện nay")).join("")}${afts.map(x=>gRow(x,"Đề xuất")).join("")}</tbody></table></div>
+    <div class="nvd-calc"><span>Hiện nay <b>${tr(B)}</b></span><i>−</i><span>Đề xuất <b>${tr(A)}</b></span><i>=</i><span>Tiết kiệm <b class="${cls(B-A)}">${sgT(B-A)}</b> tr/kỳ</span>${vReal!=null&&Math.abs(vReal-(B-A))>5e4?`<small>Số trên thẻ ${sgT(vReal)} tr: tính lại cả mạng theo từng ngày, gồm cả ảnh hưởng tới điểm khác trên tuyến/nhóm cũ.</small>`:""}</div>
+    <div class="tablewrap"><table class="data nvd-t"><thead><tr><th class="l">Điểm</th><th>Đơn/ngày</th><th>Hiện nay (tr)</th><th>Đề xuất (tr)</th><th>Tiết kiệm (tr)</th></tr></thead><tbody>${ptRows}</tbody></table></div></div>`;}
 /* các khối lịch theo COT (biểu đồ + bảng giờ) cho một kết quả mô phỏng; o: {team, teams, ord, staff, fleet, edit} */
 function nvCotSecs(sim,o){if(!sim||!sim.rows||!sim.rows.length)return "";const tol=G.truck.cotTol??30,grp=new Map();sim.rows.forEach(r=>{const k=r.st[0].cot.k;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(r);});let n0=0;
     return [...grp.values()].sort((a,b)=>a[0].t-b[0].t).map(rows=>{const z0=rows[0].st[0],cc=z0.cot,Q=rows.reduce((a,r)=>a+r.st.reduce((b,z)=>b+z.q,0),0),w=Math.max(...rows.flatMap(r=>r.st.map(z=>z.late))),sh=Math.max(0,...rows.map(r=>r.shift||0));
@@ -2195,7 +2216,7 @@ function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;co
       const wOf=sm=>{const z=sm&&sm.rows?sm.rows.flatMap(r=>r.st):[];return z.length?Math.max(...z.map(q=>q.late)):null;};
       const stOf=w=>w==null?["","—"]:w>tol?["neg",`trễ nhất +${Math.round(w)}'`]:w>0?["warn",`sát hạn +${Math.round(w)}'`]:["pos",`kịp · dư ${Math.round(-w)}'`];
       const hasB=!!(simB&&simB.rows.length),mode=hasB&&ui.nvdBA==="b"?"b":"a",sB=stOf(wOf(simB)),sA=stOf(wOf(simA));
-      const tabs=[["lich","Lịch chạy",""],["diem","Điểm & hiện trạng",`${g.length} điểm`]];
+      const tabs=[["lich","Lịch chạy · COT",""],["cost","Chi phí",""],["diem","Điểm & hiện trạng",`${g.length} điểm`]];
       const cur=tabs.some(t=>t[0]===ui.nvdTab)?ui.nvdTab:"lich";
       const labB=sp?(xe?"Trước: giữ tuyến":"Trước: giữ nhóm chung"):(xe?"Trước: tuyến hiện nay":"Trước: nhóm hiện nay"),labA=sp?(xe?"Sau: tách tuyến":"Sau: tách theo kế hoạch"):"Sau: theo kế hoạch";
       const ba=hasB?`<div class="nvd-ba" role="group" aria-label="Xem lịch trước hoặc sau"><button type="button" data-nvba="b" aria-pressed="${mode==="b"}">${labB}<span class="${sB[0]}">${sB[1]}</span></button><button type="button" data-nvba="a" aria-pressed="${mode==="a"}">${labA}<span class="${sA[0]}">${sA[1]}</span></button></div>`:"";
@@ -2208,6 +2229,7 @@ function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;co
           <dl class="nvd-chips">${chips.map(([a,b])=>`<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl></div>
         <div class="nvd-tabs" role="tablist">${tabs.map(([k,l,n])=>`<button type="button" role="tab" data-nvtab="${k}" aria-selected="${k===cur}">${l}${n?`<small>${n}</small>`:""}</button>`).join("")}</div>
         ${pane("lich",ba+`<div class="nvd-pane" data-ba="b"${mode==="b"?"":" hidden"}>${lichB}</div><div class="nvd-pane" data-ba="a"${mode==="a"?"":" hidden"}>${lichA}</div>`)}
+        ${pane("cost",nvCostPane(g,xe,xe?Pn.T0:Pn.L0,sp,x.v||null))}
         ${pane("diem",tbl+nvBefore(g,xe))}</div>`;})()};}
 /* nhóm người: giải thích bằng lời cho người mới — ai dùng chung, nhóm làm gì, xe phối hợp ra sao */
 function teamExplain(g,ord,hB,hA,Pb,sim){const hub=(S[g[0]].h||"").replace(/ Hub$/,""),befs=Pb.filter(b=>b.some(i=>g.includes(i)));
@@ -2508,19 +2530,44 @@ const PERSON=`<svg viewBox="0 0 10 16" aria-hidden="true"><circle cx="5" cy="3.4
 function nvPeople(v){const full=Math.floor(v+1e-9),fr=v-full;let h="";for(let k=0;k<full;k++)h+=`<i class="pp">${PERSON}</i>`;
   if(fr>0.05)h+=`<i class="pp part" style="--f:${(fr*100).toFixed(0)}%">${PERSON}</i>`;return `<span class="pps" aria-label="${f1(v)} người">${h}</span>`;}
 /* thẻ GÓI KẾ HOẠCH: tuyến xe + nhóm người đi cùng nhau; mỗi phần gắn nhãn Bắt buộc (Compulsory) / Nên làm (Nice-to-have) */
+/* hiện nay → đề xuất của một phần gói, theo từng điểm (node): nhóm/tuyến nào giữ, điểm nào tách ra / chuyển sang / mới vào */
+function pkDiff(p,kind){const xe=kind==="xe",pts=[...new Set(p.cut.flat().concat(p.gs.flat()))];
+  const B=pts.map(i=>p.cut.find(g=>g.includes(i))||[i]),A=pts.map(i=>p.gs.find(g=>g.includes(i))||[i]);
+  const mates=(g,i)=>g.filter(j=>j!==i).sort((a,b)=>a-b).join(",");
+  const st=pts.map((i,k)=>{const b=B[k],a=A[k];if(mates(b,i)===mates(a,i))return "keep";if(a.length===1)return "out";if(b.length===1)return "in";return "move";});
+  const S2=new Map(pts.map((i,k)=>[i,st[k]]));
+  const ord=g=>xe&&g.length>1?(routeSched(g).order||g):g;
+  const uniq=L=>[...new Map(L.map(g=>[gkey(g),g])).values()].sort((a,b)=>b.length-a.length);
+  const lab={out:xe?"tách, đi riêng":"tách, người riêng",in:xe?"vào tuyến (trước đi riêng)":"vào nhóm (trước người riêng)",move:xe?"đổi tuyến":"đổi nhóm"};
+  const pt=(i,side)=>{const c=S2.get(i),hl=side==="a"&&(c==="out"||c==="in");return `<span class="dx-p${hl?" "+c:""}" title="${esc(S[i].n.trim())}${side==="a"&&c!=="keep"?" · "+lab[c]:""}">${esc(shortN(S[i].n))}</span>`;};
+  const grp=(g,side)=>g.length>1?`<span class="dx-g${side==="a"?" new":""}">${ord(g).map(i=>pt(i,side)).join(`<i>${xe?"→":"+"}</i>`)}${side==="a"?nvOpenBtn(kind,g,"↗"):p.gs.some(h=>gkey(h)===gkey(g))?"":nvOpenBtn(kind,g,"↗")}</span>`:`<span class="dx-g solo">${pt(g[0],side)}<small>${xe?"riêng":"người riêng"}</small></span>`;
+  const sum=L=>{const m=L.filter(g=>g.length>1),o=L.filter(g=>g.length===1);return [m.length?`${m.length} ${xe?"tuyến":"nhóm"} ${m.map(g=>g.length).join("+")} điểm`:"",o.length?`${o.length} ${xe?"đi riêng":"người riêng"}`:""].filter(Boolean).join(" + ");};
+  const bs=uniq(B),as=uniq(A),ch=[...S2.entries()].filter(([,c])=>c==="out"||c==="in");   /* chỉ nêu tên điểm tách ra / mới vào; điểm chỉ đổi bạn cùng nhóm thì nhìn ô đề xuất */
+  return `<div class="dx"><div class="dx-r"><span class="dx-l">Hiện nay</span><div class="dx-v">${bs.map(g=>grp(g,"b")).join("")}</div></div>
+    <div class="dx-r"><span class="dx-l">Đề xuất</span><div class="dx-v">${as.map(g=>grp(g,"a")).join("")}</div></div>
+    <p class="dx-s">${sum(bs)} → <b>${sum(as)}</b>${ch.length&&ch.length<=3?` · ${ch.map(([i,c])=>`${esc(shortN(S[i].n))} ${lab[c]}`).join("; ")}`:ch.length?` · ${ch.length} điểm đổi`:""}</p></div>`;}
+/* lý do chọn gói: tiết kiệm chi phí, kịp COT hơn, bắt buộc để khả thi */
+function pkReasons(u){const tol=G.truck.cotTol??0,its=u.items,R=[];
+  if(u.g>5e5)R.push(["cost",`Tiết kiệm ${sgT(u.g)} tr/kỳ`]);else if(u.g<-5e5)R.push(["costn",`Tốn thêm ${sgT(-u.g).replace("+","")} tr/kỳ`]);
+  const lb=Math.max(-1e9,...its.map(x=>x.pk.lateB??-1e9)),la=Math.max(-1e9,...its.map(x=>x.pk.lateA??-1e9));
+  if(lb>tol+0.5&&la<lb-5)R.push(["cot",la>tol+0.5?`Bớt trễ COT ${Math.round(lb)}' → ${Math.round(la)}'`:`Kịp COT (đang trễ ${Math.round(lb)}')`]);
+  else if(la>Math.max(lb,tol)+0.5)R.push(["cotn",`Trễ COT hơn ${Math.round(Math.max(lb,0))}' → ${Math.round(la)}'`]);
+  if(its.some(x=>x.pk.forced))R.push(["need","Bắt buộc để kế hoạch khả thi"]);
+  return R;}
 function nvPackCards(st){const {P,sc}=st,inS=new Set(sc.pts),L=(P.up||[]).filter(u=>u.pts.some(i=>inS.has(i)));
   if(!L.length)return `<p class="note">Không có gói nào trong phạm vi này${sc.q?` (lọc "${esc(ui.q3)}")`:""}.</p>`;
   const nm=g=>g.map(i=>shortN(S[i].n));
   const needTx={fix:["Sửa chỗ hiện đang trễ","Không để tiết kiệm: hiện trạng mô phỏng không kịp giờ, gói này sửa lại."],both:["Cần làm cả tuyến xe + nhóm người","Phần bắt buộc phải làm cùng thì gói mới khả thi."],either:["Lõi + phần gắn thêm","Phần bắt buộc là lõi của gói; phần “nên làm” không bắt buộc: số của nó là lợi THÊM khi bật kèm lõi, bỏ đi gói vẫn chạy."],xe:["Chỉ cần đổi tuyến xe",""],nguoi:["Chỉ cần đổi nhóm người",""]};
-  const itemRow=it=>{const p=it.pk,xe=it.kind==="xe",kd=xe?"Tuyến xe":"Nhóm người",tag=it.tag==="must"?`<span class="pk-tag must" title="Phần lõi của gói, hoặc phải làm cùng để gói khả thi">Bắt buộc · Compulsory</span>`:`<span class="pk-tag nice" title="Gắn thêm vào gói: tự có lợi, bỏ đi gói vẫn chạy">Nên làm · Nice-to-have</span>`;
+  const itemRow=it=>{const p=it.pk,xe=it.kind==="xe",kd=xe?"Tuyến xe":"Nhóm người",tag=it.tag==="must"?`<span class="pk-tag must" title="${it.core?"Lõi của gói":"Phải làm cùng để gói khả thi"}">Bắt buộc · Compulsory</span>`:`<span class="pk-tag nice" title="Gắn thêm vào gói: tự có lợi, bỏ đi gói vẫn chạy">Nên làm · Nice-to-have</span>`;
     const newG=p.gs.filter(g=>g.length>1),cutG=p.cut.filter(g=>g.length>1&&!newG.some(h=>gkey(h)===gkey(g)));
     const what=[...newG.map(g=>`${xe?"tuyến ghép trọn":"nhóm người chung"} <b>${esc(nm(xe?(routeSched(g).order||g):g).join(xe?" → ":" + "))}</b> ${nvOpenBtn(it.kind,g,"xem →")}`),
       ...cutG.filter(g=>g.every(i=>{const a=p.gs.find(h=>h.includes(i));return !a||a.length===1;})).map(g=>`tách ${xe?"tuyến":"nhóm"} ${esc(nm(g).join(" + "))} → ${xe?"đi riêng":"người riêng"} ${nvOpenBtn(it.kind,g,"xem vì sao tách →")}`)];
     return `<li class="pk-it ${it.tag}"><div class="pk-ih">${tag}<span class="pk-kind ${it.kind}">${kd}</span><b class="${cls(it.gr)}" title="Số thật khi bật ở kịch bản${it.tag==="nice"?" (lợi thêm khi bật kèm phần bắt buộc)":""} · ước tính mô hình ${sgT(it.gModel)}">${sgT(it.gr)} tr/kỳ</b></div>
-      <div class="pk-iw">${what.join("<br>")||esc(p.title)}</div>${p.lateA!=null&&p.lateB!=null?(()=>{const t=v=>v>0.5?`<b class="neg">trễ ${Math.round(v)}'</b>`:`<b class="pos">kịp</b>`;return `<p class="mini" style="margin:2px 0 0;white-space:normal">Giờ ngày TB: không làm ${t(p.lateB)} → làm ${t(p.lateA)}</p>`;})():""}${it.tag==="nice"?`<label class="sw sm" style="margin-top:3px" title="Bật phần gắn thêm (kèm phần bắt buộc của gói)"><input type="checkbox" data-togit="${esc(encodeURIComponent(p.id))}" data-req="${esc(it.req)}"${isOn(p.id)?" checked":""} aria-label="Bật phần nên làm"><span></span></label> <span class="mini">bật phần này</span>`:""}${it.core?`<p class="mini" style="margin:2px 0 0;white-space:normal">Lõi của gói.</p>`:""}${it.weak?`<p class="mini" style="margin:2px 0 0;white-space:normal;color:var(--neg,#b42318)">Bật kèm gần như không thêm lợi (${sgT(it.gr)} tr/kỳ khi tính lại cả mạng) — không nên bật.</p>`:""}${it.dep&&p.g>5e4?`<p class="mini" style="margin:2px 0 0;white-space:normal">Phải làm cùng tuyến xe trong gói: nhóm người hiện nay của các điểm này không còn kịp giờ với tuyến xe mới. (Riêng phần này cũng có lợi.)</p>`:it.pk.forced?`<p class="mini" style="margin:2px 0 0;white-space:normal">${it.why==="late"?`${xe?"Tuyến":"Nhóm"} hiện nay mô phỏng đã không kịp giờ (trễ hơn thực tế) → kế hoạch sửa lại cho kịp. Tốn thêm, không tự tiết kiệm.`:`${xe?"Tuyến":"Nhóm"} hiện nay không còn kịp giờ khi ${xe?"nhóm người":"tuyến xe"} trong kế hoạch đổi → phải đổi theo. Không tự tiết kiệm.`}</p>`:""}</li>`;};
+      ${pkDiff(p,it.kind)}${p.lateA!=null&&p.lateB!=null?(()=>{const t=v=>v>0.5?`<b class="neg">trễ ${Math.round(v)}'</b>`:`<b class="pos">kịp</b>`;return `<p class="mini" style="margin:2px 0 0;white-space:normal">Giờ ngày TB: không làm ${t(p.lateB)} → làm ${t(p.lateA)}</p>`;})():""}${it.tag==="nice"?`<label class="sw sm" style="margin-top:3px" title="Bật phần gắn thêm (kèm phần bắt buộc của gói)"><input type="checkbox" data-togit="${esc(encodeURIComponent(p.id))}" data-req="${esc(it.req)}"${isOn(p.id)?" checked":""} aria-label="Bật phần nên làm"><span></span></label> <span class="mini">bật phần này</span>`:""}${it.weak?`<p class="mini" style="margin:2px 0 0;white-space:normal;color:var(--neg,#b42318)">Bật kèm gần như không thêm lợi (${sgT(it.gr)} tr/kỳ khi tính lại cả mạng) — không nên bật.</p>`:""}${it.dep&&p.g>5e4?`<p class="mini" style="margin:2px 0 0;white-space:normal">Đi kèm tuyến xe của gói: nhóm cũ không kịp giờ với tuyến mới.</p>`:it.pk.forced?`<p class="mini" style="margin:2px 0 0;white-space:normal">${it.why==="late"?`${xe?"Tuyến":"Nhóm"} hiện nay đang trễ → sửa cho kịp (tốn thêm).`:`${xe?"Tuyến":"Nhóm"} hiện nay không kịp khi ${xe?"nhóm người":"tuyến xe"} đổi → đổi theo (tốn thêm).`}</p>`:""}</li>`;};
   return `<div class="pk-list">${L.map((u,k)=>{const on=u.mustIds.every(isOn),some=u.ids.some(isOn),nt=needTx[u.need];u.items.forEach(it=>{it.req=u.mustIds.map(encodeURIComponent).join(",");});
     return `<article class="pk" id="pk-${k+1}"><header><div class="pk-t"><b>Gói ${k+1}</b><span class="pk-need ${u.need}">${nt[0]}</span><span class="mini">${u.pts.length} điểm · ${u.items.length} phần</span></div>
       <b class="pk-g ${cls(u.gMust)}">${sgT(u.gMust)}<small>${Math.abs(u.g-u.gMust)>5e4?`phần bắt buộc · cả gói ${sgT(u.g)}`:"tr/kỳ cả gói"}</small></b><label class="sw" title="Bật/tắt gói (phần bắt buộc; tắt thì tắt cả phần gắn thêm)"><input type="checkbox" data-togpk="${esc(u.mustIds.map(encodeURIComponent).join(","))}" data-all="${esc(u.ids.map(encodeURIComponent).join(","))}"${on?" checked":""}${!on&&some?' data-part="1"':""} aria-label="Bật gói ${k+1}"><span></span></label></header>
+      <div class="pk-why">${pkReasons(u).map(([k,t])=>`<span class="rs ${k}">${t}</span>`).join("")}</div>
       ${nt[1]?`<p class="mini" style="margin:0 0 4px;white-space:normal">${nt[1]}</p>`:""}<ul class="pk-items">${u.items.map(itemRow).join("")}</ul>${(u.dropped||[]).map(it=>`<p class="mini" style="margin:4px 0 0;white-space:normal">Đã cân nhắc và <b>bỏ</b>: ${it.kind==="xe"?"tuyến":"nhóm người"} ${esc(it.pk.gs.filter(g=>g.length>1).map(g=>g.map(i=>shortN(S[i].n)).join(" + ")).join(" · "))} — bật kèm chỉ ${sgT(it.gr)} tr/kỳ khi tính lại cả mạng, nên giữ như hiện nay.</p>`).join("")}</article>`;}).join("")}</div>`;}
 /* nhóm/tuyến bị giải tán (mọi điểm về người riêng / đi riêng): nêu rõ lý do và tiền, khớp với cầu lãi/lỗ */
 function nvSplitNote(st,L){const {P,sc}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp;

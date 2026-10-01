@@ -893,4 +893,28 @@ details.adv[open]>summary{border-bottom:1px solid var(--line-2);margin-bottom:6p
 @media (max-width:640px){.bar-in .seg button{white-space:nowrap}}
 /* section{margin-top:36px} chỉ dành cho khối nội dung trang; trong lưới/flex có gap thì bỏ (tạo khoảng trống lệch) */
 :where(.an-lanes,.nvd-pane,.nvd,.bk,.mdl-body,.nv-grid)>section{margin-top:0}
+/* gói: hiện nay → đề xuất theo từng điểm; lý do chọn gói */
+.pk-why{display:flex;flex-wrap:wrap;gap:4px}
+.rs{font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:4px;border:1px solid currentColor;white-space:nowrap}
+.rs.cost{color:var(--profit);background:var(--profit-fill);border-color:transparent}
+.rs.cot{color:var(--mark);background:var(--mark-soft);border-color:transparent}
+.rs.costn,.rs.cotn{color:var(--loss);background:var(--loss-fill);border-color:transparent}
+.rs.need{color:var(--warn);background:var(--warn-fill);border-color:transparent}
+.dx{display:flex;flex-direction:column;gap:3px;margin:3px 0 1px;min-width:0}
+.dx-r{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px;align-items:start}
+.dx-l{font-size:10.5px;color:var(--muted);padding-top:3px;text-transform:uppercase;letter-spacing:.04em}
+.dx-v{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.dx-g{display:inline-flex;flex-wrap:wrap;align-items:center;gap:2px;border:1px solid var(--line);border-radius:5px;padding:1px 4px;background:var(--panel-2);max-width:100%;min-width:0}
+.dx-g.new{border-color:var(--ink-2);background:var(--panel)}
+.dx-g.solo{border-style:dashed}
+.dx-g i{font-style:normal;color:var(--muted);font-size:11px}
+.dx-g small{font-size:10px;color:var(--muted);margin-left:2px}
+.dx-g .linkish{font-size:11px;padding:0 2px;margin-left:1px}
+.dx-p{font-size:12px;padding:0 3px;border-radius:3px;overflow-wrap:anywhere}
+.dx-p.out{background:var(--loss-fill);color:var(--loss);font-weight:600}
+.dx-p.in,.dx-p.move{background:var(--mark-soft);color:var(--mark);font-weight:600}
+.dx-s{margin:0;font-size:11.5px;color:var(--muted)}
+.nvd-cost{display:flex;flex-direction:column;gap:10px}
+.nvd-calc{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px;padding:10px 12px;background:var(--panel-2);border-radius:8px;font-size:14px}
+.nvd-calc b{font-variant-numeric:tabular-nums}.nvd-calc i{font-style:normal;color:var(--muted)}.nvd-calc small{flex-basis:100%;color:var(--muted);font-size:12px}
 </style>
