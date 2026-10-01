@@ -439,3 +439,8 @@ Giờ có hàng / giờ người có mặt:
     - computeOnce (số thật): khi có điểm trong T0 của i đổi cấu hình trong kịch bản, chênh = mô hình phần còn lại / tuyến mới − mô hình T0.
   - Ví dụ Thao Van bị tách đi riêng: trước 0, nay −8,7 tr/kỳ.
   - Kế hoạch mặc định không đổi (không tách nhóm kiểu này); các gói vẫn độc lập; kiểm tra nhất quán 0 lỗi; khớp thực tế 141/160.
+
+## Cập nhật: tối giản chữ
+- Mặc định ẩn mọi đoạn giải thích. Nút **"Giải thích"** trên thanh trên cùng bật lại (`body.expl-on`, nhớ trong localStorage `d2s-expl`).
+- Phần bị ẩn: lời dẫn trang, `.note` (trừ thông báo trống `.note.keep`), đoạn mô tả các tầng, chú giải biểu đồ, dòng lý do xe tới, ghi chú tab Chi phí, dòng tóm tắt "Hiện nay → Đề xuất", mô tả phụ của "Trước → sau", câu kết luận của popup (đã có ô số), chữ nhỏ trong ô số, "Lưu trên trình duyệt".
+- Phần còn lại: số, nhãn, chip lý do, biểu đồ, thẻ gói và bảng.

@@ -921,4 +921,9 @@ details.adv[open]>summary{border-bottom:1px solid var(--line-2);margin-bottom:6p
 .bk-tag.pr-uu{background:var(--warn-fill);color:var(--warn);border-color:transparent;font-weight:600}
 .tov-why{display:block;flex-basis:100%;font-size:11.5px;color:var(--muted);white-space:normal;margin-top:2px;max-width:70ch}
 .tov{flex-wrap:wrap}
+/* TỐI GIẢN CHỮ: mặc định ẩn các đoạn giải thích (lời dẫn, ghi chú, chú giải, dòng mô tả phụ); nút "Giải thích" trên thanh trên cùng bật lại (body.expl-on) */
+body:not(.expl-on) :is(.lead,.tabsub,.note:not(.keep),.tier>p,.sch-lg,.tov-why,.nvd-calc small,.dx-s,.nv-scope,.nv-dlab span,.nv-bsum+.nv-bridge+.note,.pk p.mini,.pk-t>.mini,.nvd-cost>p.mini,.nvd-ex ol,.hcard p,.adv-s,.nvd-ba~.note,[data-ba]>.note,.bk-help,.mk small){display:none}
+body:not(.expl-on) .nvd-st .nvd-badge:not(.pos):not(.neg):not(.warn){display:none}
+[data-expl][aria-pressed="true"]{background:var(--mark-soft);color:var(--mark);border-color:var(--mark)}
+body:not(.expl-on) :is(.save-state,.nv-over .row>.mini,.nvd-pane>p.mini,.nvd-vd,.nvd-chips small,.nvd-cot>p.mini,.nvd-x .nvd-h small){display:none}
 </style>
