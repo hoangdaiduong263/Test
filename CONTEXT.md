@@ -367,3 +367,13 @@ Giờ có hàng / giờ người có mặt:
 - `nvHc` trước đây chia người-ngày cả kỳ cho mọi ngày trong kỳ, còn "đơn/ngày" chia cho ngày có hàng, tức hai mẫu số khác nhau. Ví dụ Flash Cu Chi (Mini/CP, chạy 7/31 ngày, 7.865 đơn/ngày chạy): hiển thị "1 người", trong khi ngày chạy cần 1–11 người, bình quân 4,3.
 - Nay `nvHc` = bình quân trên các ngày nhóm có hàng; bảng chỉnh người hàng loạt (`hcA`) cũng vậy.
 - `nvHcCal` (cách cũ) chỉ còn dùng làm số người khởi điểm khi mô phỏng nhóm, nên kế hoạch không đổi.
+
+## Cập nhật: bố cục lại toàn artifact (bước 3 là trọng tâm)
+- Bước 3 "Chọn điều chỉnh", tóm tắt trước, chi tiết sau:
+  1. lời dẫn 1 câu + ô Gốc / Kịch bản / Đang bật + lọc + Tắt hết;
+  2. "Tối ưu toàn mạng": bảng tổng các vùng (tiêu đề cột gọn 2 dòng) + nút bật cả kế hoạch → khung vùng: thanh vùng / kiểu xem (Gói kế hoạch · Tuyến xe · Nhóm người) bên trái, công cụ (chỉnh người hàng loạt, giờ có hàng, nhất quán) bên phải → "Trước → sau" + "Lời thêm theo gói" → các thẻ gói;
+  3. "Điều chỉnh từng điểm" gập lại (`details#v3adv`, `ui.v3adv`), gồm bộ đề xuất, danh sách gói tuyến/người dạng dòng cũ (`netRowsOld`), ngưỡng ADO, Xe, Vận hành, Chỉnh tay. Tiêu đề ghi số mục đang bật.
+- "Cầu lãi/lỗ theo gói" thành "Lời thêm theo gói": thác nước từ 0 bằng số THẬT của gói (`u.g`, như thẻ), tên "Gói k …", bấm thì cuộn tới thẻ (`data-pkgo`, id `pk-k`, viền nháy). Dòng Lãi/lỗ trong "Trước → sau" cũng dùng số thật.
+- Thẻ gói: `align-items:start` (không kéo giãn thẻ ngắn); đầu thẻ một dòng "Gói k [loại]".
+- Điện thoại: thanh vùng / kỳ cuộn ngang một dòng, ẩn "Lưu trên trình duyệt", thanh tóm tắt một dòng; không trang nào cuộn ngang ở 400px.
+- CSS: `section{margin-top:36px}` (toàn cục) không còn áp vào section trong lưới / flex (`.an-lanes`, `.nvd`, …). Đây là lỗi khoảng trống ở "Mạng lưới sau điều chỉnh".

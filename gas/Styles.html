@@ -848,4 +848,49 @@ body[data-suite="home"] .bar .grp{display:none}
 .nvd-pane>.nvd-cot{margin-top:0}.nvd-t th small{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:10.5px}.nvd-t td.l,.nvd-t th.l{text-align:left}
 .nvd-ba{display:inline-flex;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden;align-self:flex-start;flex-wrap:wrap}.nvd-ba button{background:var(--panel);border:0;padding:7px 14px;font:500 13px var(--sans);color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left}.nvd-ba button+button{border-left:1px solid var(--line)}.nvd-ba button span{font-size:11.5px;font-weight:600}.nvd-ba button span.pos{color:var(--profit)}.nvd-ba button span.neg{color:var(--loss)}.nvd-ba button span.warn{color:var(--warn)}.nvd-ba button[aria-pressed="true"]{background:var(--mark-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--mark)}.nvd-more{border:1px solid var(--line-2);border-radius:10px;padding:8px 12px}.nvd-more>summary{cursor:pointer;font:600 13px var(--sans)}.nvd-more[open]>summary{margin-bottom:8px}
 .nvd-day li.m.wt{color:var(--warn);font-weight:600}
+/* ===== bố cục lại (bước 3 + khung): tóm tắt trước, chi tiết sau; công cụ gom một chỗ ===== */
+.nv-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-bottom:6px}
+.nv-tabs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
+.nv-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.nv-scope{flex-basis:100%;white-space:normal;color:var(--muted)}
+.nv-over{margin-bottom:14px}
+.nv-grid.b{margin-top:6px;padding-top:12px;border-top:1px solid var(--line-2)}
+.nv-sec{margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line-2);font-size:14px}
+.nv-bsum{margin:0 0 6px;font-size:13px;color:var(--muted)}.nv-bsum b{font-variant-numeric:tabular-nums}
+.nv-brow{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) 64px}
+.nv-blab{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nv-blab small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-list{align-items:start}
+.pk.flash{outline:2px solid var(--mark);outline-offset:2px;transition:outline-color .6s}
+details.adv{margin-top:28px;border-top:1px solid var(--line);padding-top:6px;display:flex;flex-direction:column;gap:10px}
+details.adv>summary{cursor:pointer;list-style:none;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 0}
+details.adv>summary::-webkit-details-marker{display:none}
+details.adv>summary::before{content:"▸";color:var(--muted);font-size:13px;transition:transform .15s}
+details.adv[open]>summary::before{transform:rotate(90deg)}
+.adv-t{font:700 17px var(--sans);letter-spacing:-.01em}
+.adv-s{font-size:13px;color:var(--muted);min-width:0}
+details.adv[open]>summary{border-bottom:1px solid var(--line-2);margin-bottom:6px}
+@media (prefers-reduced-motion:reduce){details.adv>summary::before,.pk.flash{transition:none}}
+/* khung trên điện thoại: một dòng cuộn ngang cho vùng, bỏ chữ phụ; thanh tóm tắt gọn */
+@media (max-width:640px){
+  .bar-in{gap:8px 10px;padding-block:8px}
+  .bar-in .grp{flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .bar-in .grp::-webkit-scrollbar{display:none}
+  .bar-in .grp .seg{flex-wrap:nowrap}
+  .save-state{display:none}
+  .grp.right{margin-left:0}
+  .strip-in{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .strip-in::-webkit-scrollbar{display:none}
+  .strip-in>.mini{display:none}
+  .nv-head{flex-direction:column;align-items:stretch}
+  .nv-tabs .seg{max-width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+}
+
+@media (max-width:560px){.nv-brow{grid-template-columns:minmax(0,1fr) minmax(0,.7fr) 54px}}
+.pk header{flex-wrap:wrap}.pk-t{flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px 8px}.pk-t>.mini{flex-basis:100%}
+.pk-need{border-radius:4px;white-space:nowrap}
+.nv-over table.data th small{display:block;font-weight:400;text-transform:none;letter-spacing:0}
+@media (max-width:640px){.bar-in .seg button{white-space:nowrap}}
+/* section{margin-top:36px} chỉ dành cho khối nội dung trang; trong lưới/flex có gap thì bỏ (tạo khoảng trống lệch) */
+:where(.an-lanes,.nvd-pane,.nvd,.bk,.mdl-body,.nv-grid)>section{margin-top:0}
 </style>
