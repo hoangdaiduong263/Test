@@ -298,3 +298,8 @@ Giờ có hàng / giờ người có mặt:
   - Số mô hình giữ ở `gModel`.
   - Lõi được chọn lại theo lợi thật khi bật một mình.
 - netTC: chỉ giữ tiền xe thật ("đi chung ≥80% ngày") khi chuyến thật không chở thêm điểm ngoài nhóm. Nếu một điểm rời chuyến, tiền xe chia cho ít điểm hơn nên không giữ nguyên được.
+- Phần "nên làm" có lợi thêm thật ≤ 0,5 tr/kỳ (minG) không còn được đề xuất mà bị BỎ khỏi kế hoạch:
+  - trả các tuyến/nhóm cắt về như hiện nay (T1/L1, tp/lp, NET.t1of);
+  - gói tính lại `ids`/`g`/`pts`/`need`;
+  - thẻ ghi "Đã cân nhắc và bỏ: … bật kèm chỉ x tr/kỳ".
+  - Kiểm bằng ngưỡng 1 tr: North bỏ tuyến Hukan + MoonBook; planAudit 0 lỗi, các gói vẫn độc lập.

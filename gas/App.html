@@ -1389,7 +1389,15 @@ function netPlan(R){const K=NET.plan||(NET.plan={});if(K[R])return K[R];
      u.items.forEach(it=>{it.gModel=it.pk.g;
        if(it.tag==="nice")it.gr=rv(u.mustIds.concat([it.pk.id]))-u.gMust;                       /* phần gắn thêm: lợi thêm khi bật kèm lõi */
        else it.gr=ms.length===1?u.gMust:u.gMust-rv(u.mustIds.filter(x=>x!==it.pk.id));});      /* phần bắt buộc: phần đóng góp trong phần bắt buộc */
-     u.items.forEach(it=>{if(it.tag==="nice"&&it.gr<=5e5)it.weak=true;});});
+     /* phần "nên làm" mà bật kèm không thêm lợi thật (≤ 0,5 tr/kỳ): BỎ khỏi kế hoạch (giữ tuyến/nhóm như hiện nay), không đưa ra để chọn */
+     const drop=u.items.filter(it=>it.tag==="nice"&&it.gr<=minG);
+     drop.forEach(it=>{const pk=it.pk,xe=it.kind==="xe",PL=xe?T1:L1,PK=xe?tp:lp,ks=new Set(pk.gs.map(gkey));
+       for(let j=PL.length-1;j>=0;j--)if(ks.has(gkey(PL[j])))PL.splice(j,1);pk.cut.forEach(g=>PL.push(g));
+       const j2=PK.indexOf(pk);if(j2>=0)PK.splice(j2,1);
+       if(xe){pk.gs.flat().forEach(i=>{delete NET.t1of[i];});pk.cut.forEach(g=>{if(g.length>1)g.forEach(i=>{NET.t1of[i]=g;});});}});
+     if(drop.length){u.dropped=drop;u.items=u.items.filter(it=>!drop.includes(it));u.ids=u.items.map(x=>x.pk.id);u.g=u.mustIds.length===u.ids.length?u.gMust:rv(u.ids);
+       u.pts=srtN([...new Set(u.items.flatMap(x=>x.pk.pts.concat(x.pk.cut.flat())))]);
+       if(u.need==="either"&&!u.items.some(x=>x.tag==="nice"))u.need=u.items.length>1?"both":u.items[0].kind;}});
    up.sort((a,b)=>b.g-a.g);}
   return K[R]={R,T0,T1,L0,L1,up,tp:tp.sort((a,b)=>b.gm-a.gm),lp:lp.sort((a,b)=>b.g-a.g),tsz:[sz(T0),sz(T1)],lsz:[sz(L0),sz(L1)],
     tg:tp.reduce((a,p)=>a+p.g,0),tgm:tp.reduce((a,p)=>a+p.gm,0),lg:lp.reduce((a,p)=>a+p.g,0)};}
@@ -2429,7 +2437,7 @@ function nvPackCards(st){const {P,sc}=st,inS=new Set(sc.pts),L=(P.up||[]).filter
   return `<div class="pk-list">${L.map((u,k)=>{const on=u.mustIds.every(isOn),some=u.ids.some(isOn),nt=needTx[u.need];u.items.forEach(it=>{it.req=u.mustIds.map(encodeURIComponent).join(",");});
     return `<article class="pk"><header><div class="pk-t"><b>Gói ${k+1}</b><span class="pk-need ${u.need}">${nt[0]}</span><span class="mini">${u.pts.length} điểm · ${u.items.length} phần</span></div>
       <b class="pk-g ${cls(u.gMust)}">${sgT(u.gMust)}<small>${Math.abs(u.g-u.gMust)>5e4?`phần bắt buộc · cả gói ${sgT(u.g)}`:"tr/kỳ cả gói"}</small></b><label class="sw" title="Bật/tắt gói (phần bắt buộc; tắt thì tắt cả phần gắn thêm)"><input type="checkbox" data-togpk="${esc(u.mustIds.map(encodeURIComponent).join(","))}" data-all="${esc(u.ids.map(encodeURIComponent).join(","))}"${on?" checked":""}${!on&&some?' data-part="1"':""} aria-label="Bật gói ${k+1}"><span></span></label></header>
-      ${nt[1]?`<p class="mini" style="margin:0 0 4px;white-space:normal">${nt[1]}</p>`:""}<ul class="pk-items">${u.items.map(itemRow).join("")}</ul></article>`;}).join("")}</div>`;}
+      ${nt[1]?`<p class="mini" style="margin:0 0 4px;white-space:normal">${nt[1]}</p>`:""}<ul class="pk-items">${u.items.map(itemRow).join("")}</ul>${(u.dropped||[]).map(it=>`<p class="mini" style="margin:4px 0 0;white-space:normal">Đã cân nhắc và <b>bỏ</b>: ${it.kind==="xe"?"tuyến":"nhóm người"} ${esc(it.pk.gs.filter(g=>g.length>1).map(g=>g.map(i=>shortN(S[i].n)).join(" + ")).join(" · "))} — bật kèm chỉ ${sgT(it.gr)} tr/kỳ khi tính lại cả mạng, nên giữ như hiện nay.</p>`).join("")}</article>`;}).join("")}</div>`;}
 /* nhóm/tuyến bị giải tán (mọi điểm về người riêng / đi riêng): nêu rõ lý do và tiền, khớp với cầu lãi/lỗ */
 function nvSplitNote(st,L){const {P,sc}=st,inS=new Set(sc.pts),Pa=L==="xe"?P.T1:P.L1,Pb=L==="xe"?P.T0:P.L0,pks=L==="xe"?P.tp:P.lp;
   const sp=Pb.filter(g=>g.length>1&&g.some(i=>inS.has(i))&&g.every(i=>{const a=Pa.find(h=>h.includes(i));return !a||a.length===1;}));if(!sp.length)return "";
