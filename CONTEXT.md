@@ -448,3 +448,15 @@ Giờ có hàng / giờ người có mặt:
 ## Cập nhật: sửa giao diện trang Cấu hình
 - Chip nguồn dài (vd. "Giả định — nhập giờ thật từng điểm × COT trong popup tuyến") nằm trong `.val` không xuống dòng, làm cột giá trị tràn ngang và ép nhãn thành cột chữ hẹp.
 - Nay chip rút gọn (max 10em, "…", rê chuột xem đủ); `.p>*{min-width:0}`. Nhãn dài (> 50 ký tự) tách thành tên ngắn + mô tả `<em>` (ẩn khi tắt Giải thích). Điện thoại: một cột.
+
+## Cập nhật: gói "Đổi cỡ xe vừa hàng (tuyến giữ nguyên)" trong kế hoạch mạng
+- Trước đây kế hoạch mạng chỉ chọn xe đúng cỡ cho tuyến MỚI. Tuyến giữ nguyên (đi riêng hoặc ghép) vẫn tính xe thật, nên bảng "Tối ưu toàn mạng" thiếu phần đổi cỡ xe, trong khi nút "Bật kế hoạch mạng + đổi cỡ xe" lại bật thêm đổi cỡ xe từng điểm (lấy từ danh sách đề xuất).
+- Nay mỗi vùng có thêm một gói đổi cỡ xe:
+  - (a) điểm đi riêng: act "size" của điểm;
+  - (b) tuyến ghép giữ nguyên (y như T0, kể cả tuyến gộp theo chuyến thật): act "net" một nhóm, chọn lại xe vừa hàng cho CẢ tuyến;
+  - không lấy điểm đã có gói tuyến xe; điểm chỉ có gói nhóm người thì vẫn được (xe và người độc lập, cộng các gói vẫn = bật cả);
+  - giữ ứng viên lời > 0,2 tr; số thật tính bằng `netWith`.
+- Bảng có thêm cột "Đổi cỡ xe · tuyến giữ nguyên"; `netVerify` gồm cả gói này; nút bật cả kế hoạch = bật đúng mọi gói đang hiện.
+- Không còn đề xuất đổi cỡ xe cho MỘT điểm đang đi chung chuyến thật (leversFor bỏ "size" khi `t0Of(i)` nhiều điểm). Ví dụ sociolla: nay đổi cỡ xe cho cả tuyến HAPAS + sociolla + Cocoon + TRUE CARE (+71,6).
+- Kiểm tra: planAudit 0 lỗi; thẻ = popup; bật cả kế hoạch = bảng (HCM 601,2).
+- Lưu ý: phần lớn số lời đến từ giả định giá xe và thuê ca 12H (Top Gia HCM +358,7: hiện nay 16×5T/ngày).
