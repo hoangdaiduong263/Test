@@ -464,3 +464,4 @@ Giờ có hàng / giờ người có mặt:
 ## Cập nhật: popup tuyến/nhóm rộng theo chiều ngang
 - Popup chi tiết tuyến/nhóm (`MR.nvd`) dùng `size:"xwide"`: rộng tới 1500px (hoặc màn hình − 24px).
 - Biểu đồ lịch trong popup vẽ rộng theo cửa sổ (W = innerWidth − 140, trong khoảng 780–1440) thay vì cố định 780, nên các khối xe / sort dài ra và số trong khối dễ đọc. Điện thoại không bị tràn.
+- Biểu đồ lịch trong popup: vẽ với W = (innerWidth − 140) / 1,3 (700–1100) rồi để SVG giãn đầy khung, nên phóng to đều cả ngang lẫn dọc (chữ, khối, chiều cao hàng ~×1,3). Không còn dẹt.
