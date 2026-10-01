@@ -47,7 +47,7 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
 
 **Mô phỏng ngày đông** (`simRoute`), từng lượt xe (giờ có hàng sửa tay được theo điểm × COT bằng `setAvail`; FTE riêng / seller làm lần lượt theo COT, `ownReady`):
 - **Hàng có từ:** giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở).
-- **Xe chất dần:** tới nơi là chất phần đã sort; rời khi chất xong cả lượt **và** đã qua lúc hàng cuối sẵn + `closeMin` (mặc định 5'). Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc đó. Thời gian chất = cố định + phút/đơn (đo từ chuyến thật). Mỗi lượt tự chọn thứ tự ghé (trễ ít nhất, rồi về sớm nhất). Giờ xe tới điểm đầu sửa tay được theo tuyến × COT (`setTruck`, bảng "Lịch xe" trong màn live); xe tới trước giờ hàng sẵn thì đứng chờ.
+- **Xe chất dần:** tới nơi là chất phần đã sort; rời khi chất xong cả lượt **và** đã qua lúc hàng cuối sẵn + `closeMin` (mặc định 5'). Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc đó. Giờ xuất phát của lượt được lùi tới muộn nhất mà không trễ thêm, không về muộn hơn, để xe không tới sớm rồi nằm chờ đơn cuối ở điểm sau. Thời gian chất = cố định + phút/đơn (đo từ chuyến thật). Mỗi lượt tự chọn thứ tự ghé (trễ ít nhất, rồi về sớm nhất). Giờ xe tới điểm đầu sửa tay được theo tuyến × COT (`setTruck`, bảng "Lịch xe" trong màn live); xe tới trước giờ hàng sẵn thì đứng chờ.
 - **Trễ** = giờ xe rời − hạn COT (Packed) của lượt. Hạn sửa tay được theo điểm × COT (`setDeadline`, bảng "Hạn COT" trong màn live); bản sửa tay ưu tiên hơn mọi quy tắc.
 
 **3 loại người:**

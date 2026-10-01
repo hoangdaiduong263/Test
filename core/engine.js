@@ -299,11 +299,16 @@ function Core(D, REF) {
       const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] : ow(i).st;
       /* XE CHẤT DẦN: tới nơi là chất phần đã sort (không trước lúc bắt đầu sort); rời khi chất xong cả lượt và đã qua lúc hàng cuối sẵn + closeMin.
          Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc hàng cuối sẵn + closeMin */
-      const run1 = pts => { let t = null, prev = null, lt = -1e9; const st = [];
+      const run0 = (pts, a0) => { let t = null, prev = null, lt = -1e9; const st = [];
         pts.forEach(i => { const rd = ready(i), dwq = dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0);
-          const arr = prev == null ? (tov[s.k] ?? Math.max(sortSt(i), Math.min(rd, rd + P.closeMin - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
+          const arr = prev == null ? (a0 ?? Math.max(sortSt(i), Math.min(rd, rd + P.closeMin - dwq))) : t + legMin(prev, i), ls = Math.max(arr, Math.min(rd, sortSt(i)));
           const dep = Math.max(ls + dwq, rd + P.closeMin), dl = deadline(i, w[i]);
           st.push({ i, k: w[i].k, q: q[i], ready: rd, arr, ls, dep, dl, dwq, late: dep - dl }); lt = Math.max(lt, dep - dl); t = dep; prev = i; }); return { st, lt, end: t }; };
+      /* lùi giờ xuất phát tới muộn nhất mà không trễ thêm và không về muộn hơn: xe không phải tới sớm rồi nằm chờ đơn cuối ở điểm sau */
+      const run1 = pts => { if (tov[s.k] != null) return run0(pts, tov[s.k]); const x0 = run0(pts); let best = x0, idle = 0;
+        x0.st.forEach(z => { idle += Math.max(0, z.dep - z.arr - z.dwq); if (idle < 0.5) return; const x = run0(pts, x0.st[0].arr + idle);
+          if (x.lt <= x0.lt + 0.5 && x.end <= x0.end + 0.5 && x.st[0].arr > best.st[0].arr) best = x; });
+        return best; };
       /* thứ tự ghé chọn riêng cho từng lượt: trễ ít nhất, rồi về sớm nhất (order = null) — hoặc theo thứ tự cho trước */
       let best = null; for (const o of order ? [order.filter(i => q[i] > 0)] : (inS.length <= 5 ? perms(inS) : [routeOrder(inS)])) { const x = run1(o); if (!best || x.lt < best.lt - 1e-9 || (Math.abs(x.lt - best.lt) < 1e-9 && x.end < best.end)) best = x; }
       late = Math.max(late, best.lt); rows.push({ t: s.t, k: s.k, nTr, st: best.st }); }
