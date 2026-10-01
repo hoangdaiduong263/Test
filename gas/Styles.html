@@ -926,4 +926,8 @@ body:not(.expl-on) :is(.lead,.tabsub,.note:not(.keep),.tier>p,.sch-lg,.tov-why,.
 body:not(.expl-on) .nvd-st .nvd-badge:not(.pos):not(.neg):not(.warn){display:none}
 [data-expl][aria-pressed="true"]{background:var(--mark-soft);color:var(--mark);border-color:var(--mark)}
 body:not(.expl-on) :is(.save-state,.nv-over .row>.mini,.nvd-pane>p.mini,.nvd-vd,.nvd-chips small,.nvd-cot>p.mini,.nvd-x .nvd-h small){display:none}
+.p>*{min-width:0}
+.p .val .src{max-width:10em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle}
+@media (max-width:560px){.p{grid-template-columns:minmax(0,1fr)}.p .val{justify-content:flex-end}}
+body:not(.expl-on) .p .nm em{display:none}
 </style>

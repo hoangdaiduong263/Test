@@ -444,3 +444,7 @@ Giờ có hàng / giờ người có mặt:
 - Mặc định ẩn mọi đoạn giải thích. Nút **"Giải thích"** trên thanh trên cùng bật lại (`body.expl-on`, nhớ trong localStorage `d2s-expl`).
 - Phần bị ẩn: lời dẫn trang, `.note` (trừ thông báo trống `.note.keep`), đoạn mô tả các tầng, chú giải biểu đồ, dòng lý do xe tới, ghi chú tab Chi phí, dòng tóm tắt "Hiện nay → Đề xuất", mô tả phụ của "Trước → sau", câu kết luận của popup (đã có ô số), chữ nhỏ trong ô số, "Lưu trên trình duyệt".
 - Phần còn lại: số, nhãn, chip lý do, biểu đồ, thẻ gói và bảng.
+
+## Cập nhật: sửa giao diện trang Cấu hình
+- Chip nguồn dài (vd. "Giả định — nhập giờ thật từng điểm × COT trong popup tuyến") nằm trong `.val` không xuống dòng, làm cột giá trị tràn ngang và ép nhãn thành cột chữ hẹp.
+- Nay chip rút gọn (max 10em, "…", rê chuột xem đủ); `.p>*{min-width:0}`. Nhãn dài (> 50 ký tự) tách thành tên ngắn + mô tả `<em>` (ẩn khi tắt Giải thích). Điện thoại: một cột.
