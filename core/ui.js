@@ -39,22 +39,22 @@
 
   const rt = g => `<span class="rt">${g.map(i => `<span class="pt" title="${esc(C.nm(i))}">${esc(short(i))}</span>`).join("<i>+</i>")}</span>`;
   const verdict = h => h.nodata ? `<span class="chip info">thiếu data</span>` : `<span class="chip ${h.ok ? "ok" : "bad"}">${h.ok ? "✓" : "✗"} trễ ${mins(h.late)}</span>`;
-  const modeOf = (g, h, i) => h.mode === "S" ? "FTE chung" : (Array.isArray(h.label) ? h.label[g.indexOf(i)] : "FTE riêng");
+  const modeOf = (g, h, i) => h.A && h.A[i] ? C.modeTxt(h.A[i]) : "FTE riêng";
 
   function routeDetail(r, g) { const h = r.hc(g), rc = C.routeCost(g), ord = h.order || C.routeOrder(g);
-    const ppl = h.mode === "S" ? `${h.lab.hc} FTE chung` : [h.lab.hc ? `${h.lab.hc} FTE riêng` : "", g.filter(i => modeOf(g, h, i) === "PPS").length ? `${g.filter(i => modeOf(g, h, i) === "PPS").length} điểm PPS` : ""].filter(Boolean).join(" · ");
+    const ppl = [...new Set(g.map(i => modeOf(g, h, i)))].join(" · ");
     const head = `<div class="rhead">${verdict(h)}<span>${ord.map(i => esc(short(i))).join(" → ")} → SOC</span>
       <span class="muted">xe <b class="mono">${rc.t.toFixed(1)}</b>/ngày · ${esc(C.mixLabel(rc.mix))}</span><span class="muted">người <b>${esc(ppl)}</b> · ${tr(h.lab.c)} tr/kỳ</span>
       ${h.tol > P.lateTol ? `<span class="chip info" title="Tuyến hiện nay của các điểm này mô phỏng đã trễ ${Math.round(h.tol)}'">chỉ cần không trễ hơn ${Math.round(h.tol)}'</span>` : ""}</div>`;
     if (h.nodata || !h.sim) return `<div class="route">${head}<p class="muted" style="margin:0">Thiếu chuyến thật để mô phỏng giờ.</p></div>`;
     const rows = h.sim.rows.map(s => s.st.map((z, k) => `<tr>${k === 0 ? `<td class="slot" rowspan="${s.st.length}">${hm(s.t)}<br><span class="muted mono">${s.nTr} xe</span></td>` : ""}
-      <td>${esc(short(z.i))} <span class="muted">· ${esc(modeOf(g, h, z.i))}</span></td><td class="r mono">${Math.round(z.q)}</td><td class="r mono">${hm(z.ready)}</td><td class="r mono">${hm(z.arr)}</td>
+      <td>${esc(short(z.i))} <span class="muted">· ${esc(modeOf(g, h, z.i))} · ${esc(C.work(z.i).sort)}</span></td><td class="r mono">${Math.round(z.q)}</td><td class="r mono">${hm(z.ready)}</td><td class="r mono">${hm(z.arr)}</td>
       <td class="r mono">${hm(z.dep)}</td><td class="r mono">${hm(z.dl)}</td><td class="r mono late ${z.late > h.tol ? "neg" : z.late > 0 ? "" : "pos"}">${mins(z.late)}</td></tr>`).join("")).join("");
     return `<div class="route">${head}<div class="scroll"><table class="tl"><thead><tr><th>Lượt</th><th>Điểm · người</th><th class="r">Đơn</th><th class="r">Hàng sẵn</th><th class="r">Xe tới</th><th class="r">Xe rời</th><th class="r">Hạn COT</th><th class="r">Trễ</th></tr></thead><tbody>${rows}</tbody></table></div></div>`; }
 
   function packs(r) { const L = r.packs;
     if (!L.length) { $("packs").innerHTML = `<header><h2>Các gói</h2></header><p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`; return; }
-    const body = L.map((p, k) => { const id = r.R + ":" + k, open = ST.open.has(id), lab = p.nw.reduce((a, g) => a + r.hc(g).lab.c, 0) - p.cut.reduce((a, g) => a + r.hc(g).lab.c, 0);
+    const body = L.map((p, k) => { const id = r.R + ":" + k, open = ST.open.has(id), lab = p.nw.flat().reduce((a, i) => a + r.L1.cost[i], 0) - p.cut.flat().reduce((a, i) => a + r.L0.cost[i], 0);
       return `<tr class="pk" data-p="${id}" aria-expanded="${open}" tabindex="0"><td class="mono">${k + 1}</td>
         <td><div class="grp">${p.cut.map(rt).join("")}</div></td>
         <td><div class="grp">${p.nw.map(g => `<div class="rt">${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
@@ -62,6 +62,12 @@
         ${open ? `<tr class="det"><td colspan="5">${p.nw.map(g => routeDetail(r, g)).join("")}</td></tr>` : ""}`; }).join("");
     $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span></header>
       <div class="scroll"><table><thead><tr><th>#</th><th>Hiện nay</th><th>Kế hoạch · bước 2</th><th class="r">Tiền xe tr/kỳ</th><th class="r">Tiền người tr/kỳ</th></tr></thead><tbody>${body}</tbody></table></div>`; }
+
+  function teams(r) { const T = r.L1.teams, cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}), c0 = cnt(r.L0.A), c1 = cnt(r.L1.A);
+    const mix = c => `FTE riêng ${c.F || 0} · PPS ${c.P || 0} · nhóm hub ${c.H || 0}`;
+    $("teams").innerHTML = `<header><h2>Người · ${r.R}</h2><span class="muted" style="font-size:12px">số điểm theo cách dùng người: hiện nay ${mix(c0)} → kế hoạch ${mix(c1)}</span></header>` +
+      (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FM Hub</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
+        `<tr><td class="mono">${t.id}</td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FM Hub nào rẻ hơn FTE riêng / PPS.</p>`); }
 
   function bans(r) { const it = r.iters.filter(x => x.banned.length);
     $("bans").innerHTML = `<header><h2>Tuyến bị bước 2 loại</h2><span class="muted" style="font-size:12px">loại xong, bước 1 tìm lại tuyến khác</span></header>` +
@@ -71,8 +77,11 @@
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
   const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
     ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/kỳ", 1e6], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1],
-    ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteDay", "Năng suất FTE", "đơn/ngày", 1], ["Người", "fteH", "FTE làm", "giờ/ngày", 1],
-    ["Người", "ftePay", "Lương FTE", "k/ngày", 1e3], ["Người", "bulkyF", "Hàng to tốn công gấp", "lần", 1], ["Người", "ppsRate", "Rider PPS", "đ/đơn", 1], ["Người", "ppsSpd", "Rider quét", "đơn/giờ", 1]];
+    ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
+    ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
+    ["Năng suất (theo đặc điểm seller)", "prodChute", "Mỗi chute thêm ngoài 1", "−%", 1], ["Năng suất (theo đặc điểm seller)", "prodBulky", "Mỗi 10 điểm % hàng to lệch 10%", "−%", 1],
+    ["Loại người", "ftePay", "FTE riêng", "k/người/ngày", 1e3], ["Loại người", "hubPay", "Nhóm FM Hub", "k/người/ngày", 1e3], ["Loại người", "hubKm", "Nhóm hub: điểm cách nhau tối đa", "km", 1],
+    ["Loại người", "hubSpd", "Nhóm hub di chuyển", "km/giờ", 1], ["Loại người", "ppsRate", "Rider PPS", "đ/đơn", 1], ["Loại người", "ppsSpd", "Rider quét", "đơn/giờ", 1]];
   function pform() { let gr = ""; $("pform").innerHTML = `<div class="pgrid">${PF.map(([g, k, lab, u, f]) => (g !== gr ? `<h3>${(gr = g)}</h3>` : "") +
       `<div class="pf"><label for="p-${k}">${lab}</label><span><input id="p-${k}" type="number" step="any" value="${+(P[k] / f).toFixed(3)}"><span class="u">${u}</span></span></div>`).join("")}</div>
       <div class="pbar"><button type="button" class="btn" id="prun">Chạy lại</button><button type="button" class="btn ghost" id="pdef">Về mặc định</button></div>`; }
@@ -80,7 +89,7 @@
 
   function render() { tabs(); const R = ST.R;
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; flow(r); packs(r); bans(r); }
+    const r = ST.res[R]; flow(r); packs(r); teams(r); bans(r); }
   /* tính dần các vùng còn lại để tab hiện số */
   function queue() { const R = REGS.find(x => !ST.res[x]); if (R) setTimeout(() => { res(R); tabs(); queue(); }, 30); }
 

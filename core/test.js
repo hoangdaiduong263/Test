@@ -6,4 +6,6 @@ for (const R of (process.argv[3] ? [process.argv[3]] : C.REGIONS)) { const t0 = 
   console.log(`\n=== ${R} · ${r.nodes.length} điểm · ${Date.now() - t0}ms · ${r.iters.length} vòng`);
   console.log(`Tiền xe/kỳ: thật ${tr(r.truck.real)} · mô hình tuyến hiện nay ${tr(r.truck.base)} · kế hoạch ${tr(r.truck.plan)}  | tiền người: hiện nay ${tr(r.lab.base)} · kế hoạch ${tr(r.lab.plan)}`);
   r.iters.forEach((it, k) => { if (it.banned.length) console.log(`  vòng ${k + 1}: loại ${it.banned.map(b => b.g.map(nmS).join("+") + ` (trễ ${Math.round(b.late)}')`).join(" | ")}`); });
-  r.packs.forEach((p, k) => console.log(`  Gói ${k + 1} +${tr(p.gain)}: ${p.cut.map(g => g.map(nmS).join("+")).join(" ; ")}  →  ${p.nw.map(g => { const h = r.hc(g); return g.map(nmS).join("+") + ` [${h.ok ? "✓" : "✗"} trễ ${Math.round(h.late)}' ${Array.isArray(h.label) ? h.label.join("/") : h.label}]`; }).join(" ; ")}`)); }
+  r.packs.forEach((p, k) => console.log(`  Gói ${k + 1} +${tr(p.gain)}: ${p.cut.map(g => g.map(nmS).join("+")).join(" ; ")}  →  ${p.nw.map(g => { const h = r.hc(g); return g.map(nmS).join("+") + ` [${h.ok ? "✓" : "✗"} trễ ${Math.round(h.late)}' ${g.map(i => C.modeTxt(h.A[i])).join("/")}]`; }).join(" ; ")}`));
+  r.L1.teams.forEach(t => console.log(`  Nhóm hub ${t.id} ${t.hub}: ${t.pts.map(nmS).join("+")} · ${t.n} người · ${tr(t.c)} tr`));
+  const cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}); console.log("  người hiện nay", JSON.stringify(cnt(r.L0.A)), "→ kế hoạch", JSON.stringify(cnt(r.L1.A))); }

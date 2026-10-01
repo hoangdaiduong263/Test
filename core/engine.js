@@ -21,10 +21,15 @@ function Core(D, REF) {
     // người
     peakP: 90,         // ngày đông = phân vị này của đơn/ngày
     lateTol: 60,       // cho trễ COT tối đa (phút)
-    fteDay: 2000,      // năng suất FTE: đơn/người/ngày
-    fteH: 7,           // FTE làm bao nhiêu giờ/ngày
-    ftePay: 520000,    // lương FTE đ/người/ngày
-    bulkyF: 2,         // một đơn hàng to tốn công bằng mấy đơn thường
+    prodBase: 2000,    // năng suất sort lý tưởng: đơn/người/ngày (1 chute, 10% hàng to)
+    prodHand: 2000,    // năng suất phần không sort (quét, bàn giao, xếp xe): đơn/người/ngày
+    prodChute: 10,     // mỗi chute chia thêm ngoài 1: −% năng suất sort
+    prodBulky: 5,      // mỗi 10 điểm % hàng to lệch khỏi 10%: −% năng suất sort
+    fteH: 7,           // một người làm bao nhiêu giờ/ngày
+    ftePay: 520000,    // FTE riêng: đ/người/ngày
+    hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ngày
+    hubKm: 15,         // nhóm FM Hub: các điểm cách nhau tối đa (km)
+    hubSpd: 40,        // nhóm FM Hub di chuyển (km/giờ)
     ppsRate: 700,      // Rider Pay Per Scan: đ/đơn quét
     ppsSpd: 600,       // Rider quét bao nhiêu đơn/giờ (cộng vào thời gian xe đứng ở điểm)
     open: 480,         // giờ seller bắt đầu làm nếu không có dữ liệu (phút từ 0h)
@@ -86,7 +91,7 @@ function Core(D, REF) {
     return best; }
   const mixLabel = mix => Object.entries(mix).filter(x => x[1] > 0).map(([k, n]) => `${Math.round(n * 10) / 10}×${k}`).join(" + ");
 
-  const HY = new Set(REF.HY || []);
+  const HYS = REF.HYS || {}, HY = new Set(Object.keys(HYS));
   /* ---------- COT & lượt xe từ chuyến thật ---------- */
   function lastArr(i) { const v = []; for (const d of DAYS) { let mx = null; ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t) return;
     t[5].forEach(p => { if (p[1] === 0 && String(TRN[p[0]]).trim() === nm(i) && p[4] != null) mx = Math.max(mx ?? -1, p[4]); }); }); if (mx != null) v.push(mx); }
@@ -208,55 +213,100 @@ function Core(D, REF) {
     return { T, log }; }
 
   /* ---------- [2] HEADCOUNT ---------- */
+  /* NĂNG SUẤT theo đặc điểm seller (giống model cũ):
+     - ch = số chute seller chia (theo luồng D2S của vùng), st = số SOC xe chở tới
+     - chia 1 chute → không sort, chỉ quét + bàn giao + xếp xe; nhiều chute → sort hàng nhỏ; xe tới ≥ 2 SOC → sort cả hàng to
+     - năng suất sort = prodBase × (1 − prodChute % mỗi chute ngoài 1) × (1 − prodBulky % mỗi 10 điểm % hàng to lệch khỏi 10%)
+     - phần không sort theo prodHand. Chưa có: % đủ diện tích, bàn giao pallet (mặc định đủ, bàn giao lẻ) */
+  const FLOW = { HCM: [3, 3], SSP: [2, 2], SE: [4, 3], SW1: [4, 3], SW2: [4, 1], DNCH: [1, 1], NHY: [4, 1], NOT: [3, 1], HN: [3, 3], SPCHN: [3, 3] };
+  function flowOf(s) { const p = +((s.h || "").match(/^(\d+)-/) || [])[1];
+    if (s.R === "HCM") return "HCM"; if (s.R === "DNCH") return "DNCH"; if (s.R === "HN") return s.k === "SPC" ? "SPCHN" : "HN";
+    if (s.R === "North") return HYS[s.n.trim()] ? "NHY" : "NOT"; if (s.R === "South") return p === 70 ? "SW1" : p > 70 ? "SW2" : "SE"; return "NOT"; }
+  function chSt(i) { const s = S[i], f = flowOf(s); if (f === "HCM") { const n = Math.max(1, Math.round(s.nsMed || s.ns || 1)); return { ch: n, st: n }; }
+    let [ch, st] = FLOW[f]; const y = HYS[nm(i)]; if (f === "NHY" && y && !y[0] && !y[1]) ch -= 1; return { ch, st }; }
+  const stepF = (ideal, act, step, rate) => 1 - Math.round(Math.abs(ideal - act) / step) * rate / 100;
   const volPk = i => pct(active(i).map(d => S[i].v[d]), P.peakP);
   const betaOf = i => { let v = 0, b = 0; active(i).forEach(d => { v += S[i].v[d]; b += S[i].b[d] || 0; }); return v ? b / v : 0; };
-  const effPk = i => volPk(i) * (1 + betaOf(i) * (P.bulkyF - 1));                  // đơn quy đổi (hàng to tốn công hơn)
-  const fteN = eff => Math.max(1, Math.ceil(eff / P.fteDay - 1e-9));
-  const rateOf = n => n * P.fteDay / (P.fteH * 60);                                  // đơn quy đổi/phút của n FTE
-  /* các lượt của tuyến: lượt của điểm nhiều lượt nhất; lượt của điểm khác gắn vào lượt gần giờ nhất, đơn chia theo đơn lên từng lượt */
+  /* người-ngày cho mỗi đơn của điểm = phần phải sort ÷ năng suất sort + phần không sort ÷ năng suất bàn giao */
+  const PW = {};
+  function work(i) { if (i in PW) return PW[i]; const { ch, st } = chSt(i), beta = betaOf(i), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st) > 1 ? 1 : 0;
+    const sv = (1 - beta) * sm + beta * bg, bp = sv > 0 ? beta * bg / sv * 100 : 0;
+    const prod = Math.max(1, P.prodBase * stepF(1, ch, 1, P.prodChute) * stepF(10, bp, 10, P.prodBulky));
+    return PW[i] = { w: sv / prod + (1 - sv) / P.prodHand, prod, ch, st, sort: sm ? (bg ? "sort cả hàng to" : "sort hàng nhỏ") : "không sort" }; }
+  const fteN = i => Math.max(1, Math.ceil(volPk(i) * work(i).w - 1e-9));            // FTE riêng: đủ khối việc ngày đông
+  const durMin = (i, q, n) => q * work(i).w * P.fteH * 60 / n;                      // phút để n người làm q đơn của điểm i
+  const travel = (i, j) => i === j ? 0 : (kmPt(i, j) ?? P.hubKm) / P.hubSpd * 60;   // nhóm hub đi giữa 2 điểm (phút)
+  /* hàng của một lượt có từ: giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở) → FTE riêng tái hiện đúng giờ hiện nay */
+  const avail = (i, w, q) => Math.max(openOf(i), w.arr - durMin(i, q, fteN(i)));
+  const shareOf = i => { const W = waves(i); const tot = W ? W.w.reduce((a, w) => a + w.up, 0) : 1; return w => w.up / tot; };
+  /* các lượt của tuyến: lượt của điểm nhiều lượt nhất; lượt của điểm khác gắn vào lượt gần giờ nhất */
   function slotsOf(g) { const T = g.map(waves); if (T.some(t => !t)) return null; let L = 0; T.forEach((t, k) => { if (t.w.length > T[L].w.length) L = k; });
-    const sl = T[L].w.map(w => ({ t: w.arr, m: [] })); g.forEach((i, k) => { const W = T[k].w, tot = W.reduce((a, w) => a + w.up, 0);
-      W.forEach(w => { let b = 0; sl.forEach((x, y) => { if (Math.abs(x.t - w.arr) < Math.abs(sl[b].t - w.arr)) b = y; }); sl[b].m.push({ i, w, sh: w.up / tot }); }); }); return sl.filter(s => s.m.length); }
+    const sl = T[L].w.map(w => ({ t: w.arr, m: [] })); g.forEach((i, k) => { const sh = shareOf(i);
+      T[k].w.forEach(w => { let b = 0; sl.forEach((x, y) => { if (Math.abs(x.t - w.arr) < Math.abs(sl[b].t - w.arr)) b = y; }); sl[b].m.push({ i, w, sh: sh(w) }); }); }); return sl.filter(s => s.m.length); }
   const perms = a => a.length <= 1 ? [a] : a.flatMap((x, k) => perms(a.slice(0, k).concat(a.slice(k + 1))).map(p => [x].concat(p)));
-  /* mô phỏng ngày đông của tuyến g với cách dùng người `mode` ({i: "F" | "P"} hoặc "S" = một nhóm FTE chung cho cả tuyến)
-     - hàng của lượt có từ: giờ xe thật tới − thời gian FTE riêng sort phần đó (không trước giờ seller mở) → FTE riêng tái hiện đúng giờ hiện nay
-     - FTE riêng (F): hàng sẵn đúng lúc như hiện nay · Rider PPS (P): seller tự đóng, rider quét lúc giao (cộng thời gian quét vào xe đứng)
-     - FTE chung (S): một nhóm đi lần lượt các điểm theo thứ tự xe ghé, sort xong điểm này mới sang điểm kia
-     - xe tới điểm đầu đúng lúc hàng sẵn, chờ hàng ở điểm sau nếu chưa sẵn; trễ = giờ xe rời điểm − hạn COT của lượt */
-  function simRoute(g, mode, order) { const sl = slotsOf(g); if (!sl) return null; const R = S[g[0]].R, shared = mode === "S";
-    const nT = shared ? fteN(g.reduce((a, i) => a + effPk(i), 0)) : 0, rT = rateOf(nT); let teamFree = -1e9, teamAt = null;
-    const rows = []; let late = -1e9;
+  /* NHÓM FM HUB: n người đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; sang điểm khác mất km ÷ hubSpd */
+  function teamReady(pts, n) { const tasks = [];
+    pts.forEach(i => { const W = waves(i); if (!W) return; const sh = shareOf(i); W.w.forEach(w => { const q = volPk(i) * sh(w); tasks.push({ i, w, q, av: avail(i, w, q), dl: deadline(i, w) }); }); });
+    tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {};
+    tasks.forEach(x => { const st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = st + durMin(x.i, x.q, n); at = x.i; rd[x.i + "|" + x.w.k] = t; }); return rd; }
+  /* mô phỏng ngày đông của tuyến g theo cách dùng người A[i] = {m: "F" | "P" | "H", team}
+     F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
+     H (nhóm FM Hub): hàng sẵn khi nhóm làm xong lượt đó
+     xe tới điểm đầu lúc hàng sẵn, chờ hàng ở điểm sau; trễ = giờ xe rời điểm − hạn COT của lượt */
+  function simRoute(g, A, order) { const sl = slotsOf(g); if (!sl) return null; const R = S[g[0]].R, rows = []; let late = -1e9;
     for (const s of sl) { const q = {}, w = {}; s.m.forEach(x => { q[x.i] = (q[x.i] || 0) + volPk(x.i) * x.sh; w[x.i] = x.w; });
       const pts = order.filter(i => q[i] > 0), Q = pts.reduce((a, i) => a + q[i], 0), beta = Q ? pts.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(pts), Math.min(...pts.map(fillOf))).t);
-      const avail = i => Math.max(openOf(i), w[i].arr - q[i] * (1 + betaOf(i) * (P.bulkyF - 1)) / rateOf(fteN(effPk(i))));
-      const ready = {};
-      pts.forEach(i => { const qe = q[i] * (1 + betaOf(i) * (P.bulkyF - 1));
-        if (shared) { const st = Math.max(avail(i), teamFree + (teamAt != null && teamAt !== i ? legMin(teamAt, i) : 0)); ready[i] = st + qe / rT; teamFree = ready[i]; teamAt = i; }
-        else ready[i] = avail(i) + qe / rateOf(fteN(effPk(i))); });
+      const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] : avail(i, w[i], q[i]) + durMin(i, q[i], fteN(i));
       let t = null, prev = null; const st = [];
-      pts.forEach(i => { const arr = prev == null ? ready[i] : t + legMin(prev, i), ls = Math.max(arr, ready[i]);
-        const dw = dwell(i, q[i] / nTr) + (!shared && mode[i] === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dep = ls + dw, dl = deadline(i, w[i]);
-        st.push({ i, q: q[i], ready: ready[i], arr, ls, dep, dl, late: dep - dl }); late = Math.max(late, dep - dl); t = dep; prev = i; });
+      pts.forEach(i => { const rd = ready(i), arr = prev == null ? rd : t + legMin(prev, i), ls = Math.max(arr, rd);
+        const dep = ls + dwell(i, q[i] / nTr) + (A[i].m === "P" ? q[i] / nTr / (P.ppsSpd / 60) : 0), dl = deadline(i, w[i]);
+        st.push({ i, q: q[i], ready: rd, arr, ls, dep, dl, late: dep - dl }); late = Math.max(late, dep - dl); t = dep; prev = i; });
       rows.push({ t: s.t, nTr, st }); }
-    return { rows, late, nT }; }
-  /* tiền người cả kỳ của tuyến theo cách dùng người */
-  function labCost(g, mode) { const runD = i => active(i).length;
-    if (mode === "S") { const nd = new Set(g.flatMap(active)).size, n = fteN(g.reduce((a, i) => a + effPk(i), 0)); return { c: n * P.ftePay * nd, hc: n }; }
-    let c = 0, hc = 0; g.forEach(i => { if (mode[i] === "P") c += active(i).reduce((a, d) => a + S[i].v[d], 0) * P.ppsRate; else { const n = fteN(effPk(i)); c += n * P.ftePay * runD(i); hc += n; } });
-    return { c, hc }; }
-  const modeLabel = (g, mode) => mode === "S" ? "FTE chung" : g.map(i => mode[i] === "P" ? "PPS" : "FTE riêng");
-  /* chọn cách dùng người rẻ nhất mà kịp (trễ ≤ tol phút); không có thì lấy cách trễ ít nhất → không khả thi */
-  function headcount(g, tol = P.lateTol) { const ords = g.length <= 4 ? perms(g) : [routeOrder(g)], modes = [];
-    for (let m = 0; m < (1 << g.length); m++) modes.push(Object.fromEntries(g.map((i, k) => [i, (m >> k) & 1 ? "P" : "F"])));
-    if (g.length > 1) modes.push("S");
-    let best = null;
-    for (const mode of modes) { const lc = labCost(g, mode); let bo = null;
-      for (const o of ords) { const r = simRoute(g, mode, o); if (!r) return { ok: true, nodata: true, lab: labCost(g, Object.fromEntries(g.map(i => [i, "F"]))), mode: "F" };
-        if (!bo || r.late < bo.sim.late) bo = { o, sim: r }; }
-      const ok = bo.sim.late <= tol, c = { ok, tol, mode, order: bo.o, sim: bo.sim, lab: lc, late: bo.sim.late, label: modeLabel(g, mode) };
-      if (!best || (ok && (!best.ok || lc.c < best.lab.c)) || (!ok && !best.ok && c.late < best.late)) best = c; }
+    return { rows, late }; }
+  /* thứ tự ghé tốt nhất (trễ ít nhất) */
+  function routeEval(g, A) { const ords = g.length <= 4 ? perms(g) : [routeOrder(g)]; let best = null;
+    for (const o of ords) { const r = simRoute(g, A, o); if (!r) return null; if (!best || r.late < best.sim.late) best = { order: o, sim: r, late: r.late }; } return best; }
+  const runD = i => active(i).length;
+  const ppsCost = i => active(i).reduce((a, d) => a + S[i].v[d], 0) * P.ppsRate;
+  const fCost = i => fteN(i) * P.ftePay * runD(i);
+  /* [2a] từng tuyến: thử mọi tổ hợp FTE riêng / PPS, chọn rẻ nhất mà trễ ≤ tol; không có thì tuyến không khả thi */
+  function routeBest(g, tol) { let best = null;
+    for (let m = 0; m < (1 << g.length); m++) { const A = Object.fromEntries(g.map((i, k) => [i, { m: (m >> k) & 1 ? "P" : "F" }])), e = routeEval(g, A);
+      const c = g.reduce((a, i) => a + (A[i].m === "P" ? ppsCost(i) : fCost(i)), 0);
+      if (!e) return { ok: true, nodata: true, A: Object.fromEntries(g.map(i => [i, { m: "F" }])), late: 0, tol };
+      const x = { ok: e.late <= tol, A, late: e.late, c, tol }; if (!best || (x.ok && (!best.ok || c < best.c)) || (!x.ok && !best.ok && x.late < best.late)) best = x; }
     return best; }
+  /* [2b] cả vùng: bắt đầu từ kết quả [2a], gom dần điểm thành NHÓM FM HUB (cùng hub, mọi cặp cách nhau ≤ hubKm) nếu rẻ hơn
+     và mọi tuyến xe bị ảnh hưởng vẫn kịp (không trễ hơn mức cho phép, hoặc không trễ hơn trước nếu vốn đã trễ) */
+  function assign(T, tolOf) { const A = {}, routeOf = {}, base = {};
+    T.forEach(g => { const b = routeBest(g, tolOf(g)); g.forEach(i => { A[i] = Object.assign({}, b.A[i]); routeOf[i] = g; }); base[key(g)] = b; });
+    const lateOf = (g, A2) => { const e = routeEval(g, A2); return e ? e.late : -1e9; }, lim = {}; T.forEach(g => { lim[key(g)] = Math.max(tolOf(g), lateOf(g, A)); });
+    const okWith = (pts, A2) => [...new Set(pts.map(i => routeOf[i]))].every(g => lateOf(g, A2) <= lim[key(g)] + 1e-6);
+    const pc = i => A[i].m === "P" ? ppsCost(i) : A[i].m === "F" ? fCost(i) : 0;
+    const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
+    function tryTeam(pts) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) return null;
+      const n0 = Math.max(1, Math.ceil(pts.reduce((a, i) => a + volPk(i) * work(i).w, 0) - 1e-9));
+      for (let n = n0; n <= n0 + 6; n++) { const t = { pts, n, rd: teamReady(pts, n) }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
+        if (okWith(pts, A2)) { t.c = tCost(t); return t; } } return null; }
+    const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
+    const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
+    for (const pts of Object.values(byHub)) {
+      pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
+      for (let it = 0; it < 200; it++) { let best = null; const tm = teams.filter(t => t.pts.some(i => pts.includes(i))), free = pts.filter(i => A[i].m !== "H");
+        const tryM = (P2, before, old) => { const t = tryTeam(P2); if (t && before - t.c > 1 && (!best || before - t.c > best.g)) best = { g: before - t.c, t, old }; };
+        tm.forEach((a, x) => { tm.slice(x + 1).forEach(b => tryM(a.pts.concat(b.pts), a.c + b.c, [a, b])); free.forEach(i => tryM(a.pts.concat([i]), a.c + pc(i), [a])); });
+        if (!best) break; apply(best.t, best.old); } }
+    teams.forEach((t, k) => { t.id = k + 1; });
+    /* tiền người từng điểm: nhóm hub chia theo khối việc */
+    const cost = {}; Object.keys(A).map(Number).forEach(i => { cost[i] = pc(i); });
+    teams.forEach(t => { const W = t.pts.reduce((a, i) => a + volPk(i) * work(i).w, 0); t.pts.forEach(i => { cost[i] = t.c * volPk(i) * work(i).w / W; }); });
+    const out = {}; T.forEach(g => { const e = routeEval(g, A), b = base[key(g)];
+      out[key(g)] = { ok: !e || e.late <= lim[key(g)] + 1e-6, nodata: !e, late: e ? e.late : 0, tol: tolOf(g), order: e ? e.order : routeOrder(g), sim: e ? e.sim : null,
+        A: Object.fromEntries(g.map(i => [i, A[i]])), lab: { c: g.reduce((a, i) => a + cost[i], 0) } }; });
+    return { A, teams, routes: out, cost, lab: Object.values(cost).reduce((a, c) => a + c, 0) }; }
+  /* nhãn cách dùng người của một điểm */
+  const modeTxt = a => a.m === "H" ? `Hub nhóm ${a.team.id} (${a.team.n} người)` : a.m === "P" ? "PPS" : "FTE riêng";
 
   /* ---------- gom thay đổi thành gói: tuyến mới + tuyến cũ bị cắt, nối qua điểm chung ---------- */
   function packs(T0, T) { const k0 = new Set(T0.map(key)), k1 = new Set(T.map(key)), nw = T.filter(g => !k0.has(key(g))), cut = T0.filter(g => !k1.has(key(g)));
@@ -265,23 +315,23 @@ function Core(D, REF) {
     return Object.values(by).map(p => { const before = p.cut.reduce((a, g) => a + routeCost(g).c, 0), after = p.nw.reduce((a, g) => a + routeCost(g).c, 0); return Object.assign(p, { before, after, gain: before - after }); })
       .sort((a, b) => b.gain - a.gain); }
 
-  /* ---------- chạy cả vùng: [1] → [2] → cấm tuyến không khả thi → lặp ---------- */
+  /* ---------- chạy cả vùng: [1] → [2a] từng tuyến mới, cấm tuyến không khả thi → lặp → [2b] gom nhóm FM Hub cho cả vùng ---------- */
   function run(R, maxIter = 15) { const T0 = baseRoutes(R), k0 = new Set(T0.map(key)), ban = new Set(), iters = [];
     /* tuyến hiện nay mô phỏng đã trễ hơn P.lateTol (thường do mô phỏng chưa sát tuyến đó): tuyến mới chứa điểm của nó chỉ cần không trễ hơn */
-    const hcMap = {}, lateNow = {}; T0.forEach(g => { const h = hcMap[key(g)] = headcount(g); g.forEach(i => { lateNow[i] = h.ok ? -1e9 : h.late; }); });
+    const rb = {}, lateNow = {}; T0.forEach(g => { const b = rb[key(g)] = routeBest(g, P.lateTol); g.forEach(i => { lateNow[i] = b.ok ? -1e9 : b.late; }); });
     const tolOf = g => Math.max(P.lateTol, ...g.map(i => lateNow[i] ?? -1e9));
     let res;
     for (let it = 0; it < maxIter; it++) { res = search(R, T0, ban); const fail = [];
-      res.T.forEach(g => { const k = key(g); if (!(k in hcMap)) hcMap[k] = headcount(g, tolOf(g)); if (!k0.has(k) && !hcMap[k].ok) fail.push(g); });
-      iters.push({ routes: res.T.filter(g => !k0.has(key(g))).map(g => g.slice()), banned: fail.map(g => ({ g: g.slice(), late: hcMap[key(g)].late })) });
+      res.T.forEach(g => { const k = key(g); if (k0.has(k)) return; if (!(k in rb)) rb[k] = routeBest(g, tolOf(g)); if (!rb[k].ok) fail.push(g); });
+      iters.push({ routes: res.T.filter(g => !k0.has(key(g))).map(g => g.slice()), banned: fail.map(g => ({ g: g.slice(), late: rb[key(g)].late })) });
       if (!fail.length) break; fail.forEach(g => ban.add(key(g))); }
-    const T = res.T, hc = g => hcMap[key(g)] || (hcMap[key(g)] = headcount(g, tolOf(g)));
-    const sum = L => L.reduce((a, g) => a + routeCost(g).c, 0), labSum = L => L.reduce((a, g) => a + hc(g).lab.c, 0);
-    const N = nodes(R), real = N.reduce((a, i) => a + realCost(i), 0);
-    return { R, T0, T, iters, ban: [...ban], packs: packs(T0, T), hc,
-      truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: labSum(T0), plan: labSum(T) }, nodes: N }; }
+    const T = res.T, L0 = assign(T0, tolOf), L1 = assign(T, tolOf);
+    const hc = g => L1.routes[key(g)] || L0.routes[key(g)];
+    const sum = L => L.reduce((a, g) => a + routeCost(g).c, 0), N = nodes(R), real = N.reduce((a, i) => a + realCost(i), 0);
+    return { R, T0, T, iters, ban: [...ban], packs: packs(T0, T), hc, L0, L1,
+      truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  return { P, VEH, REGIONS, S, run, fillOf, nodes, routeCost, realCost, headcount, simRoute, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
-    reset() { [TKM, RC, STC, COC, CLC, CAL].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
+  return { P, VEH, REGIONS, S, run, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+    reset() { [TKM, RC, STC, COC, CLC, CAL, PW].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

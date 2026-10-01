@@ -35,26 +35,41 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
   - hoặc đã đi chung chuyến thật.
 - So sánh mô hình với mô hình: "tuyến hiện nay" và "kế hoạch" đều tính bằng cùng một công thức. Số "thực tế" chỉ để đối chiếu độ sát của mô hình.
 
-## Bước 2: headcount (`simRoute`, `headcount`)
-Mô phỏng ngày đông (phân vị `peakP`), từng lượt xe:
-- **Hàng có từ:** giờ xe thật tới − thời gian FTE riêng sort phần đó (không trước giờ seller mở). Vì vậy FTE riêng tái hiện đúng giờ hiện nay.
-- **3 loại người:**
+## Bước 2: headcount (`work`, `simRoute`, `routeBest`, `assign`)
 
-  | Loại | Hàng sẵn lúc nào | Chi phí |
-  |---|---|---|
-  | FTE riêng | Như hiện nay | Số người theo ngày đông × lương × ngày chạy |
-  | FTE dùng chung | Một nhóm đi lần lượt các điểm của tuyến (theo thứ tự xe ghé), sort xong điểm này mới sang điểm kia | Số người theo tổng đơn × lương |
-  | Rider Pay Per Scan | Seller tự đóng hàng; rider quét lúc giao, nên cộng thời gian quét vào lúc xe đứng | Đơn × đ/đơn |
+**Năng suất theo đặc điểm seller** (`work`, giống model cũ):
+- `ch` = số chute chia (theo luồng D2S của vùng), `st` = số SOC xe chở tới.
+- Chia 1 chute thì không sort. Nhiều chute thì sort hàng nhỏ. Xe tới ≥ 2 SOC thì sort cả hàng to.
+- Năng suất sort = `prodBase` × (−`prodChute` % mỗi chute ngoài 1) × (−`prodBulky` % mỗi 10 điểm % hàng to lệch khỏi 10%).
+- Phần không sort (quét, bàn giao) tính theo `prodHand`.
+- Người-ngày/đơn = phần sort ÷ năng suất sort + phần không sort ÷ `prodHand`.
 
-- **Xe:** tới điểm đầu đúng lúc hàng sẵn, chờ hàng ở điểm sau nếu chưa sẵn; thời gian đứng = cố định + phút/đơn (đo từ chuyến thật).
-- **Trễ** = giờ xe rời điểm − hạn COT (Packed) của lượt. Hiện nay đã đi muộn hơn hạn thì hạn = giờ đi hiện nay.
-- **Thử mọi cách dùng người, chọn cách rẻ nhất có trễ ≤ `lateTol`:**
-  - mỗi điểm chọn FTE riêng hoặc PPS;
-  - hoặc cả tuyến dùng chung một nhóm FTE.
-- Tuyến hiện nay mô phỏng đã trễ hơn `lateTol`: tuyến mới chứa điểm của nó chỉ cần không trễ hơn.
+**Mô phỏng ngày đông** (`simRoute`), từng lượt xe:
+- **Hàng có từ:** giờ xe thật tới − thời gian FTE riêng làm phần đó (không trước giờ seller mở).
+- **Xe:** tới điểm đầu lúc hàng sẵn, chờ hàng ở điểm sau; thời gian đứng = cố định + phút/đơn (đo từ chuyến thật).
+- **Trễ** = giờ xe rời − hạn COT (Packed) của lượt.
+
+**3 loại người:**
+
+| Loại | Hàng sẵn | Tiền |
+|---|---|---|
+| FTE riêng | Như hiện nay | số người (theo khối việc ngày đông) × `ftePay` × ngày chạy |
+| Rider PPS | Như hiện nay; rider quét lúc giao, nên cộng thời gian quét vào lúc xe đứng | đơn × `ppsRate` |
+| Nhóm FM Hub | Nhóm đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; đi giữa 2 điểm mất km ÷ `hubSpd` | số người × `hubPay` × ngày chạy |
+
+**Hai tầng chọn:**
+1. **[2a] Từng tuyến mới** (`routeBest`): thử mọi tổ hợp FTE riêng / PPS, chọn rẻ nhất có trễ ≤ `lateTol`.
+   - Không tổ hợp nào kịp thì tuyến bị cấm, chạy lại bước 1.
+   - Tuyến hiện nay mô phỏng đã trễ hơn `lateTol` thì tuyến mới chứa điểm của nó chỉ cần không trễ hơn.
+2. **[2b] Cả vùng** (`assign`): từ kết quả 2a, gom dần điểm thành **nhóm FM Hub** khi nhóm rẻ hơn và mọi tuyến xe bị ảnh hưởng vẫn kịp.
+   - Điều kiện nhóm: cùng hub, mọi cặp điểm cách nhau ≤ `hubKm`.
+   - Nhóm được đi vòng các điểm thuộc tuyến xe khác nhau.
+   - Số người của nhóm = nhỏ nhất mà vẫn kịp.
+   - Tiền nhóm chia cho từng điểm theo khối việc.
 
 ## Chưa có (cố ý bỏ để gọn)
-- Nhóm FTE chung giữa các điểm khác tuyến xe.
+- Trần số người tại điểm / số người hub cấp được.
+- Năng suất theo % đủ diện tích và bàn giao pallet (đang coi là đủ diện tích, bàn giao lẻ).
 - Số chỗ chất hàng tại điểm (xe chất song song không giới hạn).
 - Thể tích/khối lượng hàng.
 - SOC sort lại, ké FM/LM, thuê xe ca 12H, ưu tiên điểm.
