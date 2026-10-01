@@ -309,7 +309,8 @@ function Core(D, REF) {
   const costA = (g, A) => g.reduce((a, i) => a + (A[i].m === "P" ? ppsCost(i) : fCost(i, A[i].n)), 0);
   function routeBest(g, tol, noExtra) { let best = null; const all = [];
     const better = x => !best || (x.ok && (!best.ok || x.c < best.c)) || (!x.ok && !best.ok && x.late < best.late);
-    for (let m = 0; m < (1 << g.length); m++) { const A = Object.fromEntries(g.map((i, k) => [i, (m >> k) & 1 ? { m: "P" } : { m: "F", n: fteBase(i) }])), e = routeEval(g, A);
+    for (let m = 0; m < (1 << g.length); m++) { if (g.some((i, k) => (m >> k) & 1 && HCOV[nm(i)] != null)) continue;   // điểm có số FTE chỉnh tay: luôn FTE riêng
+      const A = Object.fromEntries(g.map((i, k) => [i, (m >> k) & 1 ? { m: "P" } : { m: "F", n: fteBase(i) }])), e = routeEval(g, A);
       if (!e) return { ok: true, nodata: true, A: Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), late: 0, tol };
       const x = { ok: e.late <= tol, A, late: e.late, c: costA(g, A), tol }; all.push(x); if (better(x)) best = x; }
     /* không cách nào kịp: thêm dần FTE riêng (mỗi lần 1 người, ở điểm giúp giảm trễ nhiều nhất), tối đa P.maxExtra người/điểm, thử từ 3 cách trễ ít nhất */
@@ -333,7 +334,7 @@ function Core(D, REF) {
       for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
         if (okWith(pts, A2)) { t.c = tCost(t); return t; } } return null; }
     const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
-    const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
+    const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h && HCOV[nm(i)] == null).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
     for (const pts of Object.values(byHub)) {
       pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
       for (let it = 0; it < 200; it++) { let best = null; const tm = teams.filter(t => t.pts.some(i => pts.includes(i))), free = pts.filter(i => A[i].m !== "H");
