@@ -424,3 +424,18 @@ Giờ có hàng / giờ người có mặt:
 ## Cập nhật: ghi lý do xe không tới sớm hơn trên lịch tuyến ghép
 - Tuyến ghép trọn: giờ xe tới điểm đầu do điểm sau quyết định. Xe theo yêu cầu được lùi cho khớp lúc hàng điểm sau sort xong, vì tới sớm chỉ đứng chờ ở điểm đó.
 - Dưới ô "Xe tới" của mỗi lượt (nvCotSecs) nay có dòng `.tov-why` khi hàng ở điểm đầu xong sớm hơn giờ xe tới quá 5': "Hàng ở A xong hh:mm nhưng xe ghép trọn còn phải chở hàng ở B, sort xong hh:mm. Tới sớm hơn thì xe chỉ đứng chờ ở đó, giờ về SOC không đổi." Điểm B = điểm sau có (lúc xong − thời gian đi tới đó) lớn nhất.
+
+## Cập nhật: biểu đồ Trước/Sau cùng trục; vùng gạch "sau giờ đóng cửa"; tiền xe khi tách khỏi chuyến chung thật
+- **Vùng gạch "sau giờ đóng cửa" mất ở một trong hai biểu đồ:** mỗi SVG lịch dùng chung id mẫu `schX`. Khi có hai biểu đồ (Trước/Sau, một cái đang ẩn), `url(#schX)` trỏ vào mẫu của biểu đồ ẩn nên không vẽ. Nay mỗi biểu đồ có id riêng (`SCHID`).
+- **Hai biểu đồ cùng một trục giờ liền** (`simSpans` theo COT → `opt.span`), không gãy trục riêng, để so trực tiếp.
+- **Lịch "Sau" của popup luôn chứa đúng tuyến/nhóm của popup** (`enf`), kể cả khi kế hoạch hiện tại đã đổi khác.
+- **Tiền xe khi tách khỏi chuyến chung thật** (lỗi "điểm đi riêng mà không tốn thêm"):
+  - Điểm dữ liệu ghi "riêng" nhưng thực tế đi chung chuyến (T0 gộp theo chuyến thật ≥80% ngày, ví dụ Gia dung Duc Hi + Thao Van) mà bị tách ra thì trước đây vẫn giữ phần tiền xe chung. Có hai chỗ sai:
+    1. trong `netTC`, cờ "full" (y như cũ) so theo mã tuyến trong dữ liệu;
+    2. "chênh mô hình" so với cấu hình dữ liệu (đi riêng).
+  - Sửa:
+    - `t0Of(i)` = tuyến gốc T0 của điểm;
+    - netTC: full = đúng y T0; chênh = mô hình mới − mô hình phần của điểm trong T0;
+    - computeOnce (số thật): khi có điểm trong T0 của i đổi cấu hình trong kịch bản, chênh = mô hình phần còn lại / tuyến mới − mô hình T0.
+  - Ví dụ Thao Van bị tách đi riêng: trước 0, nay −8,7 tr/kỳ.
+  - Kế hoạch mặc định không đổi (không tách nhóm kiểu này); các gói vẫn độc lập; kiểm tra nhất quán 0 lỗi; khớp thực tế 141/160.
