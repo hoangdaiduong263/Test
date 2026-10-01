@@ -352,3 +352,13 @@ Giờ có hàng / giờ người có mặt:
   - Bước cuối "lùi giờ xe cho khớp lúc hàng sẵn" giữ lịch nhóm cố định nên có thể đổi thứ tự việc của nhóm. Hệ quả là xe khác chờ tới 2h (South sociolla: xe tới 16:50 mà 18:43 mới chất), vẫn được nhận vì không trễ COT. Nay chỉ nhận khi tổng phút xe chờ giảm và nhóm không đứng không nhiều hơn (`idleOf`).
   - `plan` xếp lại lịch nhóm theo giờ xe tới thật của lịch vừa có (tối đa 3 vòng).
 - Kết quả không đổi: kế hoạch, kiểm tra nhất quán, kiểm chứng với thực tế (141/160). Nhóm South không còn phút đứng không.
+
+## Cập nhật: kiểm TRƯỚC / SAU mọi đề xuất, bỏ thay đổi bắt buộc không sửa được giờ
+- Trong `netPlan`, sau khi có tp/lp, mỗi gói được tính `lateB` / `lateA` = trễ lớn nhất (ngày TB) khi không làm / khi làm, bằng nvSimWith, cùng cách với popup.
+- Gói **bắt buộc** (forced, không tự tiết kiệm) mà không bớt trễ được ≥ 5' thì BỎ, giữ tuyến/nhóm như hiện nay. Danh sách bỏ lưu ở `NET.rev[R]`.
+  - North bỏ 2 gói: tách nhóm Song Lo 9 điểm (119' → 125', trễ do chính xe 8T ghé 9 điểm chứ không do người) và tách Bim BabyCare + ChiNhanhMacDinh + ShopDienMay (20' → 20').
+  - Kế hoạch North +82,7 → +87,4 tr (không còn trả 4,1 tr cho hai thay đổi vô ích). Hai nhóm này thành "lưu ý": hiện nay đã trễ.
+- planAudit thêm 2 lỗi:
+  - thay đổi bắt buộc không bớt trễ;
+  - làm rồi trễ hơn cả khi không làm lẫn thực tế (`lateA > max(lateB, realLate, 0) + tol`).
+- Thẻ gói: mỗi phần ghi "Giờ ngày TB: không làm … → làm …".
