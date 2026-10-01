@@ -303,3 +303,16 @@ Giờ có hàng / giờ người có mặt:
   - gói tính lại `ids`/`g`/`pts`/`need`;
   - thẻ ghi "Đã cân nhắc và bỏ: … bật kèm chỉ x tr/kỳ".
   - Kiểm bằng ngưỡng 1 tr: North bỏ tuyến Hukan + MoonBook; planAudit 0 lỗi, các gói vẫn độc lập.
+
+## Cập nhật: chi tiết tuyến/nhóm chia lớp + chỉnh giờ đóng cửa
+- `nvDetail` chia 2 lớp:
+  - **Lớp 1 – tóm tắt:** một câu kết luận (gom mấy điểm, chuyến/xe hoặc người trước → sau), huy hiệu trạng thái giờ (kịp mọi COT / sát hạn / trễ), và 5 số chính.
+  - **Lớp 2 – tab** (`ui.nvdTab`; đổi tab chỉ ẩn/hiện DOM, không tính lại):
+    - Lịch chạy: kế hoạch linehaul theo COT. Bảng giờ từng điểm gập lại, mở/đóng nhớ ở `ui.stOpen`.
+    - Điểm & giờ: bảng điểm, có ô chỉnh giờ đóng cửa.
+    - Nhân sự: với tuyến là nhân sự + năng lực từng điểm; với nhóm là "Nhóm làm gì", tuyến gắn liền và một ngày của nhóm.
+    - Trước điều chỉnh: nvBefore.
+- Giờ đóng cửa / bàn giao cuối nhập tay: `G.closeOv["tên điểm"]` (phút), ưu tiên hơn sheet/deck/xe muộn nhất.
+  - `closeOf` trả `src:"tay"`.
+  - Ô nhập `closeInp(i)` (`data-cls`, commit qua `timeCommit`; ↺ `data-clsx` trả về mặc định) có ở tab "Điểm & giờ" và cột "Đóng cửa" trong bảng giờ seller (MR.rdyed).
+  - Đổi giờ thì COT cuối = giờ mới và kế hoạch tính lại.

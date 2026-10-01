@@ -174,7 +174,8 @@ function lastArr(i){if(i in LASTA)return LASTA[i];const s=S[i],nm=s.n.trim(),v=[
   for(const d of ACT){let mx=null;((s.tc&&s.tc[d])||[]).forEach(c=>{const t=TRP[c];if(!t)return;t[5].forEach(p=>{if(p[1]===0&&String(TRN[p[0]]).trim()===nm&&p[4]!=null)mx=Math.max(mx??-1,p[4]);});});if(mx!=null)v.push(mx);}
   if(!v.length)return LASTA[i]=null;v.sort((a,b)=>a-b);return LASTA[i]=v[Math.min(v.length-1,Math.floor((v.length-1)*(G.truck.lastP??90)/100))];}
 /* giờ bàn giao cuối của seller và nguồn: sheet thông tin seller > giờ đóng cửa trên deck > giờ xe tới muộn nhất */
-function closeOf(i){const nm=S[i].n.trim();if(HANDOVER[nm]!=null)return {t:HANDOVER[nm],src:"sheet"};if(CLOSE[nm]!=null)return {t:CLOSE[nm],src:"deck"};const a=lastArr(i);return a!=null?{t:a,src:"xe"}:null;}
+/* G.closeOv["tên điểm"]: giờ đóng cửa / bàn giao cuối nhập tay (ưu tiên hơn sheet/deck/data) */
+function closeOf(i){const nm=S[i].n.trim(),ov=(G.closeOv||{})[nm];if(ov!=null)return {t:ov,src:"tay"};if(HANDOVER[nm]!=null)return {t:HANDOVER[nm],src:"sheet"};if(CLOSE[nm]!=null)return {t:CLOSE[nm],src:"deck"};const a=lastArr(i);return a!=null?{t:a,src:"xe"}:null;}
 /* giờ seller bắt đầu làm (sheet: giờ mở cửa SPC HN, giờ checkin, "liên tục từ …"), phút từ 0h; không có thì min(G.lab.open, giờ xe tới sớm nhất − 60) */
 const OPENT={"HCMSeller- Emmié By Happy Skin":120,"HCMSeller-Fastock Cu Chi":570,"HCMSeller-Flash Cu Chi":540,"HCMSeller-Kho DA LAT Hasfarm":0,"HNSPC - Sieu thi Euro Mart":450,"HNSPC-Anh Quan Mobile":450,"HNSPC-BOO MART":450,"HNSPC-Cafe So":420,"HNSPC-Cua hang tien loi HT Mart":510,"HNSPC-HOAI THUONG SHOP":510,"HNSPC-Kiwi Store":570,"HNSPC-Land Mart":450,"HNSPC-Mini Mart":450,"HNSPC-Mon Pet Shop":450,"HNSPC-Noi that Hoa Nam":480,"HNSPC-Phong ve Bac Viet":420,"HNSPC-Phu kien dien thoai Manh Anh":450,"HNSPC-Sieu Thi Viet Anh":450,"HNSPC-Store 2T":600,"HNSPC-TL Mart":450,"HNSPC-Thuc Pham Sach KALE FARM":450,"HNSPC-Thuc pham sach Ngoc Han":450,"HNSPC-Trung tam dien tu tin hoc QH":450,"SouthSeller-B1B2 nhua Cho Lon":600};
 const OPC={};
@@ -2026,6 +2027,10 @@ function vehMix(g){PR_R=S[g[0]].R;PR_K=tripKm(g);const K=NET.vmx||(NET.vmx={}),k
     act.forEach(i=>{const r=BASE.rows[i][d],c=BASE.set[i];nb+=r.nb;b+=r.bk;kk=Math.max(kk,r.st||1);md=md&&!!c.md;mt=Math.max(mt,r.mt||1);fp.push({nb:r.nb,b:r.bk,fl:flx(c.fl)});});
     const o=truckCost(nb,b,kk,md,"auto",act.length,mt,false,grpFl(fp));t+=o.t;if(o.v)tally[o.v]=(tally[o.v]||0)+1;}
   const v=Object.entries(tally).sort((a,b)=>b[1]-a[1])[0];return K[key]={v:v?v[0]:"–",t:t/Math.max(1,n)};}
+/* ô nhập giờ đóng cửa (bàn giao cuối) của một điểm */
+function closeInp(i){const nm=S[i].n.trim(),co=closeOf(i),tay=co&&co.src==="tay",sv=co?hhmm(co.t):"";
+  const auto=(()=>{const keep=G.closeOv;G.closeOv=null;const c=closeOf(i);G.closeOv=keep;return c;})();
+  return `<span class="cls-in${tay?" ov":""}"><input type="text" inputmode="numeric" maxlength="5" placeholder="hh:mm" class="inp sm tin" data-cls="${esc(nm)}" data-v0="${co?Math.round(co.t):""}" value="${sv}" aria-label="Giờ đóng cửa ${esc(nm)}" title="Gõ giờ 24h rồi Enter">${tay?`<button type="button" class="ghost sm" data-clsx="${esc(nm)}" title="Trả về ${auto?hhmm(auto.t):"không có"}">↺</button>`:""}<small>${tay?`nhập tay · gốc ${auto?hhmm(auto.t):"–"}`:co?{sheet:"sheet seller",deck:"deck",xe:"xe tới muộn nhất"}[co.src]:"chưa có"}</small></span>`;}
 function cotsTxt(i){const T=stT(i),L=cotsOf(i);if(!T)return "–";return T.w.map(w=>{const c=L[w.k];return hhmm(c.p)+(c.close?"*":"");}).join(" · ");}
 /* bảng giờ từng điểm của một COT: đầu vào xếp lịch (giờ có hàng, giờ người có mặt) → sort → xe tới → chất → rời, so với hạn */
 function stopTimes(rows,n0){const L=[];rows.forEach((r,n)=>r.st.forEach(z=>L.push({n:n+n0,z})));if(!L.length)return "";
@@ -2038,7 +2043,7 @@ function stopTimes(rows,n0){const L=[];rows.forEach((r,n)=>r.st.forEach(z=>L.pus
       <td class="num">${team?`${tt(pres)}<small>nhóm tới</small>`:`<span class="muted">đúng giờ</span><small>người riêng</small>`}</td>
       <td class="num">${ss!=null?`${tt(ss)}–${tt(se)}`:"–"}</td><td class="num">${tt(z.arr)}</td><td class="num">${tt(z.ls)}${z.ls-z.arr>1?`<small>chờ ${Math.round(z.ls-z.arr)}'</small>`:""}</td><td class="num">${tt(z.dep)}</td>
       <td class="num">${tt(z.cot.p0??z.cot.p)}</td><td class="num ${late>0.5?"neg":"pos"}">${late>0.5?"+"+Math.round(late)+"'":"dư "+Math.round(-late)+"'"}</td></tr>`;}).join("");
-  return `<details class="nvd-st"${L.length<=8?" open":""}><summary>Giờ từng điểm (${L.length} lần dừng) — đầu vào: giờ có hàng, giờ người có mặt</summary>
+  return `<details class="nvd-st"${ui.stOpen?" open":""}><summary>Bảng giờ từng điểm (${L.length} lần dừng) · chỉnh giờ có hàng ở đây</summary>
     <p class="mini" style="margin:4px 0"><button type="button" class="linkish" data-rdyed="${esc(S[L[0].z.i].R)}">Nhập giờ có hàng cho nhiều seller cùng lúc →</button></p>
     <div class="tablewrap"><table class="data nvd-t"><thead><tr><th>Xe</th><th class="l">Điểm</th><th>Đơn</th><th data-tt="Lúc hàng của COT này có để sort — quyết định giờ bắt đầu sort (người riêng lẫn nhóm chung); xe chỉ chất sau khi sort xong. Tự tính: ${G.lab.rdyWin>0?`sớm nhất ${G.lab.rdyWin}' trước Packed, `:""}từ giờ seller mở cửa, hoặc từ lúc xe lượt trước rời điểm. Nhập giờ thật vào ô (lưu theo điểm × COT).">Có hàng từ ✎</th><th>Người có mặt</th><th>Sort</th><th>Xe tới</th><th>Chất</th><th>Rời</th><th>Hạn</th><th>±</th></tr></thead><tbody>${tr}</tbody></table></div>
     <p class="note" style="margin:4px 0 0">Sửa giờ: gõ xong nhấn <b>Enter</b> (hoặc bấm ra ngoài ô) để tính lại. Sort bắt đầu = muộn hơn giữa <b>giờ có hàng</b> và <b>giờ người có mặt</b> (người riêng coi như có mặt đúng giờ; nhóm chung = lúc nhóm tới điểm). Xe chất khi hàng đã sort xong và người có mặt.</p></details>`;}
@@ -2104,17 +2109,14 @@ function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;co
   const hB=xe?[...new Set(g.map(i=>gkey(teamOf(i))))].reduce((a,k)=>a+nvHc(k.split(",").map(Number)),0):g.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0),hA=xe?hB:nvHc(g);
   const cotK=new Map();g.forEach(i=>{const T=stT(i),L=cotsOf(i);if(T)T.w.forEach(w=>{const p=L[w.k].p,o=cotK.get(w.k)||[1e9,-1e9];cotK.set(w.k,[Math.min(o[0],p),Math.max(o[1],p)]);});});
   const cotN=cotK.size,cotTx=[...cotK.entries()].sort((a,b)=>a[0]-b[0]).map(([k,[a,b]])=>a===b?hhmm(a):hhmm(a)+"–"+hhmm(b)).join(" · ");
-  const kpi=(lab,a,b,note)=>`<div class="mk"><span>${lab}</span><b>${a}${b!=null&&b!==a?` <i>→</i> ${b}`:""}</b>${note?`<small>${note}</small>`:""}</div>`;
   const rp=xe?routeSimPlan(g):null,sim=xe?rp.sim:teamSim(g),dayL=xe&&rp.peak?`ngày đông (p${G.truck.peakP??90})`:"ngày trung bình";
-  const kp=xe?[kpi("Đơn/ngày",f0(ado)),kpi("Chuyến xe/ngày",f1(tBefore),f1(tAfter)),kpi("Loại xe",esc(vB),esc(vA),"loại dùng nhiều nhất"),kpi("Số COT có hàng",cotN,null,cotTx),kpi("Người lên hàng",f1(hB),null,"không đổi trong phương án xe"),kpi("Đi vòng",dk>0?f1(dk)+" km":"–",null,"mỗi chuyến")]
-    :[kpi("Người/ngày",f1(hB),f1(hA)),(()=>{if(!sim)return "";let m=0;sim.rows.forEach(R=>R.st.forEach(z=>{if(z.l0!=null)m+=Math.max(0,z.ls-z.arr);}));const c=Math.min(m/60*(G.truck.waitH??100000),(G.truck.waitCap??600000)*Math.max(1,g.length))*ACT.length;return kpi("Xe chờ nhóm",Math.round(m)+" phút/ngày",null,m>0?`≈ ${f1(c/1e6)} tr/kỳ (${f0((G.truck.waitH??100000)/1000)}k/giờ, tối đa ${f0((G.truck.waitCap??600000)/1000)}k)`:"xe tới đúng lúc hàng sẵn");})(),kpi("Đơn/ngày",f0(ado)),kpi("Điểm",g.length,null,esc((S[g[0]].h||"").replace(/ Hub$/,""))),kpi("Số COT có hàng",cotN,null,cotTx),kpi("Chuyến xe/ngày",f1(tBefore),null,"không đổi trong phương án người")];
   const pk=D.pks&&x.pk;
   const people=i=>{const t=teamOf(i);if(t.length<2)return `riêng · ${f1(nvHc([i]))} người`;return `chung ${t.length} điểm (${esc(t.filter(j=>j!==i).map(j=>shortN(S[j].n)).join(", "))}) · ${f1(nvHc(t))} người`;};
   const truckNow=i=>{const b=(xe?Pb:netPlan(S[i].R).T0).find(h=>h.includes(i))||[i],m=vehMix(b);return (b.length>1?`ghép với ${esc(b.filter(j=>j!==i).map(j=>shortN(S[j].n)).join(", "))}`:"riêng")+` · ${esc(vT(m.v))}<small>${f1(m.t)} chuyến/ngày</small>`;};
-  const ho=i=>{const co=closeOf(i);return co?hhmm(co.t)+`<small>${{sheet:"sheet",deck:"deck",xe:"xe muộn nhất"}[co.src]}</small>`:"–";};
-  const tbl=`<div class="tablewrap"><table class="data nvd-t"><thead><tr><th>#</th><th class="l">Điểm</th><th>Đơn/ngày</th><th>COT có hàng (Packed)</th><th>Bàn giao cuối</th><th class="l">Người hiện nay</th><th class="l">Xe hiện nay</th><th>Lời</th></tr></thead><tbody>
-    ${ord.map((i,k)=>{const gi=(D.pks||[]).reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);return `<tr><td class="num">${k+1}</td><td class="l rowname">${esc(S[i].n.trim())}</td><td class="num">${f0(nvAdo(i))}</td><td class="num">${cotsTxt(i)}</td><td class="num">${ho(i)}</td><td class="l">${people(i)}</td><td class="l">${truckNow(i)}</td><td class="num ${cls(gi)}">${D.pks?sgT(gi):"–"}</td></tr>`;}).join("")}</tbody></table></div>
-    <p class="note" style="margin:6px 0 0">* COT cuối = giờ seller đóng cửa (hạn cứng). Bàn giao cuối lấy từ sheet thông tin seller, deck, hoặc giờ xe tới muộn nhất trong ngày.</p>`;
+  const ho=i=>closeInp(i);
+  const tbl=`<div class="tablewrap"><table class="data nvd-t"><thead><tr><th>#</th><th class="l">Điểm</th><th>Đơn/ngày</th><th>Hạn COT (Packed)</th><th>Đóng cửa · bàn giao cuối<small>gõ giờ để chỉnh</small></th><th class="l">Người hiện nay</th><th class="l">Xe hiện nay</th><th>Lời</th></tr></thead><tbody>
+    ${ord.map((i,k)=>{const gi=(D.pks||[]).reduce((a,p)=>a+((p.gi&&p.gi[i])||0),0);return `<tr><td class="num">${k+1}</td><td class="l rowname">${esc(shortN(S[i].n))}</td><td class="num">${f0(nvAdo(i))}</td><td class="num">${cotsTxt(i)}</td><td class="num">${ho(i)}</td><td class="l">${people(i)}</td><td class="l">${truckNow(i)}</td><td class="num ${cls(gi)}">${D.pks?sgT(gi):"–"}</td></tr>`;}).join("")}</tbody></table></div>
+    <p class="note" style="margin:6px 0 0">* COT cuối = giờ seller đóng cửa (hạn cứng). Mặc định lấy từ sheet thông tin seller, deck, hoặc giờ xe tới muộn nhất; gõ giờ mới rồi Enter để chỉnh (↺ trả về mặc định). Giờ có hàng từng COT: <button type="button" class="linkish" data-rdyed="${esc(S[g[0]].R)}">bảng giờ seller →</button></p>`;
   let plan="";if(sim&&sim.rows.length){const tol=G.truck.cotTol??30,grp=new Map();sim.rows.forEach(r=>{const k=r.st[0].cot.k;if(!grp.has(k))grp.set(k,[]);grp.get(k).push(r);});let n0=0;
     plan=[...grp.values()].sort((a,b)=>a[0].t-b[0].t).map(rows=>{const z0=rows[0].st[0],cc=z0.cot,Q=rows.reduce((a,r)=>a+r.st.reduce((b,z)=>b+z.q,0),0),w=Math.max(...rows.flatMap(r=>r.st.map(z=>z.late))),sh=Math.max(0,...rows.map(r=>r.shift||0));
       const st=w>tol?["neg","trễ nhất +"+Math.round(w)+"'"]:w>0?["warn","sát hạn +"+Math.round(w)+"'"]:["pos","dư ít nhất "+Math.round(-w)+"'"];
@@ -2124,11 +2126,30 @@ function nvDetail(kind,j,D0){const D=D0||(NVD[kind]||{})[j];if(!D)return null;co
       const h=`<section class="nvd-cot"><div class="nvd-ch"><b>COT ${cc.k+1} · ${pa===pb?`hạn ${hhmm(pa)}${cc.close?" (đóng cửa)":""}`:`hạn từng điểm ${hhmm(pa)}–${hhmm(pb)}`}</b><span>${rows.length} xe${rows.some(r=>r.veh)?`: ${esc(Object.entries(rows.reduce((m,r)=>{if(r.veh)m[r.veh]=(m[r.veh]||0)+1;return m;},{})).map(([k,c])=>(c>1?c+"×":"")+k).join(" + "))}`:""} · ${f0(Q)} đơn · về SOC ${hhmm(Math.min(...rows.map(r=>r.soc)))}–${hhmm(Math.max(...rows.map(r=>r.soc)))}</span><span class="${st[0]}">${st[1]}</span>${sh>=1?`<span>chạy sớm ${Math.round(sh)}'</span>`:""}</div>
         ${xe&&g.length>1?`<p class="mini" style="margin:2px 0 4px;white-space:normal">${fleetMix(rows).txt}</p>`:""}
         <div class="tov-row">${rks}</div>${schedHtml({rows},!xe||!!(rp&&rp.team),null,{W:780,bare:true,n0,ord,staff:xe,teams:rp&&rp.teams})}${stopTimes(rows,n0)}</section>`;n0+=rows.length;return h;}).join("");
-    plan=`<h4 class="nvd-h">Kế hoạch linehaul · ${dayL}${soc?` → ${esc(soc)}`:""}</h4>${xe&&g.length>1?`<p class="note" style="margin:0">${G.truck.fullGhep!==false?"Ghép trọn: mọi xe của tuyến ghé tất cả các điểm và chở hết hàng của các điểm; tiền đi vòng tính cho mọi xe.":"Các điểm dùng chung một đội xe, không phải xe nào cũng ghé hết các điểm: xe chở đầy hàng của một điểm đi thẳng về SOC, phần lẻ của các điểm được gom lên xe ghép. Tiền đi vòng chỉ tính cho phần xe ghép."}</p>`:""}${real?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật. Lịch dưới đây là giờ đề xuất theo cửa sổ giờ mới (xe tới khi hàng sẵn, chạy sớm nếu cần); tiền xe vẫn tính theo chuyến thật.</p>`:""}${plan}${schLegend(!xe||!!(rp&&rp.team),xe)}<p class="note" style="margin:4px 0 0">Rê chuột vào từng khối để xem giờ tới/đi, số đơn chất, thời gian chờ và hạn.</p>`;}
+    plan=`<h4 class="nvd-h">Kế hoạch linehaul · ${dayL}${soc?` → ${esc(soc)}`:""}</h4>${xe&&g.length>1&&G.truck.fullGhep===false?`<p class="note" style="margin:0">${"Các điểm dùng chung một đội xe, không phải xe nào cũng ghé hết các điểm: xe chở đầy hàng của một điểm đi thẳng về SOC, phần lẻ của các điểm được gom lên xe ghép. Tiền đi vòng chỉ tính cho phần xe ghép."}</p>`:""}${real?`<p class="note" style="margin:0">Các điểm này đang đi chung chuyến thật. Lịch dưới đây là giờ đề xuất theo cửa sổ giờ mới (xe tới khi hàng sẵn, chạy sớm nếu cần); tiền xe vẫn tính theo chuyến thật.</p>`:""}${plan}${schLegend(!xe||!!(rp&&rp.team),xe)}<p class="note" style="margin:4px 0 0">Rê chuột vào từng khối để xem giờ tới/đi, số đơn chất, thời gian chờ và hạn.</p>`;}
   else plan=`<h4 class="nvd-h">Kế hoạch linehaul</h4><p class="note">${real?"Các điểm này đang đi chung chuyến thật: giờ lấy hàng giữ như hiện nay (hiện nay xe tới: "+ord.map(i=>esc(shortN(S[i].n))+" "+(waveTimes(i)||[]).map(hhmm).join(", ")).join("; ")+").":"Chưa đủ giờ xe thật để mô phỏng."}</p>`;
   return {title:`<i class="nvc-sw" style="background:${c};display:inline-block;width:6px;height:18px;border-radius:3px;vertical-align:-3px;margin-right:8px"></i>${x.lbl?esc(x.lbl):`${xe?"Tuyến":"Nhóm"} ${(x.j??j??0)+1} <b class="${cls(x.v)}" style="font-size:15px;margin-left:8px">${sgT(x.v)} tr/kỳ</b>`}`,
     sub:`${esc(ord.map(i=>shortN(S[i].n)).join(" → "))}${soc?` → ${esc(soc.replace(/ Mega SOC| SOC/,""))}`:""}`,
-    body:`<div class="nvd">${nvBefore(g,xe)}${xe?"":teamExplain(g,ord,hB,hA,Pb,sim)}<div class="mk-row">${kp.join("")}</div>${xe?nvStaffLinks(g,ord):nvRouteLinks(g,ord)}${tbl}${xe?stopPlan(sim,ord,rp):teamDay(sim,ord)}${plan}</div>`};}
+    body:(()=>{
+      /* lớp 1: tóm tắt một câu + trạng thái giờ + số chính · lớp 2: các tab chi tiết */
+      const tol=G.truck.cotTol??30,zs=sim&&sim.rows?sim.rows.flatMap(r=>r.st):[],wL=zs.length?Math.max(...zs.map(z=>z.late)):null;
+      const stx=wL==null?["","chưa mô phỏng được giờ"]:wL>tol?["neg",`trễ nhất +${Math.round(wL)}' so với hạn COT`]:wL>0?["warn",`sát hạn (+${Math.round(wL)}')`]:["pos",`kịp mọi COT · dư ít nhất ${Math.round(-wL)}'`];
+      const nT=sim&&sim.rows?sim.rows.length:0;
+      const verdict=xe?`${g.length>1?`Gom <b>${g.length} điểm</b> thành một tuyến ghép trọn`:"Điểm đi riêng"}${soc?` về <b>${esc(soc.replace(/ Mega SOC| SOC/,""))}</b>`:""}: <b>${f1(tBefore)} → ${f1(tAfter)}</b> chuyến/ngày, xe ${esc(vB)} → <b>${esc(vA)}</b>${dk>0?`, đi vòng ${f1(dk)} km/chuyến`:""}.`
+        :`<b>${g.length} điểm</b> của hub ${esc((S[g[0]].h||"").replace(/ Hub$/,""))} dùng chung người: <b>${f1(hB)} → ${f1(hA)}</b> người/ngày.`;
+      const chips=xe?[["Đơn/ngày",f0(ado)],["Chuyến/ngày",`${f1(tBefore)} → ${f1(tAfter)}`],["Loại xe",`${esc(vB)} → ${esc(vA)}`],["COT có hàng",`${cotN} <small>${cotTx}</small>`],["Người lên hàng",f1(hB)]]
+        :[["Đơn/ngày",f0(ado)],["Người/ngày",`${f1(hB)} → ${f1(hA)}`],["Điểm",g.length],["COT có hàng",`${cotN} <small>${cotTx}</small>`],["Chuyến xe/ngày",f1(tBefore)]];
+      const tabs=[["lich","Lịch chạy",nT?`${nT} xe/ngày`:""],["diem","Điểm & giờ",`${g.length} điểm`],["nguoi",xe?"Nhân sự":"Nhóm làm gì",""],["truoc","Trước điều chỉnh",""]];
+      const cur=tabs.some(t=>t[0]===ui.nvdTab)?ui.nvdTab:"lich";
+      const pane=(k,h)=>`<div class="nvd-pane" data-pane="${k}"${k===cur?"":" hidden"}>${h}</div>`;
+      return `<div class="nvd">
+        <div class="nvd-sum"><p class="nvd-vd">${verdict}</p><div class="nvd-st"><span class="nvd-badge ${stx[0]}">${stx[1]}</span>${xe&&g.length>1?`<span class="nvd-badge">${G.truck.fullGhep!==false?"ghép trọn: xe nào cũng ghé đủ điểm":"dùng chung đội xe"}</span>`:""}${real?`<span class="nvd-badge">đang đi chung chuyến thật</span>`:""}</div>
+          <dl class="nvd-chips">${chips.map(([a,b])=>`<div><dt>${a}</dt><dd>${b}</dd></div>`).join("")}</dl></div>
+        <div class="nvd-tabs" role="tablist">${tabs.map(([k,l,n])=>`<button type="button" role="tab" data-nvtab="${k}" aria-selected="${k===cur}">${l}${n?`<small>${n}</small>`:""}</button>`).join("")}</div>
+        ${pane("lich",plan)}
+        ${pane("diem",tbl)}
+        ${pane("nguoi",xe?nvStaffLinks(g,ord)+stopPlan(sim,ord,rp):teamExplain(g,ord,hB,hA,Pb,sim)+nvRouteLinks(g,ord)+teamDay(sim,ord))}
+        ${pane("truoc",nvBefore(g,xe))}</div>`;})()};}
 /* nhóm người: giải thích bằng lời cho người mới — ai dùng chung, nhóm làm gì, xe phối hợp ra sao */
 function teamExplain(g,ord,hB,hA,Pb,sim){const hub=(S[g[0]].h||"").replace(/ Hub$/,""),befs=Pb.filter(b=>b.some(i=>g.includes(i)));
   const n=sim&&sim.h?sim.h:Math.max(1,Math.round(hA)),bef=befs.map(b=>{if(b.length===1)return `${shortN(S[b[0]].n)} có ${f1(nvHc(b))} người riêng`;const inG=b.filter(i=>g.includes(i)),part=inG.reduce((a,i)=>a+nvShare(i,Pb,"nguoi"),0);
@@ -2254,10 +2275,10 @@ MR.rdyed=m=>{const R=m.R,q=(ui.rdq||"").toLowerCase().trim(),ov=G.rdyOv||{};
       <div class="row" style="gap:8px"><button type="button" class="ghost sm" data-rdpaste="1">Áp dụng danh sách</button><button type="button" class="ghost sm" data-rdcopy="1">Chép bảng ra (để sửa trong Sheets)</button><button type="button" class="ghost sm" data-rdclr="${esc(R)}"${nOv?"":" disabled"}>Xóa hết giờ nhập của ${esc(R)} (${nOv})</button></div>
       ${ui.rdmsg?`<p class="mini" style="margin:0;white-space:normal">${ui.rdmsg}</p>`:""}</section>
     <section class="bk-step"><h5><span class="bk-n">2</span>Bảng giờ có hàng · ${esc(R)} <span class="bk-tools"><input class="inp sm" id="rdq" placeholder="lọc tên điểm" value="${esc(ui.rdq||"")}" style="max-width:none;width:170px;text-align:left"></span></h5>
-      <div class="tablewrap"><table class="data nvd-t rd-t"><thead><tr><th class="l">Điểm</th><th>Đơn/ngày</th>${Array.from({length:nC},(_,k)=>`<th>COT ${k+1}</th>`).join("")}</tr></thead><tbody>
-      ${pts.map(i=>`<tr><td class="l rowname">${esc(shortN(S[i].n))}<small>${esc((S[i].h||"").replace(/ Hub$/,""))}</small></td><td class="num">${f0(adoOf(i))}</td>${Array.from({length:nC},(_,k)=>cell(i,k)).join("")}</tr>`).join("")||`<tr><td colspan="${nC+2}" class="note">Không có điểm khớp.</td></tr>`}
+      <div class="tablewrap"><table class="data nvd-t rd-t"><thead><tr><th class="l">Điểm</th><th>Đơn/ngày</th><th>Đóng cửa<small>bàn giao cuối = hạn COT cuối</small></th>${Array.from({length:nC},(_,k)=>`<th>COT ${k+1}</th>`).join("")}</tr></thead><tbody>
+      ${pts.map(i=>`<tr><td class="l rowname">${esc(shortN(S[i].n))}<small>${esc((S[i].h||"").replace(/ Hub$/,""))}</small></td><td class="num">${f0(adoOf(i))}</td><td class="rd-c">${closeInp(i)}</td>${Array.from({length:nC},(_,k)=>cell(i,k)).join("")}</tr>`).join("")||`<tr><td colspan="${nC+3}" class="note">Không có điểm khớp.</td></tr>`}
       </tbody></table></div></section></div>`;
-  return {title:"Giờ có hàng của seller",sub:`${R} · ${pts.length} điểm · ${nOv} giờ đã nhập`,body,size:""};};
+  return {title:"Giờ có hàng & đóng cửa của seller",sub:`${R} · ${pts.length} điểm · ${nOv} giờ đã nhập`,body,size:""};};
 function rdPaste(R){const el=$("rdpaste"),txt=el?el.value:"";ui.rdpaste=txt;const ov=G.rdyOv=G.rdyOv||{};let n=0;const miss=[],bad=[];
   txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).forEach(l=>{const t=l.split(/\t|;|,(?=\s*\d)/).map(x=>x.trim());const nm=t[0].toLowerCase();if(!nm)return;
     const hit=S.map((_,i)=>i).filter(i=>S[i].R===R&&S[i].n.toLowerCase().includes(nm));if(!hit.length){miss.push(t[0]);return;}
@@ -2292,14 +2313,15 @@ function hubReset(R,h){const mode=ui.em;S.forEach((s,i)=>{if(s.R!==R||(s.h||"")!
 function parseHM(x){const s=String(x||"").trim().toLowerCase().replace(/\s/g,"");if(!s)return null;let h,m;
   const a=s.match(/^(\d{1,2})[:h.](\d{0,2})$/);if(a){h=+a[1];m=a[2]?+a[2]:0;}else if(/^\d{1,4}$/.test(s)){if(s.length<=2){h=+s;m=0;}else{h=+s.slice(0,s.length-2);m=+s.slice(-2);}}else return null;
   return h>=0&&h<=23&&m>=0&&m<=59?h*60+m:null;}
-function timeCommit(t){if(!t||!t.dataset)return;const key=t.dataset.tov!=null?"tov":t.dataset.rdy!=null?"rdyOv":null;if(!key)return;const k=t.dataset.tov!=null?t.dataset.tov:t.dataset.rdy;
+function timeCommit(t){if(!t||!t.dataset)return;const key=t.dataset.tov!=null?"tov":t.dataset.rdy!=null?"rdyOv":t.dataset.cls!=null?"closeOv":null;if(!key)return;const k=t.dataset.tov!=null?t.dataset.tov:t.dataset.rdy!=null?t.dataset.rdy:t.dataset.cls;
   const v=parseHM(t.value);if(v==null){if(t.dataset.v0)t.value=String(Math.floor(+t.dataset.v0/60)).padStart(2,"0")+":"+String(+t.dataset.v0%60).padStart(2,"0");return;}
   t.value=String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0");G[key]=G[key]||{};
   if(t.dataset.v0===String(v))return;   /* không đổi so với giờ đang hiện: không biến giờ tự tính thành chỉnh tay */
   t.dataset.v0=String(v);G[key][k]=v;saveCfg();refreshAll();}
-document.addEventListener("focusout",e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null))timeCommit(t);});
+document.addEventListener("focusout",e=>{const t=e.target;if(t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null||t.dataset.cls!=null))timeCommit(t);});
+document.addEventListener("toggle",e=>{const t=e.target;if(t&&t.classList&&t.classList.contains("nvd-st"))ui.stOpen=t.open;},true);
 document.addEventListener("focusin",e=>{const t=e.target;if(t&&t.classList&&t.classList.contains("tin")&&t.value){t.placeholder=t.value;t.value="";}});   /* bấm vào ô: xóa để gõ mới, giờ cũ hiện mờ; để trống thì trả lại giờ cũ */
-document.addEventListener("keydown",e=>{const t=e.target;if(e.key==="Enter"&&t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null)){e.preventDefault();t.blur();}});
+document.addEventListener("keydown",e=>{const t=e.target;if(e.key==="Enter"&&t&&t.dataset&&(t.dataset.tov!=null||t.dataset.rdy!=null||t.dataset.cls!=null)){e.preventDefault();t.blur();}});
 document.addEventListener("change",e=>{const t=e.target;if(t.dataset&&t.dataset.tov!=null)return;
   if(t.dataset&&t.dataset.bsel!=null){const sel=ui.bsel||(ui.bsel={});if(t.checked)sel[t.dataset.bsel]=1;else delete sel[t.dataset.bsel];renderModals();return;}
   if(t.dataset&&t.dataset.bselg!=null){const sel=ui.bsel||(ui.bsel={}),m=MS[MS.length-1],[h,g]=t.dataset.bselg.split("|"),X=OUT?OUT.X:BASE;S.forEach((s,i)=>{if(s.R===(m&&m.R)&&(s.h||"")===h&&BASE.tot[i].vol>0&&hubGOf(h,X.set[i].team)===g){if(t.checked)sel[i]=1;else delete sel[i];}});renderModals();return;}
@@ -3680,6 +3702,8 @@ document.addEventListener("click",e=>{
   const v4b=t.closest("[data-v4r],[data-v4only]");if(v4b){if(v4b.dataset.v4r)ui.v4R=v4b.dataset.v4r;if(v4b.dataset.v4only!=null)ui.v4only=v4b.dataset.v4only==="1";const box=$("anBox");if(box)box.outerHTML=afterCard();return;}
   const hbe=t.closest("[data-hubed]");if(hbe){const [R,h]=hbe.dataset.hubed.split("|");openModal({k:"hubed",R,h});return;}
   const hbd=t.closest("[data-hubday]");if(hbd){const [i,d]=hbd.dataset.hubday.split(":").map(Number);hubCycleDay(i,d);return;}
+  const clx=t.closest("[data-clsx]");if(clx){if(G.closeOv)delete G.closeOv[clx.dataset.clsx];saveCfg();refreshAll();return;}
+  const nvt=t.closest("[data-nvtab]");if(nvt){ui.nvdTab=nvt.dataset.nvtab;const box=nvt.closest(".nvd");if(box){box.querySelectorAll("[data-nvtab]").forEach(b=>b.setAttribute("aria-selected",b===nvt?"true":"false"));box.querySelectorAll(".nvd-pane").forEach(p=>{p.hidden=p.dataset.pane!==ui.nvdTab;});}return;}
   const rdx=t.closest("[data-rdyx]");if(rdx){if(G.rdyOv)delete G.rdyOv[rdx.dataset.rdyx];saveCfg();refreshAll();return;}
   const nvo=t.closest("[data-nvopen]");if(nvo){const [kind,key]=nvo.dataset.nvopen.split("|"),g=key.split(",").map(Number),R=S[g[0]].R,P=netPlan(R);
     let D=Object.values(NVD[kind]||{}).find(d=>gkey(d.x.g)===key),adhoc=false;
