@@ -465,3 +465,10 @@ Giờ có hàng / giờ người có mặt:
 - Popup chi tiết tuyến/nhóm (`MR.nvd`) dùng `size:"xwide"`: rộng tới 1500px (hoặc màn hình − 24px).
 - Biểu đồ lịch trong popup vẽ rộng theo cửa sổ (W = innerWidth − 140, trong khoảng 780–1440) thay vì cố định 780, nên các khối xe / sort dài ra và số trong khối dễ đọc. Điện thoại không bị tràn.
 - Biểu đồ lịch trong popup: vẽ với W = (innerWidth − 140) / 1,3 (700–1100) rồi để SVG giãn đầy khung, nên phóng to đều cả ngang lẫn dọc (chữ, khối, chiều cao hàng ~×1,3). Không còn dẹt.
+
+## Cập nhật: nhãn khả thi trên thẻ gói
+- `feasOf(it,row)` đánh giá từng phần gói (và từng dòng trong gói đổi cỡ xe) theo đúng dữ liệu và thiết lập đang mở:
+  - **❌ Chưa nên:** ≤ 3 ngày dữ liệu; tiền xe thật nhỏ hơn số tiết kiệm (dữ liệu chuyến lệch); làm rồi vẫn trễ hơn thực tế; tuyến mới < 10 ngày cùng chạy; phần "nên làm" lợi < 1 tr.
+  - **⚠️ Có điều kiện:** 4–7 ngày dữ liệu; dựa vào thuê ca 12H; vẫn trễ nhưng không hơn thực tế; điểm cách nhau > 15 km; nhóm ≥ 4 người.
+  - **✅ Khả thi:** còn lại.
+- Thẻ hiện chip ✅/⚠️/❌ đầu mỗi phần, lý do ngắn ngay dưới (rê chuột xem đủ); gói đổi cỡ xe có dấu trên từng điểm/tuyến.
