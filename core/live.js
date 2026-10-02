@@ -99,6 +99,16 @@ function Live(C, root, opts) {
     const ox = (W - sx * k) / 2, oy = (H - sy * k) / 2;
     return { W, H, f: g => g ? [ox + (g[1] - Math.min(...lo)) * c * k, H - oy - (g[0] - Math.min(...la)) * k] : null }; }
 
+  /* chữ trên bản đồ không chồng nhau, không đè vòng tròn điểm: tên điểm thử lần lượt dưới / trên / phải / trái của chính điểm đó;
+     chữ SOC, hub thì dời xuống từng nấc. Trạng thái điểm đi ngay dưới tên điểm */
+  function unclash(svg) { const box = e => { const b = e.getBBox(); return { x: b.x - 2, y: b.y - 1, w: b.width + 4, h: b.height + 2 }; }, hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const done = [...svg.querySelectorAll("circle.lv-ring, path.lv-hub, rect.lv-soc")].map(c => { const b = c.getBBox(); return { x: b.x, y: b.y, w: b.width, h: b.height }; }), free = b => !done.some(d => hit(d, b));
+    try {
+      Object.values(M.ptEl).forEach(e => { const [x, y] = e.xy, L = e.lab, C = [[x, y + 28, "middle"], [x, y - 22, "middle"], [x + 20, y + 4, "start"], [x - 20, y + 4, "end"]];
+        let b = null; for (const [cx, cy, an] of C) { L.setAttribute("x", cx); L.setAttribute("y", cy); L.style.textAnchor = an; b = box(L); if (free(b)) break; }
+        done.push(b); e.st.setAttribute("x", L.getAttribute("x")); e.st.setAttribute("y", +L.getAttribute("y") + 12); e.st.style.textAnchor = L.style.textAnchor; });
+      [...svg.querySelectorAll("text.lv-lab")].filter(e => !Object.values(M.ptEl).some(p => p.lab === e)).forEach(e => { let b = box(e); for (let k = 0; k < 8 && !free(b); k++) { e.setAttribute("y", +e.getAttribute("y") + b.h); b = box(e); } done.push(b); });
+    } catch (x) {} }
   const el = (tag, at, par) => { const e = document.createElementNS(NS, tag); Object.entries(at || {}).forEach(([k, v]) => e.setAttribute(k, v)); if (par) par.appendChild(e); return e; };
   const lerp = (w, t) => { if (t <= w[0].t) return null; for (let k = 1; k < w.length; k++) if (t <= w[k].t) { const a = w[k - 1], b = w[k], f = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1; return [a.xy[0] + (b.xy[0] - a.xy[0]) * f, a.xy[1] + (b.xy[1] - a.xy[1]) * f]; } return null; };
 
@@ -137,14 +147,15 @@ function Live(C, root, opts) {
     Object.entries(M.hubs).forEach(([n, g]) => { const [x, y] = F(g); el("path", { d: `M${x},${y - 9} L${x + 8},${y + 6} L${x - 8},${y + 6} Z`, class: "lv-hub" }, svg); el("text", { x: x + 11, y: y + 4, class: "lv-lab sm" }, svg).textContent = n.replace(/^\d+-\w+ /, ""); });
     M.ptEl = {}; M.pts.forEach(i => { const xy = F(M.geoP(i)); if (!xy) return; const g = el("g", {}, svg);
       const ring = el("circle", { cx: xy[0], cy: xy[1], r: 15, class: "lv-ring" }, g); const dot = el("circle", { cx: xy[0], cy: xy[1], r: 11, class: "lv-pt s-idle" }, g);
-      el("text", { x: xy[0], y: xy[1] + 28, class: "lv-lab c" }, g).textContent = short(i).slice(0, 22);
-      const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
+      const lab = el("text", { x: xy[0], y: xy[1] + 28, class: "lv-lab c" }, g); lab.textContent = short(i).slice(0, 22);
+      const st = el("text", { x: xy[0], y: xy[1] + 41, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy, lab }; });
     /* nhóm người: đường đi (nét đứt) + biểu tượng người luôn hiện — đứng ở điểm khi chờ / sort, chạy dọc đường khi di chuyển */
     M.tracks.forEach(tr => { const L = []; tr.segs.forEach(sg => { const xy = F(M.geoP(sg.i)); if (xy && (!L.length || L[L.length - 1] !== xy.join())) L.push(xy.join()); });
       if (L.length > 1) el("polyline", { points: L.join(" "), class: "lv-tpath" }, svg); });
     M.teamEl = {}; M.tracks.forEach(tr => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 12, class: "bg" }, g);
       el("circle", { cx: 0, cy: -4, r: 3.2, class: "fg" }, g); el("path", { d: "M-6,7 Q-6,0 0,0 Q6,0 6,7 Z", class: "fg" }, g);
-      el("text", { x: 15, y: -2, class: "lv-tname" }, g).textContent = `Nhóm ${tr.id} · ${tr.n} người`; const st = el("text", { x: 15, y: 10, class: "lv-tst" }, g); M.teamEl[tr.id] = { g, st, tr }; });
+      el("text", { x: -16, y: -2, class: "lv-tname e" }, g).textContent = `Nhóm ${tr.id} · ${tr.n} người`; const st = el("text", { x: -16, y: 10, class: "lv-tst e" }, g); M.teamEl[tr.id] = { g, st, tr }; });
+    unclash(svg);
     M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = (M.routes.length > 1 ? (tk.gi + 1) + (tk.n > 1 ? "×" + tk.n : "") : tk.n > 1 ? "×" + tk.n : "xe"); return g; });
     dlTable(r); trTable(r); tmTable(); invDraw(M); wire(); draw(); }
 
@@ -220,7 +231,7 @@ function Live(C, root, opts) {
       road += tk.n; const [x, y] = F(xy); g.setAttribute("visibility", "visible"); g.setAttribute("transform", `translate(${x.toFixed(1)},${(y - 18).toFixed(1)})`); });
     const teamTxt = []; Object.values(M.teamEl).forEach(({ g, st, tr }) => { const p = teamAt(tr, t);
       if (!p) { g.setAttribute("visibility", "hidden"); return; } g.setAttribute("visibility", "visible"); g.setAttribute("class", "lv-team " + p.c);
-      g.setAttribute("transform", `translate(${p.xy[0].toFixed(1)},${(p.xy[1] + 22).toFixed(1)})`); st.textContent = p.txt; teamTxt.push(`Nhóm ${tr.id}: ${p.txt}`); });
+      g.setAttribute("transform", `translate(${(p.xy[0] - 30).toFixed(1)},${p.xy[1].toFixed(1)})`); st.textContent = p.txt; teamTxt.push(`Nhóm ${tr.id}: ${p.txt}`); });
     const fin = M.dls.filter(d => d.dep <= t), ok = fin.filter(d => d.dep <= d.dl).length, rolled = fin.reduce((a, d) => a + (d.roll || 0), 0);
     root.querySelector("#lv-kpi").innerHTML = `<div><span>Xe đang chạy</span><b class="mono">${road}</b></div><div><span>Điểm đang sort</span><b class="mono">${sorting}</b></div>
       ${M.team ? `<div class="wide"><span>Người</span><b>${esc(teamTxt.join(" · ") || "chưa vào ca")}</b></div>` : ""}<div><span>Lượt đã đi · kịp</span><b class="mono">${ok}/${fin.length}</b></div><div><span>Đơn dồn sang COT sau</span><b class="mono">${Math.round(rolled).toLocaleString("vi-VN")}</b></div><div class="${late ? "bad" : ""}"><span>Quá hạn COT</span><b class="mono">${late}${late ? ` · ${Math.round(worst)}'` : ""}</b></div>`;
