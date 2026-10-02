@@ -70,7 +70,7 @@ Hiện trạng giữ đúng loại xe thật. Kế hoạch: sau khi tìm tuyến
 Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đổi cỡ (`r.veh`); tuyến bị thay trong một nhóm thì tính vào nhóm, tuyến giữ nguyên hiện thành nhóm "Đổi cỡ xe".
 
 ## Độ đầy xe
-Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe. Hiện dưới con số tiết kiệm (cả vùng, % chuyến chở chưa tới nửa xe) và trong từng tuyến. Có thể > 100%: tuyến mới chở tới tải cao nhất thường gặp (p95) của xe thật; `newFillMax` đặt trần (ví dụ 100%).
+Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe. Hiện dưới con số tiết kiệm (cả vùng, % chuyến chở chưa tới nửa xe) và trong từng tuyến. Có thể > 100%: tuyến mới chở tới tải cao nhất thường gặp (p95) của xe thật; `newFillMax` = trần (mặc định 100%, chỉnh ngay dưới con số tiết kiệm). Danh sách "Seller xe chở ít" (`occPoint`): độ đầy chuyến thật < 50%, % chuyến chưa tới nửa xe, chuyến/ngày, loại xe, độ đầy tuyến kế hoạch.
 
 ## Đường bộ thật
 `core/road.py` lấy km đường bộ và hình đường từ OSRM (bản đồ OpenStreetMap, miễn phí) cho cặp điểm–điểm, điểm–SOC cùng vùng; ghi vào data.js (`D.RD`).

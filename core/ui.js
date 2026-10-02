@@ -72,6 +72,7 @@
       <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>
       <div class="opts"><div class="occ"><span class="muted">Độ đầy xe hiện nay</span> <b class="mono">${pc(O.now)}</b> <span class="muted" title="Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Có thể vượt 100% vì xe thật hay chở quá sức chở chuẩn.">sức chở chuẩn · ${pc(O.low)} chuyến chở chưa tới nửa xe</span>
         ${O.plan != null ? `<span class="muted">→ kế hoạch</span> <b class="mono ${O.plan > O.now ? "pos" : ""}">${pc(O.plan)}</b>` : ""}</div>
+        <label class="sw">Tuyến mới chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở chuẩn <span class="muted">(0 = như xe thật chở nhiều nhất)</span></label>
         <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho đổi cỡ xe <span class="muted">(${P.vehPlan ? "đang bật: mỗi tuyến chọn xe vừa tải nhất, chỉ khi rẻ hơn và không trễ thêm" : "đang tắt: giữ loại xe hiện nay — bật để model chọn xe vừa tải, xe đầy hơn"})</span></label></div>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
@@ -172,6 +173,14 @@
       <h3>Từng điểm</h3><p class="muted">Kế hoạch giữ nguyên điều kiện chute/SOC của từng điểm: đơn đi mỗi SOC bao nhiêu %, bao nhiêu % ngày có xe tới SOC đó — chỉ đổi điểm nào đi chung xe với điểm nào. "Ngày đông" là các SOC có xe trong ngày mô phỏng (SOC chỉ có xe vài ngày thì ngày đông không có).</p>
       <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute</th><th>Hiện nay · % đơn · % ngày có xe</th><th>Kế hoạch · % đơn · % ngày có xe</th><th>Ngày đông (mô phỏng)</th><th>Hiện nay vs kế hoạch</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
 
+  /* SELLER XE CHỞ ÍT: độ đầy chuyến thật < 50% sức chở chuẩn, kèm tuyến kế hoạch của điểm đầy bao nhiêu */
+  function lowOcc(r) { const L = r.nodes.map(i => ({ i, o: C.occPoint(i) })).filter(x => x.o && x.o.occ < 0.5).sort((a, b) => a.o.occ - b.o.occ);
+    const row = x => { const g = r.T.find(h => h.includes(x.i)), op = g ? C.occ(g, true) : null, ch = g && g.length > 1 ? `ghép: ${esc(g.filter(j => j !== x.i).map(short).join(" + "))}` : "đi riêng";
+      return `<tr><td>${esc(short(x.i))}</td><td class="r mono">${pc(x.o.occ)}</td><td class="r mono">${pc(x.o.low)}</td><td class="r mono">${x.o.perDay.toFixed(1)}</td><td>${Object.entries(x.o.ty).sort((a, b) => b[1] - a[1]).map(e => e[0]).join(", ")}</td><td class="r mono ${op > x.o.occ ? "pos" : ""}">${pc(op)}</td><td class="muted">${ch}</td></tr>`; };
+    $("lowocc").innerHTML = `<summary>Seller xe chở ít · độ đầy dưới 50% <span class="${L.length ? "warn" : "pos"}">${L.length} điểm</span></summary><div class="mb">
+      <p class="muted">Độ đầy = đơn lên xe ÷ sức chở chuẩn của loại xe (chuyến thật, cả các điểm đi chung xe). Cột kế hoạch là độ đầy tuyến kế hoạch của điểm đó.</p>
+      ${L.length ? `<div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Độ đầy hiện nay</th><th class="r">Chuyến &lt; nửa xe</th><th class="r">Chuyến/ngày</th><th>Loại xe</th><th class="r">Kế hoạch</th><th>Kế hoạch đi cùng</th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>` : `<p class="muted">Không có.</p>`}</div>`; }
+
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */
   const WHY = { "xa": "cách điểm khác > " + P.hubKm + " km", "trễ": "gom thì tuyến xe trễ COT", "đắt hơn": "gom không rẻ hơn FTE riêng" };
   function more(r) { const it = r.iters.filter(x => x.banned.length), H = r.L1.hubs || [];
@@ -236,7 +245,7 @@
   function render() { tabs(); lines(); const R = ST.R;
     if (ST.line === "0") { if (!CAL[R] || !GAP[R] || GAP[R].r !== ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { if (!CAL[R]) CAL[R] = K.run(R); const rr = res(R); GAP[R] = { r: rr, g: K.gap(R, rr) }; document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; ovr(); summary(r); routes(r); teamsL(r); chuteL(r); more(r);
+    const r = ST.res[R]; ovr(); summary(r); routes(r); teamsL(r); lowOcc(r); chuteL(r); more(r);
     if (ST.ovOpen) { const m = ST.ovOpen; ST.ovOpen = null; openOv(r, m); } }
   /* mô phỏng toàn vùng (xe + người); đổi vùng ở thẻ trên cùng thì mở lại cho vùng mới */
   function openOv(r, mode) { ST.ov = mode; LV.openRegion(r, mode, m => { ST.ov = m; }); }
@@ -261,9 +270,10 @@
     const tg = t.closest("[data-tg]"); if (tg) { const id = tg.dataset.tg; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); const r = ST.res[ST.R]; id[0] === "t" ? teamsL(r) : routes(r); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
-  document.addEventListener("change", e => { if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
+  document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
+    if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
     LV.close(); ST.res = {}; ST.open.clear(); render(); });
-  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; } catch (e) {}
+  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();
