@@ -134,14 +134,14 @@
   /* NHÓM NGƯỜI CHUNG: giá trị = tiền người các điểm của nhóm (đã nằm trong giá trị tuyến) */
   const TRISK = new Map();
   function teamsL(r) { const T = r.L1.teams;
-    const item = t => { const id = "t:" + t.id, open = ST.open.has(id), v = t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
+    const item = t => { const id = "t:" + t.id, open = ST.open.has(id), own = t.pts.reduce((a, i) => a + C.fCost(i), 0), v = own - t.c, dv = t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
       let rk = ""; if (open) { const k = r.R + t.id; if (!TRISK.has(k)) TRISK.set(k, C.teamRisk(r, t)); const x = TRISK.get(k);
         rk = !x ? `<p class="muted">Nhóm 1 người: vắng là không có người làm — cần người dự phòng.</p>` : `<table class="mini"><tbody><tr><td>Thiếu 1 người (còn ${t.n - 1})</td><td>${x.late > Math.max(0, x.late0) + 0.5 ? `<span class="neg">trễ COT ${Math.round(x.late)}' ở ${esc(short(x.pt))}</span>` : x.roll > 1 ? `kịp COT, dồn ${Math.round(x.roll)} đơn sang COT sau` : `<span class="pos">vẫn kịp, không dồn đơn</span>`}</td></tr></tbody></table>`; }
       return `<article class="it${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
-        <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người</span></div></div>
-        <div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}</div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
+        <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người chung thay vì ${t.pts.reduce((a, i) => a + C.fteBase(i), 0)} FTE riêng${Math.abs(dv) >= 0.05e6 ? ` · so với hiện nay ${sg(dv)}` : ""}</span></div></div>
+        <div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}<small>so với FTE riêng</small></div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
         ${open ? `<div class="body"><div class="cols"><section><h3>Rủi ro</h3>${rk}</section><section><h3>Cách làm</h3><p class="muted">Đi lần lượt các điểm theo hạn COT sớm nhất; ở lại tới khi xe lên hàng xong mới đi tiếp. ${tr(t.c)} tr/kỳ.</p></section></div></div>` : ""}</article>`; };
-    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">FTE chung theo FM Hub · giá trị đã nằm trong các tuyến</span></header>` +
+    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">mỗi nhóm rẻ hơn bao nhiêu so với thuê FTE riêng cho từng điểm</span></header>` +
       (T.length ? T.map(item).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */

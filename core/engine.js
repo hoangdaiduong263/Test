@@ -686,8 +686,13 @@ function Core(D, REF) {
 
   /* LÀM RIÊNG một tuyến mới: chỉ kéo các điểm của nó ra khỏi tuyến hiện nay, phần còn lại của mỗi tuyến hiện nay giữ nguyên đi chung.
      Lợi tiền xe = Σ tuyến hiện nay − (Σ phần còn lại + tuyến mới + xe thêm). Âm = chỉ có lợi khi làm cùng các tuyến khác trong nhóm */
-  function standalone(r, g) { const S0 = new Set(g); let c = 0; r.T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)); c += routeCost(b).c - (rest.length ? routeCost(rest).c : 0); });
+  function standalone(r, g) { const S0 = new Set(g); let c = 0; r.T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)), cb = routeCost(b).c;
+      /* phần còn lại so với tuyến hiện nay cùng một cách tính (chưa hiệu chỉnh theo tuyến), rồi quy về tiền thật của tuyến hiện nay */
+      const u = rest.length ? costU(rest) / Math.max(1, costU(b)) : 0; c += cb * (1 - u); });
     return c - routeCost(g).c - r.xCost(g); }
+  /* tiền xe mô hình chưa hiệu chỉnh theo tuyến (coi như tuyến mới) — để so tuyến hiện nay với một phần của nó */
+  const CU = {};
+  function costU(g) { const k = key(g); if (k in CU) return CU[k]; const f = P.forceNew; P.forceNew = 1; let c = 0; try { for (const d of LHD) { const x = routeDay(g, d); if (x) c += x.c; } } finally { P.forceNew = f; } return CU[k] = c; }
   /* RỦI RO của một tuyến kế hoạch (người như kế hoạch): seller bàn giao trễ d phút / xe tới trễ d phút → trễ COT bao nhiêu, dồn bao nhiêu đơn sang COT sau.
      ok = mức trễ lớn nhất chưa làm tuyến trễ hơn kế hoạch; okRoll = mức trễ lớn nhất chưa phải dồn thêm đơn */
   const RSK = [5, 10, 15, 20, 30, 45, 60, 90, 120];
@@ -704,8 +709,8 @@ function Core(D, REF) {
     r.T.filter(g => g.some(i => t.pts.includes(i))).forEach(g => { const h = r.hc(g); if (!h || !h.A) return; const A2 = Object.assign({}, h.A); g.forEach(i => { if (A2[i] && A2[i].team === t) A2[i] = { m: "H", team: t2 }; });
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
-  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
+  return { fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
