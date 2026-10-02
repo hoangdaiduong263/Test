@@ -148,7 +148,12 @@ details.prm[open]>summary::after{content:"▴"}
 .lv-ring.s-late{stroke:var(--bad);fill:none;animation:pulse 1s infinite}.lv-ring.s-load{stroke:var(--accent);fill:none}
 @keyframes pulse{50%{stroke-opacity:.2}}
 .lv-truck rect{fill:var(--accent)}.lv-truck.late rect{fill:var(--bad)}.lv-truck text{font:600 10px var(--f-mono);fill:var(--panel)}
-.lv-team circle{fill:var(--warn)}.lv-team text{font:600 8.5px var(--f-mono);fill:var(--panel)}
+.lv-team .bg{fill:var(--warn);stroke:var(--panel);stroke-width:2}.lv-team .fg{fill:var(--panel)}
+.lv-team.mv .bg{fill:var(--accent)}.lv-team.wait .bg{fill:var(--muted)}.lv-team.idle .bg{fill:var(--ok)}
+.lv-tname{font:700 10px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--bg);stroke-width:3px}
+.lv-tst{font:500 9.5px var(--f-body);fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:3px}
+.lv-tpath{fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:3 4;opacity:.8}
+.lv-kpi .wide{grid-column:1/-1}
 .lv-leg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--muted);padding-top:8px}
 .lv-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
 .lv-side{display:grid;grid-template-rows:auto 1fr;min-width:0}

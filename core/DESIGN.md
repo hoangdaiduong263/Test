@@ -70,6 +70,9 @@ Chạy từng tuyến đề xuất riêng. Thẻ "Tuyến 1…n" ở đầu khun
 
 **Live theo nhóm FTE chung** (nút ▶ ở bảng nhóm và bảng FM Hub):
 - **Bản đồ:** nhóm di chuyển từ điểm sang điểm, kèm mọi tuyến xe có điểm của nhóm.
+  - Biểu tượng người luôn hiện: đứng ở điểm khi chờ / sort, chạy dọc đường nét đứt khi di chuyển.
+  - Bản đồ phóng vào các điểm của nhóm.
+  - Khi nhóm đang đi đường, tốc độ phát tự chậm lại còn tối đa 3 phút/giây.
 - **Lịch nhóm:** từng chặng gồm di chuyển, sort, giờ xe tới/rời, hạn COT.
 - **Dải thời gian của nhóm:** chung trục giờ với biểu đồ tồn. Màu xám là di chuyển, màu xanh là sort, ▼ là giờ xe rời điểm (đỏ nếu trễ).
 
