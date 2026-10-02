@@ -55,7 +55,8 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 
 ## Giao diện (tối giản)
 - **Kế hoạch**: một con số tiết kiệm (kỳ, ≈ tháng, xe · người) → danh sách **từng tuyến** xếp theo giá trị → nhóm người chung → phần phụ (đã thử & loại, FM Hub, tham số) gập lại.
-- **Giá trị từng tuyến** = tiền xe hiện nay của các điểm (tiền tuyến hiện nay chia theo đơn) − tiền xe tuyến kế hoạch (cả xe thêm) + tiền người hiện nay − kế hoạch (theo điểm). Cộng mọi tuyến = tổng vùng. Tuyến âm ghi "đổi cùng tuyến …" (cả nhóm dương).
+- **Giá trị** theo **nhóm thay đổi** (các tuyến đổi điểm cho nhau, phải làm cùng nhau; các nhóm độc lập): làm cả nhóm = xe + người. Trong nhóm, từng tuyến có giá trị **làm riêng** (`standalone`: chỉ kéo điểm của tuyến ra khỏi tuyến hiện nay, phần còn lại giữ nguyên) — âm = chỉ lợi khi làm cùng nhóm. Tuyến giữ nguyên mà đổi người (nhóm chung xếp lại) gom một dòng.
+- **Bỏ nhóm lỗ** (`run`): sau khi bố trí người, nhóm có giá trị ròng < `minGain` được thử trả về tuyến hiện nay; chỉ bỏ nếu tổng xe + người cả vùng tốt lên (`dropped`).
 - **Rủi ro** (`risk`): mô phỏng lại tuyến với seller bàn giao trễ / xe tới trễ 5–120' → mức trễ chịu được, hậu quả ở +15/30/60' (trễ COT ở điểm nào, hay dồn bao nhiêu đơn sang COT sau). Nhóm người: thiếu 1 người (`teamRisk`).
 - **Khác thực tế · giả định** từng tuyến: tuyến mới, hạn = giờ xe hiện nay rời, chỉnh tay, giờ đóng giả định, thêm người/xe, số SOC phải chia.
 - **Kiểm định**: 4 ô (khớp lại kỳ, độc lập, tháng sau, giờ xe), chi tiết gập lại.

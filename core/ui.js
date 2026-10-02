@@ -29,25 +29,22 @@
   function openRoute(r, k) { const g = r.T.find(x => C.key(x) === k); if (!g) return; const p = r.packs.find(p => p.nw.some(x => C.key(x) === k));
     if (p) LV.open(r, p, `${r.R} · ${names(g)}`, p.nw.findIndex(x => C.key(x) === k)); else LV.open(r, { cut: [g], nw: [g] }, `${r.R} · ${names(g)}`, 0); }
 
-  function tabs() {
-    $("tabs").innerHTML = REGS.map(R => { const r = ST.res[R];
-      return `<button type="button" role="tab" id="tab-${R}" aria-selected="${R === ST.R}" data-r="${R}">${R}${r ? `<small class="${total(r) >= 0 ? "pos" : "neg"}">${sg(total(r))}</small>` : ""}</button>`; }).join(""); }
-
   const rt = g => `<span class="rt">${g.map(i => `<span class="pt" title="${esc(C.nm(i))}">${esc(short(i))}</span>`).join("<i>·</i>")}</span>`;
   const names = g => g.map(i => esc(short(i))).join(" · ");
   const modeOf = (g, h, i) => h.A && h.A[i] ? C.modeTxt(h.A[i], i) : "FTE riêng";
   const DAYS = () => (C.LH ? C.LH.filter(Boolean).length : C.DATES.length) || 1;
 
-  /* GIÁ TRỊ TỪNG TUYẾN: tiền xe hiện nay của mỗi điểm = tiền tuyến hiện nay của nó chia theo đơn; tuyến kế hoạch = tiền tuyến + xe thêm.
-     Tiền người theo từng điểm (nhóm chung đã chia về điểm). Cộng mọi tuyến = tổng của vùng */
+  /* GIÁ TRỊ: theo nhóm thay đổi (các tuyến phải làm cùng nhau vì đổi chỗ điểm cho nhau) và theo từng tuyến "làm riêng"
+     (chỉ kéo điểm của tuyến ra khỏi tuyến hiện nay, phần còn lại giữ nguyên). Người tính theo điểm. */
   const VAL = new WeakMap();
-  function values(r) { if (VAL.has(r)) return VAL.get(r); const vol = i => C.S[i].v.reduce((a, x) => a + (x || 0), 0), base = {};
-    r.T0.forEach(b => { const c = C.routeCost(b).c, V = b.reduce((a, i) => a + vol(i), 0) || 1; b.forEach(i => { base[i] = c * vol(i) / V; }); });
-    const k0 = new Set(r.T0.map(C.key)), out = r.T.map(g => { const h = r.hc(g), xa = g.reduce((a, i) => a + (base[i] || 0), 0), xb = C.routeCost(g).c + r.xCost(g);
-      const la = g.reduce((a, i) => a + (r.L0.cost[i] || 0), 0), lb = g.reduce((a, i) => a + (r.L1.cost[i] || 0), 0);
-      return { g, h, k: C.key(g), isNew: !k0.has(C.key(g)), xa, xb, la, lb, v: xa - xb + la - lb, from: r.T0.filter(b => b.some(i => g.includes(i))) }; });
-    out.sort((a, b) => b.v - a.v); VAL.set(r, out); return out; }
-  const total = r => values(r).reduce((a, x) => a + x.v, 0);
+  function values(r) { if (VAL.has(r)) return VAL.get(r); const lab = g => g.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
+    const pk = r.packs.map(p => ({ p, net: p.net, routes: p.nw.map(g => ({ g, h: r.hc(g), k: C.key(g), isNew: true, solo: C.standalone(r, g) + lab(g), xs: C.standalone(r, g), ls: lab(g),
+      from: p.cut.filter(b => b.some(i => g.includes(i))) })).sort((a, b) => b.solo - a.solo) }));
+    pk.sort((a, b) => b.net - a.net);
+    const inP = new Set(r.packs.flatMap(p => p.nw.flat())), keep = r.T.filter(g => !g.some(i => inP.has(i))), kv = keep.reduce((a, g) => a + lab(g) - r.xCost(g), 0);
+    const out = { pk, keep: keep.filter(g => Math.abs(lab(g) - r.xCost(g)) >= 0.05e6).map(g => ({ g, h: r.hc(g), k: C.key(g), v: lab(g) - r.xCost(g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep.length };
+    VAL.set(r, out); return out; }
+  const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
   function tabs() {
     $("tabs").innerHTML = REGS.map(R => { const r = ST.res[R];
@@ -55,7 +52,7 @@
 
   /* tóm tắt: một con số + vài sự thật */
   function summary(r) { const V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
-    const ch = V.filter(x => x.isNew).length, late = V.filter(x => x.h && x.h.sim && x.h.sim.late > 0.5).length;
+    const ch = V.pk.reduce((a, x) => a + x.routes.length, 0), late = r.T.filter(g => { const h = r.hc(g); return h && h.sim && h.sim.late > 0.5; }).length;
     $("sum").innerHTML = `<div class="hero"><div><div class="lab">Tiết kiệm · ${nd} ngày dữ liệu · ${r.R}</div>
       <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
       <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL)}</div></div>
@@ -100,25 +97,30 @@
   const riskOf = x => { if (!RISK.has(x.k)) RISK.set(x.k, x.h && x.h.A ? C.risk(x.g, x.h.A) : null); return RISK.get(x.k); };
   const ppl = x => { let f = 0; const H = new Set(); x.g.forEach(i => { const a = x.h && x.h.A && x.h.A[i]; if (a && a.m === "H") H.add(a.team.id ?? "?"); else f += a && a.n != null ? a.n : C.fteBase(i); });
     return [f ? `${f} FTE riêng` : "", H.size ? `nhóm chung ${[...H].join(", ")}` : ""].filter(Boolean).join(" · "); };
-  function routes(r) { const V = values(r), show = V.filter(x => x.isNew || Math.abs(x.v) >= 0.05e6), same = V.length - show.length;
-    const item = (x, n) => { const id = "r:" + x.k, open = ST.open.has(id), R = riskOf(x), late = x.h && x.h.sim ? x.h.sim.late : null;
-      const st = !R ? `<span class="muted">thiếu data giờ</span>` : late > 0.5 ? `<span class="neg">trễ COT ${Math.round(late)}'</span>` : R.av.ok >= 120 ? `<span class="pos">rất an toàn</span>`
-        : R.av.ok >= 30 ? `<span>seller trễ ≤ ${R.av.ok}' vẫn kịp</span>` : `<span class="warn">mong manh: seller trễ ${R.av.ok ? `quá ${R.av.ok}'` : "là"} trễ COT</span>`;
-      const pk = r.packs.find(p => p.nw.some(g => C.key(g) === x.k)), mates = pk && x.v < 0 ? pk.nw.filter(g => C.key(g) !== x.k).map(g => show.findIndex(y => y.k === C.key(g)) + 1).filter((n, j, A) => n > 0 && A.indexOf(n) === j) : [];
-      const pv = pk ? pk.nw.reduce((a, g) => a + (V.find(y => y.k === C.key(g)) || { v: 0 }).v, 0) : 0;
-      const from = mates.length ? `đổi cùng tuyến ${mates.join(", ")} (cả nhóm ${sg(pv)} tr)` : x.from.length && x.isNew ? `trước: ${x.from.map(b => b.map(i => esc(short(i))).join(" + ")).join(" | ")}` : x.isNew ? "" : "giữ tuyến, đổi người";
-      return `<article class="it${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
-        <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${st}${from ? ` · <span class="muted">${from}</span>` : ""}</div></div>
-        <div class="v mono ${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</div><button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>
-        ${open ? `<div class="body"><div class="cols">
-          <section><h3>Giá trị · tr/kỳ</h3><dl class="kv"><dt>Tiền xe</dt><dd>${tr(x.xa)} → ${tr(x.xb)} <b class="${x.xa - x.xb >= 0 ? "pos" : "neg"}">${sg(x.xa - x.xb)}</b></dd>
-            <dt>Tiền người</dt><dd>${tr(x.la)} → ${tr(x.lb)} <b class="${x.la - x.lb >= 0 ? "pos" : "neg"}">${sg(x.la - x.lb)}</b></dd>
+  function routes(r) { const V = values(r); let n = 0;
+    const body = x => `<div class="body"><div class="cols">
+          <section><h3>Giá trị · tr/kỳ</h3><dl class="kv">${x.isNew ? `<dt>Làm riêng · tiền xe</dt><dd class="${x.xs >= 0 ? "pos" : "neg"}">${sg(x.xs)}</dd><dt>Tiền người các điểm</dt><dd class="${x.ls >= 0 ? "pos" : "neg"}">${sg(x.ls)}</dd>
+            <dt>Tuyến hiện nay</dt><dd class="tx">${x.from.map(b => esc(b.map(short).join(" + "))).join("<br>")}</dd>` : `<dt>Đổi người · xe thêm</dt><dd class="${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</dd>`}
             <dt>Xe/ngày</dt><dd>${C.routeCost(x.g).t.toFixed(1)} · ${esc(C.mixLabel(C.routeCost(x.g).mix))}</dd><dt>Người</dt><dd>${esc(ppl(x))}</dd></dl></section>
           <section><h3>Rủi ro</h3>${riskHtml(x)}</section>
           <section><h3>Khác thực tế · giả định</h3>${notes(r, x)}</section></div>
-          <details class="sch"><summary>Lịch ngày đông</summary>${scheduleTable(r, x.g)}</details></div>` : ""}</article>`; };
-    $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${show.length} tuyến có giá trị${same ? ` · ${same} tuyến giữ nguyên` : ""} · bấm để xem rủi ro &amp; giả định</span></header>
-      ${show.length ? show.map((x, k) => item(x, k + 1)).join("") : `<p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`}`; }
+          <details class="sch"><summary>Lịch ngày đông</summary>${scheduleTable(r, x.g)}</details></div>`;
+    const stTxt = x => { const R = riskOf(x), late = x.h && x.h.sim ? x.h.sim.late : null;
+      return !R ? `<span class="muted">thiếu data giờ</span>` : late > 0.5 ? `<span class="neg">trễ COT ${Math.round(late)}'</span>` : R.av.ok >= 120 ? `<span class="pos">rất an toàn</span>`
+        : R.av.ok >= 30 ? `<span>seller trễ ≤ ${R.av.ok}' vẫn kịp</span>` : `<span class="warn">mong manh: seller trễ ${R.av.ok ? `quá ${R.av.ok}'` : "là"} trễ COT</span>`; };
+    const item = (x, val, sub, cls) => { const id = "r:" + x.k, open = ST.open.has(id); n++;
+      return `<article class="it ${cls || ""}${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
+        <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${stTxt(x)}${sub ? ` · ${sub}` : ""}</div></div>
+        ${val}<button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>${open ? body(x) : ""}</article>`; };
+    const vv = (v, lab) => `<div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}${lab ? `<small>${lab}</small>` : ""}</div>`;
+    const html = V.pk.map(P0 => P0.routes.length === 1 ? item(P0.routes[0], vv(P0.net), "")
+      : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>
+        ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < 0 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
+      + (V.keep.length ? `<div class="grp"><div class="gh"><span>Giữ tuyến, đổi người / thêm xe</span><span class="mono ${V.kv >= 0 ? "pos" : "neg"}">${sg(V.kv)}</span></div>${V.keep.map(x => item(x, vv(x.v), `<span class="muted">nhóm người chung xếp lại</span>`, "in")).join("")}</div>` : "");
+    const nR = V.pk.reduce((a, x) => a + x.routes.length, 0);
+    $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${nR} tuyến mới · ${V.nKeep} tuyến giữ nguyên · bấm để xem rủi ro &amp; giả định</span></header>
+      ${html || `<p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`}
+      ${r.dropped && r.dropped.length ? `<p class="muted note3">Đã bỏ ${r.dropped.length} nhóm lỗ sau khi tính cả tiền người (giữ tuyến hiện nay, lợi thêm ${sg(r.dropped.reduce((a, d) => a + d.net, 0))} tr): ${r.dropped.map(d => d.nw.map(g => esc(g.map(short).join(" + "))).join(" ; ")).join(" | ")}.</p>` : ""}`; }
 
   /* NHÓM NGƯỜI CHUNG: giá trị = tiền người các điểm của nhóm (đã nằm trong giá trị tuyến) */
   const TRISK = new Map();

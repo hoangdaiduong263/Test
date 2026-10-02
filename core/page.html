@@ -60,12 +60,17 @@ button:focus-visible,input:focus-visible,summary:focus-visible,[role=button]:foc
 .it .nm{font-weight:500}
 .it .meta{font-size:12px;margin-top:2px}
 .it .v{font-weight:600;font-size:15px;text-align:right}
+.it .v small{display:block;font:400 10.5px var(--f-body);color:var(--muted)}
+.grp{border-bottom:1px solid var(--line)}.grp .gh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 4px 4px;font-size:12px;color:var(--muted)}.grp .gh .mono{font-weight:600}
+.it.in{border-bottom:0;margin-left:16px;border-left:2px solid var(--line)}
+.note3{font-size:12px;padding:10px 4px}
 .it.open{background:var(--panel)}
 .it .body{padding:4px 4px 18px 44px;display:grid;gap:14px}
 .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
 @media (max-width:600px){.it .body{padding-left:4px}}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;margin:0}
+.kv{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:4px 12px;font-size:13px;margin:0}
 .kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.kv dd.tx{font-family:var(--f-body)}
 .notes{margin:0;padding-left:16px;font-size:12.5px;display:grid;gap:4px}
 .rk{margin-bottom:10px}.rkh{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;font-size:13px}.rkh .muted{font-size:12px}
 table.mini{font-size:12.5px;margin-top:4px}table.mini td{padding:3px 8px 3px 0;border:0}
