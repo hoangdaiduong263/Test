@@ -124,6 +124,23 @@ for c in order:
         elif typ == 'Hub': t['upHub'] += up
         else: t['upD2S'] += up; t['stops'].append(dict(vs=name, up=up, load=G(r, 'load')))
 
+# 3b. chuyến Hub tự đi lấy hàng (PBT): lên ở điểm D2S, không ghé SOC nào, trả ở Hub → không phải D2S, loại khỏi chuyến D2S.
+#     Đơn của điểm hôm đó trừ phần đi Hub (theo tỷ lệ đơn lên trên chuyến thật). Chuyến có ghé SOC mà ghi xuống 0 vẫn là D2S (coi như xuống hết ở SOC đó).
+hubUp, socUp, pbt = {}, {}, {}
+for code, t in list(trips.items()):
+    if not t['stops']: continue
+    toHub = not t['socs'] and any(p[2] == 1 for p in t['path'])
+    for s in t['stops']:
+        k = s['vs'] + '|' + t['d']; (hubUp if toHub else socUp)[k] = (hubUp if toHub else socUp).get(k, 0) + s['up']
+    if toHub:
+        for s in t['stops']: pbt[s['vs']] = pbt.get(s['vs'], 0) + 1
+        del trips[code]
+if pbt: warn.append('Loại ' + str(sum(pbt.values())) + ' lượt lấy hàng về Hub (PBT, không phải D2S): ' + ', '.join(f'{k} {n}' for k, n in sorted(pbt.items(), key=lambda x: -x[1])))
+def d2sFrac(k):
+    h = hubUp.get(k, 0)
+    if h <= 0: return 1
+    s_ = socUp.get(k, 0); return s_ / (s_ + h)
+
 # 4. gom theo điểm – ngày
 per, pairCount = {}, {}
 for code, t in trips.items():
@@ -180,7 +197,7 @@ for vs in vsList:
     v, b, tr, tc, to, ad, ih, runT = [], [], [], [], [], [], [], [0, 0, 0]
     nsList, mdN, mdD, waves, typeCount, socCount, wvd, lt1 = [], 0, 0, [], {}, {}, [], []
     for i in range(ND):
-        q = vol.get(vs + '|' + dates[i], [0, 0]); v.append(round(q[0])); b.append(round(q[1]))
+        q = vol.get(vs + '|' + dates[i], [0, 0]); f = d2sFrac(vs + '|' + dates[i]); q = [q[0] * f, q[1] * f]; v.append(round(q[0])); b.append(round(q[1]))
         if q[0] > 0: runT[dtv[i]] += 1
         p = per.get(vs + '|' + dates[i])
         if p:
@@ -240,7 +257,7 @@ if ssh:
         g = pos.get(n) or posL.get(n.lower())
         if g: GEO[n] = g
 
-D = dict(v=8, win=92, warn=warn, dates=dates, dt=dtv, lh=[1 if d in lhSeen else 0 for d in dates], TY=VEH, S=S, T=T, TN=TN, GEO=GEO)
+D = dict(v=8, win=92, warn=warn, pbt=pbt, dates=dates, dt=dtv, lh=[1 if d in lhSeen else 0 for d in dates], TY=VEH, S=S, T=T, TN=TN, GEO=GEO)
 ref = re.search(r'^const REF=(.*);$', open(OLD, encoding='utf8').read(), re.M)[1]
 open(OUT, 'w', encoding='utf8').write('const D=' + json.dumps(D, ensure_ascii=False, separators=(',', ':')) + ';\nconst REF=' + ref + ';\n')
 lhd = [d for d in dates if d in lhSeen]

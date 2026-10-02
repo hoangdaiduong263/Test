@@ -49,6 +49,10 @@
 | Đường bàn giao trong ngày | Cộng dồn số đơn lên xe theo giờ ở mọi lần dừng thật = mức tối thiểu đã bàn giao | Phân đều trong khung, nhãn `giả định` |
 | Chuyến xe, giá xe, toạ độ, năng suất | Đã có | |
 
+Quy tắc đọc data (không sửa data gốc, `build_data.py`):
+- Chuyến lên ở điểm D2S, không ghé SOC, trả ở Hub = Hub tự đi lấy hàng (PBT), **không phải D2S**: bỏ khỏi chuyến D2S; đơn điểm hôm đó trừ phần đi Hub. Ngày thường VietlottClub, INDOMIE STORE, Shop Mẹ Cá Heo chạy PBT; BOX ME Tân Tạo một số chuyến; BOX ME Bình Tân do Hub 54-HCM FM 01 lấy ngày thường. Các điểm này (và Bibo Mart, AIWIBI) vốn đã nằm ngoài phạm vi D2S (`REF.HUBPAY`), nên kết quả không đổi.
+- Chuyến có ghé SOC nhưng ghi đơn xuống = 0: coi như xuống hết ở SOC đó.
+
 ## Phạm vi tiền
 **Đưa vào mô phỏng:**
 - tiền xe linehaul;
