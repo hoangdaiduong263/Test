@@ -108,6 +108,10 @@
         <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dự báo</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng tổng</dt><dd>±${T.calCost}%</dd>
         <dt>Sai số theo tuyến, cả kỳ</dt><dd class="${c.wRoute <= T.calRoute ? "pos" : "neg"}">${c.wRoute.toFixed(1)}%</dd><dt>Mức nhiễu ngày (không thể thấp hơn)</dt><dd>${c.wNoise.toFixed(1)}%</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRoute}%</dd></dl>
         <p class="note2">Học trên ngày lẻ, dự báo ngày chẵn chỉ từ số đơn, rồi đổi vai.</p></div>
+      ${c.fwd ? `<div class="step"><h2>Dự báo theo thời gian</h2><div class="big">${c.fwd.gap >= 0 ? "+" : "−"}${Math.abs(c.fwd.gap).toFixed(1)}%</div>
+        <dl class="kv"><dt>Học ${c.fwd.nf} ngày trước ${esc(c.fwd.cut)}, dự báo ${c.fwd.nt} ngày sau</dt><dd></dd><dt>Sai số theo tuyến</dt><dd>${c.fwd.wRoute.toFixed(1)}%</dd><dt>Mức nhiễu ngày</dt><dd>${c.fwd.wNoise.toFixed(1)}%</dd>
+        <dt>Chuyến tuyến × ngày · mốc thống kê</dt><dd>${pf(c.fwd.wTrip)} · ${pf(c.fwd.wStat)}</dd><dt>Giờ rời điểm · tới SOC</dt><dd>${pf(c.fwd.dep)} · ${pf(c.fwd.soc)}</dd></dl>
+        <p class="note2">Bài khó nhất: vận hành đổi theo thời gian (đổi đội xe, đổi ghép xe, seller tăng đơn). Phần lệch trên mức nhiễu là thay đổi mà dữ liệu cũ không báo trước.</p></div>` : ""}
       <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
         <dl class="kv"><dt>Sai số chuyến, tuyến × ngày</dt><dd>${pf(c.wTrip)}</dd><dt>Mốc thống kê (đường thẳng theo đơn)</dt><dd>${pf(c.wStat)}</dd><dt>Sai số tiền, tuyến × ngày</dt><dd>${pf(c.wDay)}</dd></dl>
         <p class="note2">Mốc thống kê: đoán chuyến chỉ từ số đơn, học cùng nửa ngày. Model sát mốc này là đã lấy hết phần data giải thích được.</p></div>

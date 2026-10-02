@@ -6,10 +6,10 @@
 function Core(D, REF) {
   const S = D.S, TY = D.TY, TRP = D.T || {}, TRN = D.TN || [], GEO = D.GEO || {};
   const DAYS = D.dates.map((_, d) => d);
-  /* NGÀY HỌC: thông số as-is (lượt, lấp đầy, loại xe, thời gian chất/chạy…) chỉ học từ các ngày này. Mặc định mọi ngày;
+  /* NGÀY HỌC (chỉ ngày có dữ liệu chuyến): thông số as-is (lượt, lấp đầy, loại xe, thời gian chất/chạy…) chỉ học từ các ngày này. Mặc định mọi ngày;
      kiểm định độc lập đặt một nửa số ngày để học và chấm trên nửa còn lại */
   let FIT = null; const TD = {}; S.forEach(s => (s.tc || []).forEach((L, d) => (L || []).forEach(c => { TD[c] = d; })));
-  const FD = () => FIT ? DAYS.filter(d => FIT.has(d)) : DAYS, fitTrip = c => !FIT || FIT.has(TD[c]);
+  const LHD = DAYS.filter(d => !D.lh || D.lh[d]), FD = () => FIT ? DAYS.filter(d => FIT.has(d)) : LHD, fitTrip = c => !FIT || FIT.has(TD[c]);
   const REGIONS = [...new Set(S.map(s => s.R))];
 
   /* ---------- tham số (sửa được trên trang) ---------- */
@@ -101,7 +101,7 @@ function Core(D, REF) {
      0 cố định: xe "pha" theo tỷ lệ loại xe thật (sức chứa, giá bình quân), số xe làm tròn lên
      1 rẻ nhất trong các loại tuyến đang dùng
      2 vừa hàng: xe nhỏ nhất (trong các loại đang dùng) chở đủ; hàng nhiều hơn xe lớn nhất thì n xe lớn nhất + 1 xe vừa phần lẻ
-     (routeDay: pol 3–5 = như 0–2 cộng XE THƯỜNG TRỰC: mỗi lượt ít nhất bằng số xe thật ở phân vị 25 của lượt đó) */
+     (routeDay: pol 3–5 = như 0–2 cộng XE THEO LỊCH: mỗi lượt ít nhất bằng số xe thật trung vị của lượt; sức chở = sức chở vật lý) */
   function fleet(Q, beta, R, km, fl, ks, pol) { if (Q <= 0) return { c: 0, t: 0, mix: {} }; fl = fl || P.fill / 100; let best = null;
     if (ks && !pol) { let q = 0, p = 0; for (const k in ks) { const v = VEH.find(u => u.k === k); if (!v) continue; q += ks[k] * cap(v, beta, fl); p += ks[k] * price(k, R, km); }
       if (q > 0) { const t = Math.ceil(Q / q - 1e-9); return { c: t * p, t, mix: Object.fromEntries(Object.entries(ks).map(([k, x]) => [k, t * x])) }; } }
@@ -165,7 +165,7 @@ function Core(D, REF) {
     const nv = Math.max(nd, Dv.length);
     /* sr: phần đơn của lượt trong những ngày lượt chạy; thr: ngưỡng đơn (nếu có) */
     w.forEach(x => { const L = byC[x.k], uR = L.reduce((a, y) => a + (upD[y.d] || 0), 0); x.p = Math.min(1, L.length / nv); x.thr = thrOf[x.k] ?? null;
-      x.sr = uR > 0 ? L.reduce((a, y) => a + y.up, 0) / uR : 1; x.sh = upAll > 0 ? L.reduce((a, y) => a + y.up, 0) / upAll : 1 / ks.length; x.lg = Math.max(1, Math.round(med(L.map(y => y.ds.size)))); x.nb = pct(L.map(y => y.n), 25); });
+      x.sr = uR > 0 ? L.reduce((a, y) => a + y.up, 0) / uR : 1; x.sh = upAll > 0 ? L.reduce((a, y) => a + y.up, 0) / upAll : 1 / ks.length; x.lg = Math.max(1, Math.round(med(L.map(y => y.ds.size)))); x.nb = med(L.map(y => y.n)); });
     /* legs: số xe tách theo SOC đích trong một lượt (trung vị); spt: số SOC trên một chuyến (xe trả nhiều SOC) */
     /* thời gian đứng theo khung giờ xe tới: cùng hệ số phút/đơn, phần cố định riêng mỗi khung (≥ 3 lần dừng) */
     const fd = fitDwell(dw), dk = {}; if (fd) dw.forEach(x => { (dk[x[2]] = dk[x[2]] || []).push(x[1] - fd.rate * x[0]); });
@@ -255,11 +255,15 @@ function Core(D, REF) {
     let best = null;
     for (const pol of P.vehFree ? [1] : P.polSel ? [0, 1, 2, 3, 4, 5] : [0]) { const trips = f => days.reduce((a, d) => { const x = routeDay(g, d, f, pol); return a + (x ? x.t : 0); }, 0);
       let lo = 0.05, hi = 8;
-      if (trips(hi) > real) lo = hi; else if (trips(lo) < real) hi = lo; else for (let it = 0; it < 30; it++) { const m = Math.sqrt(lo * hi); if (trips(m) > real) lo = m; else hi = m; }
+      /* xe theo lịch (pol ≥ 3): sức chở = sức chở vật lý, không chỉnh theo tổng chuyến */
+      if (pol >= 3) hi = Math.max(P.fill / 100, g.reduce((a, j) => Math.max(a, fillCap(j)), 0));
+      else if (trips(hi) > real) lo = hi; else if (trips(lo) < real) hi = lo; else for (let it = 0; it < 30; it++) { const m = Math.sqrt(lo * hi); if (trips(m) > real) lo = m; else hi = m; }
       /* nhiều mức lấp đầy cùng khớp (xe chưa đầy trong ngày học): lấy mức cao nhất vẫn cho cùng số chuyến, tối đa bằng sức chở vật lý */
-      const t0 = trips(hi), up = Math.max(hi, Math.min(8, g.reduce((a, j) => Math.max(a, fillCap(j)), 0)));
-      if (up > hi) { if (trips(up) >= t0 - 1e-6) hi = up; else { let a = hi, b = up; for (let it = 0; it < 25; it++) { const m = Math.sqrt(a * b); if (trips(m) >= t0 - 1e-6) a = m; else b = m; } hi = a; } }
-      const err = days.reduce((a, d) => { const x = routeDay(g, d, hi, pol); return a + Math.abs((x ? x.c : 0) - rC[d]); }, 0);
+      if (pol < 3) { const t0 = trips(hi), up = Math.max(hi, Math.min(8, g.reduce((a, j) => Math.max(a, fillCap(j)), 0)));
+      if (up > hi) { if (trips(up) >= t0 - 1e-6) hi = up; else { let a = hi, b = up; for (let it = 0; it < 25; it++) { const m = Math.sqrt(a * b); if (trips(m) >= t0 - 1e-6) a = m; else b = m; } hi = a; } } }
+      /* so độ khớp TỪNG NGÀY sau khi đưa tổng tiền về bằng thật (hệ số chỉnh sẽ làm việc đó) */
+      const mc = days.map(d => { const x = routeDay(g, d, hi, pol); return x ? x.c : 0; }), sc = mc.reduce((a, x) => a + x, 0), k = sc > 0 ? days.reduce((a, d) => a + rC[d], 0) / sc : 1;
+      const err = days.reduce((a, d, j) => a + Math.abs(mc[j] * k - rC[d]), 0);
       if (!best || err < best.err - 1) best = { f: hi, pol, err }; }
     /* phần lệch còn lại của tuyến trên ngày học → hệ số chuyến (tf) và hệ số giá (cf); P.calFac = 0 thì tắt */
     let mT = 0, mC = 0; days.forEach(d => { const x = routeDay(g, d, best.f, best.pol); if (x) { mT += x.t; mC += x.c; } });
@@ -325,7 +329,7 @@ function Core(D, REF) {
     return { c: c * sur * net * tf * cf, t: t * net * tf, net, mix, N, mt: Object.keys(K).length, legs, tf, cf }; }
   const RC = {};
   function routeCost(g) { const k = key(g); if (k in RC) return RC[k]; let c = 0, t = 0; const mix = {}, nd = new Set();
-    for (const d of DAYS) { const x = routeDay(g, d); if (!x) continue; c += x.c; t += x.t; nd.add(d); Object.entries(x.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n; }); }
+    for (const d of LHD) { const x = routeDay(g, d); if (!x) continue; c += x.c; t += x.t; nd.add(d); Object.entries(x.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n; }); }
     Object.keys(mix).forEach(v => { mix[v] /= Math.max(1, nd.size); }); return RC[k] = { c, t: t / Math.max(1, nd.size), mix, days: nd.size }; }
   /* hai điểm được phép đi chung xe: chung SOC, chạy trùng đủ ngày, không quá xa, giờ xe lượt đầu không lệch quá — hoặc đã đi chung chuyến thật */
   function pairOk(i, j) { if (coOf(i, j) >= 3) return true; if (!(S[i].soc || []).some(x => (S[j].soc || []).includes(x))) return false;
@@ -534,7 +538,7 @@ function Core(D, REF) {
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, PW, VU, NET, BR].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; } };
 }
 if (typeof module !== "undefined") module.exports = { Core };

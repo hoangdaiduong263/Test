@@ -10,7 +10,13 @@ function Calib(C, REF) {
   const T = { calCost: 5, calRoute: 10, calRep: 1, calTime: 15, calShare: 80 };
   const med = a => { const b = a.slice().sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
   const realTrips = (i, d) => { const tr = C.S[i].tr && C.S[i].tr[d]; return Array.isArray(tr) ? tr.reduce((a, x) => a + x, 0) : 0; };
-  const FOLDS = [[d => d % 2 === 1, d => d % 2 === 0], [d => d % 2 === 0, d => d % 2 === 1]];
+  /* chỉ chấm những ngày có dữ liệu chuyến (ngày lễ / ngày file linehaul chưa có thì bỏ) */
+  const ok = d => !C.LH || !!C.LH[d];
+  const FOLDS = [[d => ok(d) && d % 2 === 1, d => ok(d) && d % 2 === 0], [d => ok(d) && d % 2 === 0, d => ok(d) && d % 2 === 1]];
+  /* dự báo theo thời gian: học các ngày trước tháng cuối, dự báo tháng cuối (cần ≥ 20 ngày học và ≥ 7 ngày dự báo) */
+  function fwdFold() { const L = C.DAYS.filter(ok); if (!L.length) return null; const cut = C.DATES[L[L.length - 1]].slice(0, 7) + "-01";
+    const f = d => ok(d) && C.DATES[d] < cut, t = d => ok(d) && C.DATES[d] >= cut;
+    return L.filter(f).length >= 20 && L.filter(t).length >= 7 ? { cut, folds: [[f, t]], nf: L.filter(f).length, nt: L.filter(t).length } : null; }
 
   /* TIỀN XE & SỐ CHUYẾN của tuyến g trên các ngày test (thông số đã học từ ngày fit) + mốc thống kê */
   function routeDays(g, fit, test, out) {
@@ -64,11 +70,14 @@ function Calib(C, REF) {
     ]; }
 
   /* folds: mặc định 2 nửa ngày lẻ/chẵn; truyền [[fit, test]] để kiểm định theo thời gian (ví dụ học tháng 8, dự báo tháng 9) */
-  function run(R, folds) { const T0 = C.baseRoutes(R), days = [], stops = [], socs = [];
-    try { for (const [fit, test] of folds || FOLDS) { C.setFit(C.DAYS.filter(fit)); T0.forEach(g => routeDays(g, fit, test, days)); physics(R, test, stops, socs); } } finally { C.setFit(null); }
+  function run(R, folds) { const out = evalF(R, folds || FOLDS);
+    if (!folds) { const fw = fwdFold(); if (fw) { const x = evalF(R, fw.folds); out.fwd = { cut: fw.cut, nf: fw.nf, nt: fw.nt, gap: x.gap, wRoute: x.wRoute, wNoise: x.wNoise, wStat: x.wStat, wTrip: x.wTrip, dep: x.ph.depSys, soc: x.ph.socSys }; } }
+    return out; }
+  function evalF(R, folds) { const T0 = C.baseRoutes(R), days = [], stops = [], socs = [];
+    try { for (const [fit, test] of folds) { C.setFit(C.DAYS.filter(fit)); T0.forEach(g => routeDays(g, fit, test, days)); physics(R, test, stops, socs); } } finally { C.setFit(null); }
     const by = new Map(); days.forEach(x => { const o = by.get(x.g) || { g: x.g, rc: 0, mc: 0, rt: 0, mt: 0, n: 0 }; o.rc += x.rc; o.mc += x.mc; o.rt += x.rt; o.mt += x.mt; o.n++; by.set(x.g, o); });
     const rows = [...by.values()].map(o => ({ g: o.g, rc: o.rc, mc: o.mc, gap: o.rc > 0 ? (o.mc - o.rc) / o.rc * 100 : 0, rtd: o.rt / o.n, mtd: o.mt / o.n })).sort((a, b) => Math.abs(b.mc - b.rc) - Math.abs(a.mc - a.rc));
-    const sum = f => days.reduce((a, x) => a + f(x), 0), rc = sum(x => x.rc), mc = sum(x => x.mc), rT = sum(x => x.rt), nDay = C.DAYS.length;
+    const sum = f => days.reduce((a, x) => a + f(x), 0), rc = sum(x => x.rc), mc = sum(x => x.mc), rT = sum(x => x.rt), nDay = Math.max(1, new Set(days.map(x => x.d)).size);
     const gap = rc > 0 ? (mc - rc) / rc * 100 : 0, wRoute = rc > 0 ? rows.reduce((a, r) => a + Math.abs(r.mc - r.rc), 0) / rc * 100 : 0;
     const wDay = rc > 0 ? sum(x => Math.abs(x.mc - x.rc)) / rc * 100 : 0, wTrip = rT > 0 ? sum(x => Math.abs(x.mt - x.rt)) / rT * 100 : 0, wStat = rT > 0 ? sum(x => Math.abs(x.st - x.rt)) / rT * 100 : 0;
     const ph = physSum(stops, socs);
@@ -76,7 +85,7 @@ function Calib(C, REF) {
     const e2 = new Map(); days.forEach(x => e2.set(x.g, (e2.get(x.g) || 0) + (x.mc - x.rc) ** 2)); const wNoise = rc > 0 ? [...e2.values()].reduce((a, v) => a + 0.798 * Math.sqrt(v), 0) / rc * 100 : 0;
     /* MÔ PHỎNG LẠI KỲ: học trên toàn kỳ, chạy lại toàn kỳ — sai số theo tuyến (tiền, chuyến) */
     let r1 = 0, m1c = 0, r1t = 0, m1t = 0;
-    T0.forEach(g => { let a = 0, b = 0, c = 0, d2 = 0; for (const d of C.DAYS) { if (!g.some(i => (C.S[i].v[d] || 0) > 0)) continue; const m = C.routeDay(g, d); a += g.reduce((s, i) => s + C.realCost(i, d), 0); b += m ? m.c : 0; c += g.reduce((s, i) => s + realTrips(i, d), 0); d2 += m ? m.t : 0; }
+    T0.forEach(g => { let a = 0, b = 0, c = 0, d2 = 0; for (const d of C.DAYS) { if (!ok(d) || !g.some(i => (C.S[i].v[d] || 0) > 0)) continue; const m = C.routeDay(g, d); a += g.reduce((s, i) => s + C.realCost(i, d), 0); b += m ? m.c : 0; c += g.reduce((s, i) => s + realTrips(i, d), 0); d2 += m ? m.t : 0; }
       r1 += a; m1c += Math.abs(b - a); r1t += c; m1t += Math.abs(d2 - c); });
     const rep = { cost: r1 > 0 ? m1c / r1 * 100 : 0, trips: r1t > 0 ? m1t / r1t * 100 : 0 };
     return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, wNoise, rep, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,

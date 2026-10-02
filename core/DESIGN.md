@@ -104,4 +104,22 @@ Mỗi ngưỡng là tham số:
       - Sửa lỗi: tuyến nhiều điểm có điểm vắng đơn trong ngày vẫn được nhận là tuyến hiện nay.
       - Lệch có hệ thống về gần 0. Kết quả: tổng vùng HN +0,4%, HCM +0,3%, North +2,1%, South −1,0%; theo tuyến 2,0–3,2%.
     - **Giới hạn của dữ liệu:** sai số độc lập theo tuyến đã thấp hơn mức nhiễu ngày (2,5–4,4%). Muốn ≤ 1% khi chấm độc lập cần dữ liệu dài hơn khoảng 11–35 lần.
+  - **Dữ liệu 1/8–18/9 (48 ngày có chuyến)** dựng bằng `core/build_data.py` từ hai file xlsx (Volume Tracking Ver2, Linehaul Data). Kết quả khớp tuyệt đối với bản Apps Script trên tháng 8. Ngày 2/9 không có chuyến nên bỏ khỏi phần chấm.
+    - **Kiểu chạy "xe theo lịch":** mỗi lượt ít nhất bằng số xe trung vị, thêm xe khi vượt sức chở vật lý. Mỗi tuyến chọn kiểu chạy theo độ khớp từng ngày.
+    - **Kết quả:**
+
+      | Vùng | Ngày lẻ/chẵn: tuyến | Dự báo 1–18/9 (học tháng 8): tổng | Tuyến | Nhiễu | Mốc thống kê |
+      |---|---|---|---|---|---|
+      | HN | 1,2% | +2,2% | 7,5% | 3,5% | 7,4% |
+      | HCM | 2,9% | +4,0% | 11,7% | 6,2% | 13,4% |
+      | North | 2,4% | −3,8% | 13,3% | 5,7% | 10,7% |
+      | South | 1,4% | −0,4% | 6,3% | 5,3% | 7,0% |
+
+      Mốc thống kê: tiền theo tuyến = đường thẳng theo đơn, học tháng 8.
+    - Phần lệch trên mức nhiễu khi dự báo theo thời gian là thay đổi vận hành:
+      - Top Gia HCM giảm đội xe giữa tháng 9;
+      - HAPAS chuyển từ đi ghép sang xe riêng từ 21/8;
+      - KhoBim 3Mien tăng đơn 10 lần và chuyển sang đi ghép;
+      - POSY chở ít đơn/xe hơn.
+    - Học từ ngày gần nhất không giúp (ít ngày học hơn, mất các ngày sale để model học theo).
   - **Chi phí đã tắt:** `dropSur` (xe trả nhiều SOC +%/SOC) mặc định 0. Bảng giá không có khoản này, nên nó chuyển sang danh sách chờ duyệt.
