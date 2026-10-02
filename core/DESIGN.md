@@ -63,6 +63,11 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - **Kiểm tra chute** (`chuteCheck`): mỗi điểm — số chute theo bảng luồng, SOC đơn đi (chuyến thật, ≥ `socMin`%), xe hiện nay tới SOC nào (% ngày), xe kế hoạch (ngày đông) tới SOC nào. SOC có đơn mà kế hoạch không có xe: *thiếu thật* nếu thường đi cùng ngày với SOC khác, *đổi SOC theo ngày* nếu hôm đi SOC này thì không đi SOC kia. Mô phỏng giờ tự thêm xe cho SOC đi cùng ngày (≥ 50% số ngày) dù nhóm đó không có mặt ≥ `socP`% ngày.
 - **Kiểm định**: 4 ô (khớp lại kỳ, độc lập, tháng sau, giờ xe), chi tiết gập lại.
 
+## Đòn bẩy: cắt xe lệch SOC (`socCut`, kế hoạch)
+Hiện trạng giữ theo data. Kế hoạch: trong mỗi lượt, nhóm SOC chở < `socCut`% (20%) đơn của lượt không chạy xe riêng mà gộp vào xe chính (xe trả thêm SOC đó), chỉ khi rẻ hơn.
+Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền cùng tuyến khi bật đòn bẩy (`r.cut`); tuyến bị thay trong một nhóm thì tính vào nhóm.
+**Chưa tính**: km/thời gian xe chạy thêm từ SOC chính sang SOC phụ và phụ phí trả nhiều SOC — khoản phí mới, cần đề xuất & duyệt.
+
 ## Đường bộ thật
 `core/road.py` lấy km đường bộ và hình đường từ OSRM (bản đồ OpenStreetMap, miễn phí) cho cặp điểm–điểm, điểm–SOC cùng vùng; ghi vào data.js (`D.RD`).
 Có `D.RD` thì km (giá xe theo km, thời gian chạy ước tính, ghép tuyến, nhóm hub) dùng km đường bộ thay chim bay × 1,3; thời gian chạy vẫn = km ÷ tốc độ học từ chuyến thật
