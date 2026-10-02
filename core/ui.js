@@ -150,12 +150,15 @@
     const res = x => { const g = x.miss.filter(m => !m.alt), a = x.miss.filter(m => m.alt);
       return [g.length ? `<span class="neg">thiếu xe tới ${g.map(m => sn(m.n)).join(", ")}</span>` : "", a.length ? `<span class="muted">đổi SOC theo ngày: ${a.map(m => `${sn(m.n)} ${Math.round(m.e * 100)}% đơn`).join(", ")}</span>` : "",
         x.ch > Math.max(1, x.need.length) ? `<span class="warn">chia ${x.ch} chute, đơn đi ${x.need.length} SOC</span>` : "", !x.sim ? `<span class="muted">thiếu data giờ</span>` : ""].filter(Boolean).join(" · ") || `<span class="pos">đủ</span>`; };
-    const row = x => `<tr><td>${esc(short(x.i))}</td><td class="r mono">${x.ch}</td><td>${x.need.map(e => `${sn(e[0])} <span class="muted mono">${Math.round(e[1] * 100)}%</span>`).join("<br>")}</td>
-      <td>${x.now.map(e => `${sn(e[0])} <span class="muted mono">${Math.round(e[1] * 100)}% ngày</span>`).join("<br>")}</td><td>${x.plan.map(e => sn(e[0])).join("<br>") || "–"}</td><td>${res(x)}</td></tr>`;
-    const ord = L.slice().sort((a, b) => (b.miss.some(m => !m.alt) - a.miss.some(m => !m.alt)) || (b.ch - b.need.length) - (a.ch - a.need.length));
-    $("chute").innerHTML = `<summary>Kiểm tra chute · xe có tới đủ SOC không <span class="${gap.length ? "neg" : "pos"}">${gap.length ? `${gap.length} điểm thiếu xe` : "đủ"}</span></summary><div class="mb">
-      <p class="muted">${L.length} điểm · ${gap.length} điểm kế hoạch thiếu xe tới một SOC có đơn · ${alt.length} điểm đổi SOC theo ngày (hôm đi SOC này thì không đi SOC kia — bình thường) · ${more.length} điểm theo bảng luồng chia nhiều chute hơn số SOC đơn thật sự đi (cần xác nhận chute còn lại dùng cho gì).</p>
-      <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute (bảng luồng)</th><th>SOC đơn đi (chuyến thật)</th><th>Xe hiện nay tới</th><th>Xe kế hoạch tới (ngày đông)</th><th>Kết quả</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
+    const mix = L => L.map(e => `${sn(e[0])} <span class="mono">${Math.round(e[1] * 100)}%</span> <span class="muted mono">· ${Math.round(e[2] * 100)}% ngày</span>`).join("<br>") || "–";
+    const same = x => { const a = Object.fromEntries(x.nowM.map(e => [e[0], e])), b = Object.fromEntries(x.planM.map(e => [e[0], e])), ks = new Set([...Object.keys(a), ...Object.keys(b)]);
+      return [...ks].every(n => Math.abs(((a[n] || [0, 0, 0])[1]) - ((b[n] || [0, 0, 0])[1])) <= 0.08 && Math.abs(((a[n] || [0, 0, 0])[2]) - ((b[n] || [0, 0, 0])[2])) <= 0.2); };
+    const row = x => `<tr><td>${esc(short(x.i))}</td><td class="r mono">${x.ch}</td><td>${mix(x.nowM)}</td><td>${mix(x.planM)}</td><td>${x.plan.map(e => sn(e[0])).join("<br>") || "–"}</td><td>${same(x) ? `<span class="pos">giống</span>` : `<span class="warn">lệch</span>`}${x.miss.some(m => !m.alt) ? ` · ${res(x)}` : ""}</td></tr>`;
+    const ord = L.slice().sort((a, b) => (same(a) - same(b)) || (b.nowM.length - a.nowM.length));
+    const nd = L.filter(x => !same(x)).length;
+    $("chute").innerHTML = `<summary>Chute &amp; SOC · hiện nay vs kế hoạch <span class="${nd || gap.length ? "warn" : "pos"}">${nd || gap.length ? `${nd} điểm lệch` : "giống nhau"}</span></summary><div class="mb">
+      <p class="muted">Kế hoạch giữ nguyên điều kiện chute/SOC của từng điểm: đơn đi mỗi SOC bao nhiêu %, bao nhiêu % ngày có xe tới SOC đó — chỉ đổi điểm nào đi chung xe với điểm nào. "Ngày đông" là các SOC có xe trong ngày mô phỏng (SOC chỉ có xe vài ngày thì ngày đông không có).</p>
+      <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute</th><th>Hiện nay · % đơn · % ngày có xe</th><th>Kế hoạch · % đơn · % ngày có xe</th><th>Ngày đông (mô phỏng)</th><th>Hiện nay vs kế hoạch</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
 
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */
   const WHY = { "xa": "cách điểm khác > " + P.hubKm + " km", "trễ": "gom thì tuyến xe trễ COT", "đắt hơn": "gom không rẻ hơn FTE riêng" };

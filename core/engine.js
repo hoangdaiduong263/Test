@@ -708,7 +708,14 @@ function Core(D, REF) {
       /* SOC thiếu: cùng ngày có cả SOC này lẫn SOC kế hoạch đi (≥ 20% số ngày của nó) → thiếu thật; còn lại là đổi SOC theo ngày (hôm đi SOC này thì không đi SOC kia) */
       const miss = need.filter(([n]) => h && h.sim && !(n in plan)).map(([n, e]) => { const D0 = dset[n] || new Set(), both = [...D0].filter(d => Object.keys(plan).some(m => dset[m] && dset[m].has(d))).length;
         return { n, e, co: D0.size ? both / D0.size : 0, alt: !D0.size || both / D0.size < 0.2 }; });
-      return { i, g, ch: tb.ch, st: tb.st, need, now: Object.entries(days).map(([n, k]) => [n, k / Math.max(1, nd)]).sort((a, b) => b[1] - a[1]),
+      /* kế hoạch (công thức tiền xe dùng cho tuyến kế hoạch): mỗi lượt giữ đúng các nhóm SOC của điểm (phần đơn e, tỷ lệ ngày pg) */
+      /* xe trả nhiều SOC: phần đơn của nhóm chia cho các SOC theo phần còn thiếu sau các nhóm một SOC (khớp tỷ lệ đơn thật của điểm) */
+      const W = waves(i), shw = shareOf(i), pv = {}, pd = {}, one = {}; if (W) W.w.forEach(w => (w.gr || []).forEach(z => { const ks = z.key.split("|").filter(Boolean); if (ks.length === 1) one[ks[0]] = (one[ks[0]] || 0) + shw(w) * z.e; }));
+      const rem = n => Math.max(0, (sh[n] || 0) - (one[n] || 0));
+      if (W) W.w.forEach(w => { const run = {}; (w.gr || []).forEach(z => { const ks = z.key.split("|").filter(Boolean), tt = ks.reduce((a, n) => a + rem(n), 0);
+          ks.forEach(n => { pv[n] = (pv[n] || 0) + shw(w) * z.e * (ks.length === 1 ? 1 : tt > 0 ? rem(n) / tt : 1 / ks.length); run[n] = Math.min(1, (run[n] || 0) + z.pg); }); }); for (const n in run) pd[n] = Math.max(pd[n] || 0, run[n]); });
+      const pT = Object.values(pv).reduce((a, x) => a + x, 0) || 1, planM = Object.keys(pv).map(n => [n, pv[n] / pT, pd[n] || 0]).filter(x => x[1] >= 0.005).sort((a, b) => b[1] - a[1]);
+      return { i, g, ch: tb.ch, st: tb.st, need, planM, nowM: Object.entries(sh).filter(e => e[1] >= 0.005).map(([n, e]) => [n, e, (days[n] || 0) / Math.max(1, nd)]).sort((a, b) => b[1] - a[1]), now: Object.entries(days).map(([n, k]) => [n, k / Math.max(1, nd)]).sort((a, b) => b[1] - a[1]),
         plan: Object.entries(plan).map(([n, q]) => [n, q / tot]).sort((a, b) => b[1] - a[1]), miss, sim: !!(h && h.sim) }; }); }
   /* LÀM RIÊNG một tuyến mới: chỉ kéo các điểm của nó ra khỏi tuyến hiện nay, phần còn lại của mỗi tuyến hiện nay giữ nguyên đi chung.
      Lợi tiền xe = Σ tuyến hiện nay − (Σ phần còn lại + tuyến mới + xe thêm). Âm = chỉ có lợi khi làm cùng các tuyến khác trong nhóm */

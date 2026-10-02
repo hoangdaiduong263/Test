@@ -60,7 +60,7 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - **Nhóm người chung**: giá trị = tiền FTE riêng các điểm − tiền nhóm (nhóm rẻ hơn thuê riêng bao nhiêu).
 - **Rủi ro** (`risk`): mô phỏng lại tuyến với seller bàn giao trễ / xe tới trễ 5–120' → mức trễ chịu được, hậu quả ở +15/30/60' (trễ COT ở điểm nào, hay dồn bao nhiêu đơn sang COT sau). Nhóm người: thiếu 1 người (`teamRisk`).
 - **Khác thực tế · giả định** từng tuyến: tuyến mới, hạn = giờ xe hiện nay rời, chỉnh tay, giờ đóng giả định, thêm người/xe, số SOC phải chia.
-- **Kiểm tra chute** (`chuteCheck`): mỗi điểm — số chute theo bảng luồng, SOC đơn đi (chuyến thật, ≥ `socMin`%), xe hiện nay tới SOC nào (% ngày), xe kế hoạch (ngày đông) tới SOC nào. SOC có đơn mà kế hoạch không có xe: *thiếu thật* nếu thường đi cùng ngày với SOC khác, *đổi SOC theo ngày* nếu hôm đi SOC này thì không đi SOC kia. Mô phỏng giờ tự thêm xe cho SOC đi cùng ngày (≥ 50% số ngày) dù nhóm đó không có mặt ≥ `socP`% ngày.
+- **Chute & SOC · hiện nay vs kế hoạch** (`chuteCheck`): mỗi điểm — % đơn đi từng SOC và % ngày có xe tới SOC đó, hiện nay (chuyến thật) và kế hoạch (công thức tiền xe giữ nguyên nhóm SOC của điểm: phần đơn `e`, tỷ lệ ngày `pg`), cộng SOC có xe ở ngày đông mô phỏng. Kế hoạch chỉ đổi điểm nào đi chung xe, không đổi điều kiện chute/SOC. Mô phỏng giờ thêm xe cho SOC đi cùng ngày (≥ 50% số ngày) dù nhóm đó không có mặt ≥ `socP`% ngày.
 - **Kiểm định**: 4 ô (khớp lại kỳ, độc lập, tháng sau, giờ xe), chi tiết gập lại.
 
 ## Đường bộ thật
