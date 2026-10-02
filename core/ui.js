@@ -155,9 +155,13 @@
       return [...ks].every(n => Math.abs(((a[n] || [0, 0, 0])[1]) - ((b[n] || [0, 0, 0])[1])) <= 0.08 && Math.abs(((a[n] || [0, 0, 0])[2]) - ((b[n] || [0, 0, 0])[2])) <= 0.2); };
     const row = x => `<tr><td>${esc(short(x.i))}</td><td class="r mono">${x.ch}</td><td>${mix(x.nowM)}</td><td>${mix(x.planM)}</td><td>${x.plan.map(e => sn(e[0])).join("<br>") || "–"}</td><td>${same(x) ? `<span class="pos">giống</span>` : `<span class="warn">lệch</span>`}${x.miss.some(m => !m.alt) ? ` · ${res(x)}` : ""}</td></tr>`;
     const ord = L.slice().sort((a, b) => (same(a) - same(b)) || (b.nowM.length - a.nowM.length));
-    const nd = L.filter(x => !same(x)).length;
+    const nd = L.filter(x => !same(x)).length, PO = C.socPool(r), num = x => (Math.round(x) || 0).toLocaleString("vi-VN");
+    const poolT = ([a, b], lab) => { const ks = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort((x, y) => (a[y] || 0) - (a[x] || 0)), ok = ks.every(k => Math.abs((a[k] || 0) - (b[k] || 0)) <= 0.5);
+      return `<h3>${lab} <span class="${ok ? "pos" : "neg"}">${ok ? "khớp" : "lệch"}</span></h3><div class="scroll"><table class="mini2"><thead><tr><th>Xe trả SOC</th><th class="r">Kiểm định (tuyến hiện nay)</th><th class="r">Kế hoạch</th><th class="r">Chênh</th></tr></thead><tbody>${ks.map(k =>
+        `<tr><td>${k.split("|").map(sn).join(" + ")}${k.includes("|") ? ` <span class="muted">(một xe trả ${k.split("|").length} SOC)</span>` : ""}</td><td class="r mono">${num(a[k] || 0)}</td><td class="r mono">${num(b[k] || 0)}</td><td class="r mono ${Math.abs((a[k] || 0) - (b[k] || 0)) > 0.5 ? "neg" : "pos"}">${num((b[k] || 0) - (a[k] || 0))}</td></tr>`).join("")}</tbody></table></div>`; };
     $("chute").innerHTML = `<summary>Chute &amp; SOC · hiện nay vs kế hoạch <span class="${nd || gap.length ? "warn" : "pos"}">${nd || gap.length ? `${nd} điểm lệch` : "giống nhau"}</span></summary><div class="mb">
-      <p class="muted">Kế hoạch giữ nguyên điều kiện chute/SOC của từng điểm: đơn đi mỗi SOC bao nhiêu %, bao nhiêu % ngày có xe tới SOC đó — chỉ đổi điểm nào đi chung xe với điểm nào. "Ngày đông" là các SOC có xe trong ngày mô phỏng (SOC chỉ có xe vài ngày thì ngày đông không có).</p>
+      ${poolT(PO.cost, "Pool đơn theo SOC · cả kỳ (đơn)")}${poolT(PO.sim, "Pool đơn theo SOC · ngày đông mô phỏng (đơn)")}
+      <h3>Từng điểm</h3><p class="muted">Kế hoạch giữ nguyên điều kiện chute/SOC của từng điểm: đơn đi mỗi SOC bao nhiêu %, bao nhiêu % ngày có xe tới SOC đó — chỉ đổi điểm nào đi chung xe với điểm nào. "Ngày đông" là các SOC có xe trong ngày mô phỏng (SOC chỉ có xe vài ngày thì ngày đông không có).</p>
       <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute</th><th>Hiện nay · % đơn · % ngày có xe</th><th>Kế hoạch · % đơn · % ngày có xe</th><th>Ngày đông (mô phỏng)</th><th>Hiện nay vs kế hoạch</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
 
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */

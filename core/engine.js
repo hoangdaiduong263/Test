@@ -59,7 +59,7 @@ function Core(D, REF) {
     minPct: 10,        // thay đổi phải lợi ≥ % tiền xe hiện nay của các tuyến bị đổi (thí nghiệm ghép/tách: tuyến mới đắt hơn dự báo 8–19%) — dưới mức này giữ tuyến hiện nay
     socGrp: 1,         // đơn theo SOC: mỗi lượt chia đơn theo nhóm SOC đích học từ chuyến thật (xe theo từng nhóm); 0 = chia đều cho số xe tách trung bình
     socSim: 1,         // đơn theo SOC: mô phỏng giờ tách xe theo nhóm SOC đích (nhóm có mặt ≥ socP % ngày lượt chạy)
-    socP: 50,          // mô phỏng giờ: nhóm SOC đích có mặt ≥ % ngày lượt chạy thì có xe riêng; nhóm hiếm dồn vào nhóm chính của điểm
+    socP: 0,           // mô phỏng giờ: nhóm SOC đích có mặt ≥ % ngày lượt chạy thì có xe riêng (0 = mọi nhóm: đơn về từng SOC giữ đúng như kiểm định); nhóm hiếm dồn vào nhóm chính
     socSt: 1,          // người sort: số SOC phải chia = số SOC nhận ≥ socMin % đơn của điểm (theo chuyến thật); 0 = theo bảng luồng
     socMin: 5,         // % đơn tối thiểu để một SOC tính là phải chia riêng
     calFac: 1,         // as-is: hệ số chuyến & giá theo tuyến học từ ngày học (0 = tắt)
@@ -372,7 +372,8 @@ function Core(D, REF) {
       /* phụ phí thận trọng cho tuyến mới: thí nghiệm ghép/tách cho thấy model đoán tuyến chưa từng chạy rẻ hơn thật 8–19% */
       cf *= 1 + P.newPen / 100; } }
     Object.keys(mix).forEach(v => { mix[v] *= tf; });
-    return { c: c * sur * net * tf * cf, t: t * net * tf, net, mix, N, mt: Object.keys(K).length, legs, tf, cf }; }
+    const gq = {}; Object.values(K).forEach(o => { for (const k in o.G) gq[k] = (gq[k] || 0) + o.G[k].q; });
+    return { gq, c: c * sur * net * tf * cf, t: t * net * tf, net, mix, N, mt: Object.keys(K).length, legs, tf, cf }; }
   const RC = {};
   function routeCost(g) { const k = key(g); if (k in RC) return RC[k]; let c = 0, t = 0; const mix = {}, nd = new Set();
     for (const d of LHD) { const x = routeDay(g, d); if (!x) continue; c += x.c; t += x.t; nd.add(d); Object.entries(x.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n; }); }
@@ -695,6 +696,11 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: PK, dropped, hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) + T.reduce((a, g) => a + xCost(g), 0), extra: T.reduce((a, g) => a + xCost(g), 0) }, xCost, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
+  /* POOL ĐƠN THEO SOC: tổng đơn về từng nhóm SOC (xe trả SOC đó) — kiểm định/hiện nay (tuyến hiện nay) vs kế hoạch, theo công thức tiền xe (mọi ngày có chuyến)
+     và theo mô phỏng ngày đông. Phải bằng nhau: kế hoạch chỉ đổi điểm nào đi chung xe, không đổi đơn về SOC nào */
+  function socPool(r) { const add = (o, k, v) => { o[k] = (o[k] || 0) + v; }, F = T => { const o = {}; T.forEach(g => { for (const d of LHD) { const x = routeDay(g, d); if (x) for (const k in x.gq) add(o, k, x.gq[k]); } }); return o; };
+    const S0 = (T, L) => { const o = {}; T.forEach(g => { const h = L.routes[key(g)]; if (h && h.sim) h.sim.rows.forEach(s => s.st.forEach(z => add(o, s.soc || "?", z.q))); }); return o; };
+    return { cost: [F(r.T0), F(r.T)], sim: [S0(r.T0, r.L0), S0(r.T, r.L1)] }; }
   /* KIỂM TRA CHUTE: mỗi điểm phải chia bao nhiêu chute (bảng luồng) / SOC đơn đi (chuyến thật, ≥ socMin %), xe hiện nay tới SOC nào (% ngày),
      xe kế hoạch (ngày đông) tới SOC nào → SOC có đơn mà không có xe kế hoạch tới */
   function chuteCheck(r) { return r.nodes.map(i => { const f = P.socSt; P.socSt = 0; PW[i] = undefined; delete PW[i]; const tb = chSt(i); P.socSt = f; delete PW[i];
@@ -743,7 +749,7 @@ function Core(D, REF) {
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
