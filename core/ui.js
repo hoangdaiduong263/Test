@@ -101,10 +101,13 @@
   const pass = ok => `<span class="chip ${ok ? "ok" : "bad"}">${ok ? "ĐẠT" : "CHƯA ĐẠT"}</span>`, pf = x => x == null ? "–" : Math.round(x) + "%";
   function calib(R) { const c = CAL[R] || (CAL[R] = K.run(R)), p = c.ph, T = K.T;
     $("calib").innerHTML = `<div class="gate">
-      <div class="step"><h2>Tiền xe as-is ${pass(c.ok.cost)}</h2><div class="big ${c.ok.cost ? "pos" : "neg"}">${c.gap >= 0 ? "+" : "−"}${Math.abs(c.gap).toFixed(1)}%</div>
+      <div class="step"><h2>Mô phỏng lại kỳ ${pass(c.ok.rep)}</h2><div class="big ${c.ok.rep ? "pos" : "neg"}">${Math.max(c.rep.cost, c.rep.trips).toFixed(1)}%</div>
+        <dl class="kv"><dt>Sai số tiền theo tuyến</dt><dd>${c.rep.cost.toFixed(1)}%</dd><dt>Sai số số chuyến theo tuyến</dt><dd>${c.rep.trips.toFixed(1)}%</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRep}%</dd></dl>
+        <p class="note2">Học và chạy lại trên chính kỳ này, mỗi tuyến hiện nay có hệ số chỉnh chuyến và giá. Đây là bài khớp lại, chưa phải bằng chứng dự báo — xem kiểm định độc lập.</p></div>
+      <div class="step"><h2>Kiểm định độc lập ${pass(c.ok.cost)}</h2><div class="big ${c.ok.cost ? "pos" : "neg"}">${c.gap >= 0 ? "+" : "−"}${Math.abs(c.gap).toFixed(1)}%</div>
         <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dự báo</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng tổng</dt><dd>±${T.calCost}%</dd>
-        <dt>Sai số theo tuyến, cả kỳ</dt><dd class="${c.wRoute <= T.calRoute ? "pos" : "neg"}">${pf(c.wRoute)}</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRoute}%</dd></dl>
-        <p class="note2">Học thông số trên ngày lẻ, dự báo ngày chẵn, rồi đổi vai. Không ngày nào được chấm bằng chính dữ liệu của nó.</p></div>
+        <dt>Sai số theo tuyến, cả kỳ</dt><dd class="${c.wRoute <= T.calRoute ? "pos" : "neg"}">${c.wRoute.toFixed(1)}%</dd><dt>Mức nhiễu ngày (không thể thấp hơn)</dt><dd>${c.wNoise.toFixed(1)}%</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRoute}%</dd></dl>
+        <p class="note2">Học trên ngày lẻ, dự báo ngày chẵn chỉ từ số đơn, rồi đổi vai.</p></div>
       <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
         <dl class="kv"><dt>Sai số chuyến, tuyến × ngày</dt><dd>${pf(c.wTrip)}</dd><dt>Mốc thống kê (đường thẳng theo đơn)</dt><dd>${pf(c.wStat)}</dd><dt>Sai số tiền, tuyến × ngày</dt><dd>${pf(c.wDay)}</dd></dl>
         <p class="note2">Mốc thống kê: đoán chuyến chỉ từ số đơn, học cùng nửa ngày. Model sát mốc này là đã lấy hết phần data giải thích được.</p></div>

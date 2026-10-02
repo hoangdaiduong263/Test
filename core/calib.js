@@ -7,7 +7,7 @@
    Đạt khi: |lệch tiền tổng| ≤ calCost %, sai số tiền theo tuyến (cả kỳ) ≤ calRoute %, và ≥ calShare % lần dừng thuộc nhóm điểm × COT lệch ≤ calTime phút.
    Kèm thống kê NGUỒN của từng loại dữ liệu (data / giả định). */
 function Calib(C, REF) {
-  const T = { calCost: 5, calRoute: 10, calTime: 15, calShare: 80 };
+  const T = { calCost: 5, calRoute: 10, calRep: 1, calTime: 15, calShare: 80 };
   const med = a => { const b = a.slice().sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
   const realTrips = (i, d) => { const tr = C.S[i].tr && C.S[i].tr[d]; return Array.isArray(tr) ? tr.reduce((a, x) => a + x, 0) : 0; };
   const FOLDS = [[d => d % 2 === 1, d => d % 2 === 0], [d => d % 2 === 0, d => d % 2 === 1]];
@@ -71,8 +71,15 @@ function Calib(C, REF) {
     const gap = rc > 0 ? (mc - rc) / rc * 100 : 0, wRoute = rc > 0 ? rows.reduce((a, r) => a + Math.abs(r.mc - r.rc), 0) / rc * 100 : 0;
     const wDay = rc > 0 ? sum(x => Math.abs(x.mc - x.rc)) / rc * 100 : 0, wTrip = rT > 0 ? sum(x => Math.abs(x.mt - x.rt)) / rT * 100 : 0, wStat = rT > 0 ? sum(x => Math.abs(x.st - x.rt)) / rT * 100 : 0;
     const ph = physSum(stops, socs);
-    return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,
-      ok: { cost: Math.abs(gap) <= T.calCost && wRoute <= T.calRoute, time: ph.depSys != null && ph.depSys >= T.calShare && ph.socSys >= T.calShare }, src: sources(C.nodes(R)) }; }
+    /* nhiễu ngày: nếu sai số từng ngày là ngẫu nhiên (trung bình 0), tổng theo tuyến vẫn lệch khoảng 0,8 × căn(tổng bình phương) — mức không model nào xuống thấp hơn được */
+    const e2 = new Map(); days.forEach(x => e2.set(x.g, (e2.get(x.g) || 0) + (x.mc - x.rc) ** 2)); const wNoise = rc > 0 ? [...e2.values()].reduce((a, v) => a + 0.798 * Math.sqrt(v), 0) / rc * 100 : 0;
+    /* MÔ PHỎNG LẠI KỲ: học trên toàn kỳ, chạy lại toàn kỳ — sai số theo tuyến (tiền, chuyến) */
+    let r1 = 0, m1c = 0, r1t = 0, m1t = 0;
+    T0.forEach(g => { let a = 0, b = 0, c = 0, d2 = 0; for (const d of C.DAYS) { if (!g.some(i => (C.S[i].v[d] || 0) > 0)) continue; const m = C.routeDay(g, d); a += g.reduce((s, i) => s + C.realCost(i, d), 0); b += m ? m.c : 0; c += g.reduce((s, i) => s + realTrips(i, d), 0); d2 += m ? m.t : 0; }
+      r1 += a; m1c += Math.abs(b - a); r1t += c; m1t += Math.abs(d2 - c); });
+    const rep = { cost: r1 > 0 ? m1c / r1 * 100 : 0, trips: r1t > 0 ? m1t / r1t * 100 : 0 };
+    return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, wNoise, rep, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,
+      ok: { rep: rep.cost <= T.calRep && rep.trips <= T.calRep, cost: Math.abs(gap) <= T.calCost && wRoute <= T.calRoute, time: ph.depSys != null && ph.depSys >= T.calShare && ph.socSys >= T.calShare }, src: sources(C.nodes(R)) }; }
   return { T, run };
 }
 if (typeof module !== "undefined") module.exports = { Calib };

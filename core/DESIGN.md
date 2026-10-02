@@ -96,4 +96,12 @@ Mỗi ngưỡng là tham số:
     | HCM | −0,3% | 4% | 19% (19%) | 96% / 92% |
     | North | +4,2% | 7% | 14% (12%) | 93% / 96% |
     | South | +1,6% | 3% | 17% (16%) | 99% / 98% |
+  - **Bản 3 (mục tiêu sai số theo tuyến ≤ 1%):**
+    - **Mô phỏng lại kỳ** (học toàn kỳ, chạy lại toàn kỳ): mỗi tuyến hiện nay có hệ số chuyến `tf` và hệ số giá `cf` học từ ngày học. Sai số theo tuyến 0,0% ở cả 4 vùng; ngưỡng ≤ 1%. Đây là bài khớp lại, không phải bằng chứng dự báo.
+    - **Kiểm định độc lập:**
+      - Lượt phụ chạy theo ngưỡng đơn học từ data.
+      - Mức lấp đầy lấy cao nhất trong các mức cùng khớp (không đánh giá thấp sức chở khi ngày học chưa có ngày cao điểm).
+      - Sửa lỗi: tuyến nhiều điểm có điểm vắng đơn trong ngày vẫn được nhận là tuyến hiện nay.
+      - Lệch có hệ thống về gần 0. Kết quả: tổng vùng HN +0,4%, HCM +0,3%, North +2,1%, South −1,0%; theo tuyến 2,0–3,2%.
+    - **Giới hạn của dữ liệu:** sai số độc lập theo tuyến đã thấp hơn mức nhiễu ngày (2,5–4,4%). Muốn ≤ 1% khi chấm độc lập cần dữ liệu dài hơn khoảng 11–35 lần.
   - **Chi phí đã tắt:** `dropSur` (xe trả nhiều SOC +%/SOC) mặc định 0. Bảng giá không có khoản này, nên nó chuyển sang danh sách chờ duyệt.
