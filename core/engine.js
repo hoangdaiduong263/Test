@@ -702,11 +702,29 @@ function Core(D, REF) {
       for (const p of bad) { const ks = new Set(p.nw.map(key)), T2 = T.filter(g => !ks.has(key(g))).concat(p.cut), L2 = assign(T2, tolOf);
         { dropped.push({ nw: p.nw, cut: p.cut, net: totOf(T2, L2) - cur }); T = T2; L1 = L2; done = true; break; } }
       if (!done) break; }
+    /* TUYẾN "LÀM RIÊNG" ÂM trong nhóm (thường do phải thêm người để kịp COT, hoặc điểm bị bỏ lại một mình): thử tách từng điểm ra đi riêng,
+       hoặc nhập tuyến vào tuyến mới đang chở bạn đi chung cũ của nó — giữ cách nào làm tổng xe + người cả vùng tốt hơn */
+    const soloV = (g, L) => { const S0 = new Set(g); let c = 0; T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)); c += routeCost(b).c * (1 - (rest.length ? costU(rest) / Math.max(1, costU(b)) : 0)); });
+      return c - routeCost(g).c - xOf(L, g) + g.reduce((a, i) => a + (L0.cost[i] || 0) - (L.cost[i] || 0), 0); };
+    for (let it = 0; it < 4; it++) { const k0s = new Set(T0.map(key)), cur = totOf(T, L1), neg = T.filter(g => !k0s.has(key(g)) && soloV(g, L1) < -P.minGain); if (!neg.length) break; let best = null;
+      neg.forEach(g => { const alts = [];
+        if (g.length > 1) g.forEach(i => alts.push(T.filter(h => h !== g).concat([g.filter(j => j !== i), [i]])));
+        const olds = new Set(T0.filter(b => b.some(i => g.includes(i))).flat().filter(i => !g.includes(i))), host = T.filter(h => h !== g && h.some(i => olds.has(i))).sort((x, y) => y.filter(i => olds.has(i)).length - x.filter(i => olds.has(i)).length)[0];
+        if (host && host.length + g.length <= P.maxStops) alts.push(T.filter(h => h !== g && h !== host).concat([host.concat(g)]));
+        alts.forEach(T2 => { if (T2.some(h => h.length > 1 && !k0s.has(key(h)) && !routeBest(h, tolOf(h)).ok)) return; const L2 = assign(T2, tolOf), v = totOf(T2, L2); if (v > cur + P.minGain && (!best || v > best.v)) best = { T2, L2, v }; }); });
+      if (!best) break; T = best.T2; L1 = best.L2; }
     /* ĐỔI CỠ XE (kế hoạch): từng tuyến thử chọn cỡ xe rẻ nhất trong mọi loại; giữ nếu rẻ hơn ≥ 0,05 tr/kỳ và mô phỏng không trễ thêm (người như kế hoạch) */
-    if (P.vehPlan > 0) { let any = false; T.forEach(g => { const h = L1.routes[key(g)]; const c0 = routeCost(g).c + xOf(L1, g); g.forEach(i => VFREE.add(i));
-        const c1 = routeCost(g).c, e = h && h.A ? routeEval(g, h.A) : null, lt0 = h && h.sim ? h.sim.late : 0;
-        if (!(c1 < c0 - 0.05e6) || (e && e.late > Math.max(lt0, tolOf(g)) + 0.5)) g.forEach(i => VFREE.delete(i)); else any = true; });
-      if (any) L1 = assign(T, tolOf); }
+    const vehDecide = (g, L) => { const h = L.routes[key(g)]; const c0 = routeCost(g).c + xOf(L, g); g.forEach(i => VFREE.add(i));
+      const c1 = routeCost(g).c, e = h && h.A ? routeEval(g, h.A) : null, lt0 = h && h.sim ? h.sim.late : 0;
+      if (!(c1 < c0 - 0.05e6) || (e && e.late > Math.max(lt0, tolOf(g)) + 0.5)) { g.forEach(i => VFREE.delete(i)); return false; } return true; };
+    if (P.vehPlan > 0) { let any = false; T.forEach(g => { if (vehDecide(g, L1)) any = true; }); if (any) L1 = assign(T, tolOf);
+      /* đổi cỡ xe ngay trên tuyến hiện nay có thể lợi hơn ghép tuyến: thử trả từng nhóm thay đổi về tuyến hiện nay (đã đổi cỡ xe), giữ nếu tổng tốt hơn */
+      for (let it = 0; it < 6; it++) { const cur = totOf(T, L1); let done = false;
+        for (const p of packs(T0, T)) { const ks = new Set(p.nw.map(key)), T2 = T.filter(g => !ks.has(key(g))).concat(p.cut), keep = new Set([...VFREE].filter(i => p.nw.flat().includes(i)));
+          p.nw.flat().forEach(i => VFREE.delete(i)); p.cut.forEach(b => vehDecide(b, L1)); const L2 = assign(T2, tolOf);
+          if (totOf(T2, L2) > cur + P.minGain) { dropped.push({ nw: p.nw, cut: p.cut, net: totOf(T2, L2) - cur }); T = T2; L1 = L2; done = true; break; }
+          p.cut.flat().forEach(i => VFREE.delete(i)); keep.forEach(i => VFREE.add(i)); }
+        if (!done) break; } }
     const xCost = g => xOf(L1, g);
     const hc = g => L1.routes[key(g)] || L0.routes[key(g)];
     const sum = L => L.reduce((a, g) => a + routeCost(g).c, 0), N = nodes(R), real = N.reduce((a, i) => a + realCost(i), 0);
@@ -714,7 +732,7 @@ function Core(D, REF) {
     /* đòn bẩy đổi cỡ xe trên từng tuyến hiện nay: tiền hiện nay − tiền cùng tuyến khi được chọn cỡ xe */
     const planC = {}; T0.forEach(g => { planC[key(g)] = routeCost(g).c; }); const planT = sum(T) + T.reduce((a, g) => a + xCost(g), 0), extraT = T.reduce((a, g) => a + xCost(g), 0);
     PLAN = false; const baseT = sum(T0), veh = T0.map(g => ({ g, v: routeCost(g).c - planC[key(g)] })).filter(x => Math.abs(x.v) >= 0.05e6).sort((a, b) => b.v - a.v);
-    return { R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: PK, dropped, hc, L0, L1,
+    return { lateNow, R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: PK, dropped, hc, L0, L1,
       veh, truck: { real, base: baseT, plan: planT, extra: extraT }, xCost, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
   /* ĐỘ ĐẦY XE = đơn ÷ sức chở 100% của xe (theo tỷ lệ hàng to của điểm). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe (số xe theo loại) */

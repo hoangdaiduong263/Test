@@ -37,8 +37,14 @@
   /* GIÁ TRỊ: theo nhóm thay đổi (các tuyến phải làm cùng nhau vì đổi chỗ điểm cho nhau) và theo từng tuyến "làm riêng"
      (chỉ kéo điểm của tuyến ra khỏi tuyến hiện nay, phần còn lại giữ nguyên). Người tính theo điểm. */
   const VAL = new WeakMap();
-  function values(r) { if (VAL.has(r)) return VAL.get(r); const lab = g => g.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
-    const pk = r.packs.map(p => ({ p, net: p.net, routes: p.nw.map(g => ({ g, h: r.hc(g), k: C.key(g), isNew: true, solo: C.standalone(r, g) + lab(g), xs: C.standalone(r, g), ls: lab(g),
+  function values(r) { if (VAL.has(r)) return VAL.get(r);
+    /* thêm FTE riêng ở điểm mà HIỆN NAY mô phỏng cũng đã trễ COT = chi phí sửa trễ đang có, không phải do đề xuất → tách riêng */
+    const fixX = i => { const a = r.L1.A[i]; return a && a.m === "F" && a.n > C.fteBase(i) && (r.lateNow[i] ?? -1e9) > 0.5 ? C.fCost(i, a.n) - C.fCost(i, C.fteBase(i)) : 0; };
+    const fix = r.nodes.filter(i => fixX(i) > 0).map(i => ({ i, v: -fixX(i), n: r.L1.A[i].n - C.fteBase(i), late: r.lateNow[i] }));
+    const lab = g => g.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0) + fixX(i), 0);
+    /* "làm riêng": điểm dùng FTE chung cả trước và sau thì phần tiền nhóm chia lại giữa các điểm tính cho cả nhóm thay đổi, không cho từng tuyến */
+    const labS = g => g.reduce((a, i) => a + (r.L0.A[i] && r.L0.A[i].m === "H" && r.L1.A[i] && r.L1.A[i].m === "H" ? 0 : (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0) + fixX(i)), 0);
+    const pk = r.packs.map(p => ({ p, net: p.net + p.nw.flat().reduce((a, i) => a + fixX(i), 0), routes: p.nw.map(g => ({ g, h: r.hc(g), k: C.key(g), isNew: true, solo: C.standalone(r, g) + labS(g), xs: C.standalone(r, g), ls: labS(g),
       from: p.cut.filter(b => b.some(i => g.includes(i))) })).sort((a, b) => b.solo - a.solo) }));
     pk.sort((a, b) => b.net - a.net);
     const inP = new Set(r.packs.flatMap(p => p.nw.flat())), keep0 = r.T.filter(g => !g.some(i => inP.has(i)));
@@ -53,7 +59,7 @@
       else veh.push(Object.assign({}, c, { h: r.hc(c.g), k: C.key(c.g), asis: C.mixLabel(C.routeCost(c.g).mix), plan: C.mixLabel(C.planCost(c.g).mix) })); });
     pk.sort((a, b) => b.net - a.net);
     const kv = keep.reduce((a, x) => a + x.v, 0);
-    const out = { pk, veh, vv: veh.reduce((a, x) => a + x.v, 0), keep: keep.map(x => Object.assign(x, { h: r.hc(x.g), k: C.key(x.g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep0.length };
+    const out = { pk, fix, fv: fix.reduce((a, x) => a + x.v, 0), veh, vv: veh.reduce((a, x) => a + x.v, 0), keep: keep.map(x => Object.assign(x, { h: r.hc(x.g), k: C.key(x.g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep0.length };
     VAL.set(r, out); return out; }
   const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
@@ -134,6 +140,8 @@
       : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>${side(P0)}${P0.vehV ? `<div class="gside muted">gồm ${sg(P0.vehV)} tr nhờ đổi cỡ xe</div>` : ""}
         ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < 0 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
       + (V.veh.length ? `<div class="grp"><div class="gh"><span>Đổi cỡ xe · tuyến giữ nguyên</span><span class="mono ${V.vv >= 0 ? "pos" : "neg"}">${sg(V.vv)}</span></div>${V.veh.map(x => item(x, vv(x.v), `<span class="muted">đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))} · ${esc(x.asis)} → ${esc(x.plan)} xe/ngày</span>`, "in")).join("")}</div>` : "")
+      + (V.fix.length ? `<div class="grp"><div class="gh"><span>Thêm người để hết trễ COT đang có (hiện nay mô phỏng cũng trễ — chi phí tuân thủ, không do đề xuất)</span><span class="mono neg">${sg(V.fv)}</span></div>
+        <ul class="notes" style="padding:4px 4px 10px 36px">${V.fix.map(x => `<li>${esc(short(x.i))}: thêm ${x.n} FTE riêng (${sg(x.v)} tr) — hiện nay trễ ${Math.round(x.late)}'</li>`).join("")}</ul></div>` : "")
       + (V.keep.length ? `<div class="grp"><div class="gh"><span>Giữ tuyến, đổi người / thêm xe (không do nhóm thay đổi nào)</span><span class="mono ${V.kv >= 0 ? "pos" : "neg"}">${sg(V.kv)}</span></div>${V.keep.map(x => item(x, vv(x.v), `<span class="muted">nhóm người chung xếp lại</span>`, "in")).join("")}</div>` : "");
     const nR = V.pk.reduce((a, x) => a + x.routes.length, 0);
     $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${nR} tuyến mới · ${V.nKeep} tuyến giữ nguyên · bấm để xem rủi ro &amp; giả định</span></header>
