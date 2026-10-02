@@ -69,6 +69,9 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 Hiện trạng giữ đúng loại xe thật. Kế hoạch: sau khi tìm tuyến, từng tuyến (kể cả giữ nguyên) thử chọn cỡ xe rẻ nhất trong mọi loại (VAN, 1T25, 1T9, 5T, 8T — chưa có giới hạn theo vùng/kho); giữ nếu rẻ hơn và mô phỏng không trễ thêm, rồi bố trí người lại.
 Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đổi cỡ (`r.veh`); tuyến bị thay trong một nhóm thì tính vào nhóm, tuyến giữ nguyên hiện thành nhóm "Đổi cỡ xe".
 
+## Giờ bàn giao hàng như kiểm định (`readyReal`)
+Kế hoạch (1–4) dùng giờ hàng sẵn = giờ xe thật rời điểm (trung vị lượt) − `closeMin`, giống kiểm định; thêm FTE riêng thì sớm hơn đúng phần sort rút ngắn; nhóm FTE chung không sớm hơn giờ này. Kết quả: giờ xe rời điểm mô phỏng khớp thật (trung vị 0'; lệch ≤ 15': HN 90%, HCM 91%, South 71%, North 52%), trước đây HCM sớm hơn thật ~1,5 giờ.
+
 ## Độ đầy xe
 Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe. Hiện dưới con số tiết kiệm (cả vùng, % chuyến chở chưa tới nửa xe) và trong từng tuyến. Có thể > 100%: tuyến mới chở tới tải cao nhất thường gặp (p95) của xe thật; `newFillMax` = trần (mặc định 100%, chỉnh ngay dưới con số tiết kiệm). Danh sách "Seller xe chở ít" (`occPoint`): độ đầy chuyến thật < 50%, % chuyến chưa tới nửa xe, chuyến/ngày, loại xe, độ đầy tuyến kế hoạch.
 

@@ -67,6 +67,7 @@ function Core(D, REF) {
     vehMin: 10,        // as-is: loại xe chiếm ≥ % số chuyến thật của điểm mới được dùng
     vehFree: 0,        // (as-is & kế hoạch) 1 = chọn mọi loại xe — để 0, as-is phải theo loại xe thật
     newFillMax: 100,   // tuyến mới: chở tối đa % sức chở chuẩn (0 = theo tải cao nhất thường gặp p95 của chuyến thật, có thể > 100%)
+    readyReal: 1,      // giờ bàn giao hàng (hàng sẵn) ở kế hoạch = như kiểm định: giờ xe thật rời điểm (trung vị lượt) − chốt xe; thêm FTE riêng thì sớm hơn phần sort tiết kiệm được. 0 = tự tính từ người sort
     vehPlan: 0,        // ĐÒN BẨY kế hoạch (lựa chọn, mặc định tắt): mọi tuyến (kể cả giữ nguyên) được chọn cỡ xe rẻ nhất trong mọi loại; hiện trạng vẫn theo loại xe thật
   };
   const VEH = [{ k: "VAN", n: 1000, b: 350, p: 500000 }, { k: "1T25", n: 1300, b: 450, p: 600000 }, { k: "1T9", n: 2000, b: 700, p: 790000 },
@@ -498,8 +499,14 @@ function Core(D, REF) {
       if (!g.some(i => q[i] > 0)) continue;
       const inS = g.filter(i => q[i] > 0), Q = inS.reduce((a, i) => a + q[i], 0), beta = Q ? inS.reduce((a, i) => a + q[i] * betaOf(i), 0) / Q : 0;
       const nTr = Math.max(1, fleet(Q, beta, R, tripKm(inS), Math.min(...inS.map(fillOf)), vehSet(inS)).t);
-      const own = {}, ow = i => (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i), day)))[w[i].k];
-      const ready = i => A[i].m === "H" ? A[i].team.rd[i + "|" + w[i].k] + DLY.av : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] + DLY.av : ow(i).st;
+      const own = {}, ow0 = i => (own[i] || (own[i] = ownReady(i, A[i].m === "F" ? nOf(i, A[i]) : fteN(i), day)))[w[i].k];
+      /* GIỜ BÀN GIAO NHƯ KIỂM ĐỊNH: FTE riêng → hàng sẵn đúng giờ thật (xe thật rời − chốt xe), thêm người thì sớm hơn phần sort rút ngắn (không trước giờ có hàng) */
+      const RR = {}, ow = i => { if (!P.readyReal || A[i].m !== "F" || !(w[i].dep > 0)) return ow0(i); if (RR[i]) return RR[i];
+        const o = ow0(i), n = nOf(i, A[i]), b = fteBase(i), gain = n > b ? durMin(i, q[i], b) - durMin(i, q[i], n) : 0, end = Math.max(o.st, w[i].dep - P.closeMin - gain + DLY.av);
+        return RR[i] = { st: Math.min(o.st, end), end }; };
+      /* FTE chung: hàng sẵn khi nhóm sort xong, nhưng không sớm hơn giờ bàn giao như kiểm định (readyReal) */
+      const rrH = i => P.readyReal && w[i].dep > 0 ? w[i].dep - P.closeMin + DLY.av : -1e9;
+      const ready = i => A[i].m === "H" ? Math.max(A[i].team.rd[i + "|" + w[i].k] + DLY.av, rrH(i)) : ow(i).end, sortSt = i => A[i].m === "H" ? A[i].team.rs[i + "|" + w[i].k] + DLY.av : ow(i).st;
       /* XE CHẤT DẦN: tới nơi là chất phần đã sort (không trước lúc bắt đầu sort); rời khi chất xong cả lượt và đã qua lúc hàng cuối sẵn + closeMin.
          Điểm đầu: mặc định xe tới vừa đủ sớm để chất xong đúng lúc hàng cuối sẵn + closeMin */
       /* số đơn đã sort xong tại điểm i tới giờ t (đơn về dần theo khung / về một lần; người sort theo năng suất) */

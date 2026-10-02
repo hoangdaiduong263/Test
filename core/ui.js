@@ -99,7 +99,7 @@
     if (C.TROV[C.rkey(g)]) L.push(`Giờ xe chỉnh tay.`);
     const ex = h && h.sim ? h.sim.rows.reduce((a, s) => a + (s.extra || 0), 0) : 0; if (ex) L.push(`Thêm ${ex} xe (chia điểm cho xe) để kịp COT: ${tr(r.xCost(g))} tr/kỳ đã tính vào tiền xe.`);
     if (!g.some(i => (C.S[i].tc || []).some(t => t && t.length))) L.push(`Không có chuyến thật: thời gian chạy và đứng lấy theo trung bình vùng.`);
-    L.push(`Giờ có hàng suy từ giờ xe thật tới trừ thời gian sort (chưa có giờ bàn giao thật của seller).`);
+    L.push(P.readyReal ? `Giờ bàn giao hàng như kiểm định: hàng sẵn lúc xe thật rời điểm − ${P.closeMin}' chốt xe (thêm FTE riêng thì sớm hơn phần sort rút ngắn; nhóm chung không sớm hơn giờ này).` : `Giờ có hàng suy từ giờ xe thật tới trừ thời gian sort (chưa có giờ bàn giao thật của seller).`);
     return `<ul class="notes">${L.map(t => `<li>${t}</li>`).join("")}</ul>`; }
 
   function scheduleTable(r, g) { const h = r.hc(g);
@@ -232,7 +232,7 @@
       ["Tiền xe & số chuyến/ngày", "công thức đã hiệu chỉnh từng tuyến (lượt, lấp đầy, loại xe, hệ số)", "cùng công thức", sev(false, "giống nhau")],
       ["Số xe mỗi lượt khi mô phỏng giờ", "chuyến thật", "tính lại theo sức chở từng lượt, ngày đông, mọi lượt đều chạy", sev(Math.abs(G.trucks.sim - G.trucks.real) > 0.1 * G.trucks.real, `mô phỏng ${Math.round(G.trucks.sim)} xe · công thức tiền ${Math.round(G.trucks.cost)} · thật ${Math.round(G.trucks.real)} (ngày đơn gần ngày đông nhất)`)],
       ["Giờ xe tới điểm", "giờ thật", "model tự xếp (tới vừa lúc hàng sẵn)", sev(G.arr.in15 < 80, `trung vị ${m(G.arr.med)} so với thật · ${p(G.arr.in15)} lượt lệch ≤ 15'`)],
-      ["Giờ xe rời điểm", "giờ thật tới + thời gian đứng theo giờ", "model tự xếp", sev(G.dep.in15 < 80, `trung vị ${m(G.dep.med)} · ${p(G.dep.in15)} lệch ≤ 15' · ${p(G.dep.in60)} lệch ≤ 60'`)],
+      ["Giờ xe rời điểm", "giờ thật tới + thời gian đứng theo giờ", P.readyReal ? "theo giờ bàn giao như kiểm định (xe thật rời − chốt xe)" : "model tự xếp", sev(G.dep.in15 < 80, `trung vị ${m(G.dep.med)} · ${p(G.dep.in15)} lệch ≤ 15' · ${p(G.dep.in60)} lệch ≤ 60'`)],
       ["Thời gian xe đứng ở điểm", "theo khung giờ xe tới (gồm cả chờ hàng)", "một con số cả ngày (chờ hàng do mô phỏng tự sinh)", sev(G.dwell.big < 80, `trung vị chênh ${m(G.dwell.med)} · ${p(G.dwell.big)} lượt chênh ≤ 15'`)],
       ["Thời gian chạy về SOC", "theo giờ xuất phát", "một con số cả ngày", sev(G.soc.big < 80, `trung vị chênh ${m(G.soc.med)} · ${p(G.soc.big)} chuyến chênh ≤ 15'`)],
       ["Giờ có hàng & hạn COT", "không dùng", "giờ có hàng suy từ giờ xe thật tới; hạn = Packed / giờ đóng (p90 giờ xe tới muộn nhất)", sev(G.contra > 0, G.contra ? `${G.contra} lượt-điểm mô phỏng hàng sẵn sau hạn trong khi thật xe vẫn đi kịp — giả định mâu thuẫn` : "không thấy mâu thuẫn")],
