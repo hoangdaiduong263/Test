@@ -23,73 +23,122 @@
     const R = ST.R; delete ST.res[R]; ST.open.clear(); document.querySelector(".wrap").classList.add("busy");
     setTimeout(() => { const r = res(R); document.querySelector(".wrap").classList.remove("busy"); render();
       /* mở lại tuyến có nhiều điểm chung nhất với tuyến đang xem (kế hoạch có thể đổi sau khi chạy lại) */
-      let best = -1, bg = 0, bn = 0; r.packs.forEach((p, k) => p.nw.forEach((g, gi) => { const n = g.filter(i => pts.includes(i)).length; if (n > bn) { bn = n; best = k; bg = gi; } }));
-      if (best >= 0) LV.open(r, r.packs[best], `Gói ${best + 1} · ${R}`, bg); else LV.close(); }, 20); } });
-  const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
+      let bk = null, bn = 0; r.T.forEach(g => { const n = g.filter(i => pts.includes(i)).length; if (n > bn) { bn = n; bk = C.key(g); } });
+      if (bk) openRoute(r, bk); else LV.close(); }, 20); } });
+  /* live một tuyến kế hoạch (các tuyến cùng gói hiện thành thẻ để chuyển) */
+  function openRoute(r, k) { const g = r.T.find(x => C.key(x) === k); if (!g) return; const p = r.packs.find(p => p.nw.some(x => C.key(x) === k));
+    if (p) LV.open(r, p, `${r.R} · ${names(g)}`, p.nw.findIndex(x => C.key(x) === k)); else LV.open(r, { cut: [g], nw: [g] }, `${r.R} · ${names(g)}`, 0); }
 
   function tabs() {
     $("tabs").innerHTML = REGS.map(R => { const r = ST.res[R];
       return `<button type="button" role="tab" id="tab-${R}" aria-selected="${R === ST.R}" data-r="${R}">${R}${r ? `<small class="${total(r) >= 0 ? "pos" : "neg"}">${sg(total(r))}</small>` : ""}</button>`; }).join(""); }
 
-  function flow(r) { const k0 = new Set(r.T0.map(C.key)), nw = r.T.filter(g => !k0.has(C.key(g))), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, t = dT + dL;
-    $("flow").innerHTML = `
-      <div class="step"><h2><span class="n">1</span>Linehaul · tiền xe</h2>
-        <div class="big ${dT >= 0 ? "pos" : "neg"}">${sg(dT)} <span class="muted" style="font-size:13px">tr/kỳ</span></div>
-        <dl class="kv"><dt>Thực tế (chuyến thật)</dt><dd>${tr(r.truck.real)}</dd><dt>Mô hình · tuyến hiện nay</dt><dd>${tr(r.truck.base)}</dd><dt>Mô hình · kế hoạch</dt><dd>${tr(r.truck.plan)}</dd></dl></div>
-      <div class="arrow" aria-hidden="true">→</div>
-      <div class="step"><h2><span class="n">2</span>Headcount · lọc khả thi</h2>
-        <div class="big">${nw.length} <span class="muted" style="font-size:13px">tuyến mới qua</span></div>
-        <dl class="kv"><dt>Bị loại (trễ &gt; ${P.lateTol}')</dt><dd>${r.ban.length}</dd><dt>Số vòng chạy lại</dt><dd>${r.iters.length}</dd>
-          <dt>Tiền người · hiện nay → kế hoạch</dt><dd>${tr(r.lab.base)} → ${tr(r.lab.plan)}</dd></dl></div>
-      <div class="arrow" aria-hidden="true">=</div>
-      <div class="step res"><h2>Kế hoạch cuối · xe + người</h2>
-        <div class="big ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span class="muted" style="font-size:13px">tr/kỳ</span></div>
-        <dl class="kv"><dt>Tiền xe</dt><dd class="${dT >= 0 ? "pos" : "neg"}">${sg(dT)}</dd><dt>Tiền người</dt><dd class="${dL >= 0 ? "pos" : "neg"}">${sg(dL)}</dd>
-          <dt>Điểm tối ưu</dt><dd>${r.nodes.length}</dd></dl></div>`; }
-
-  const rt = g => `<span class="rt">${g.map(i => `<span class="pt" title="${esc(C.nm(i))}">${esc(short(i))}</span>`).join("<i>+</i>")}</span>`;
-  const verdict = h => h.nodata ? `<span class="chip info">thiếu data</span>` : `<span class="chip ${h.ok ? "ok" : "bad"}">${h.ok ? "✓" : "✗"} trễ ${mins(h.late)}</span>`;
+  const rt = g => `<span class="rt">${g.map(i => `<span class="pt" title="${esc(C.nm(i))}">${esc(short(i))}</span>`).join("<i>·</i>")}</span>`;
+  const names = g => g.map(i => esc(short(i))).join(" · ");
   const modeOf = (g, h, i) => h.A && h.A[i] ? C.modeTxt(h.A[i], i) : "FTE riêng";
+  const DAYS = () => (C.LH ? C.LH.filter(Boolean).length : C.DATES.length) || 1;
 
-  function routeDetail(r, g) { const h = r.hc(g), rc = C.routeCost(g), ord = h.order || C.routeOrder(g);
-    const ppl = [...new Set(g.map(i => modeOf(g, h, i)))].join(" · ");
-    const head = `<div class="rhead">${verdict(h)}<span>${ord.map(i => esc(short(i))).join(" → ")} → SOC</span>
-      <span class="muted">xe <b class="mono">${rc.t.toFixed(1)}</b>/ngày · ${esc(C.mixLabel(rc.mix))}</span><span class="muted">người <b>${esc(ppl)}</b> · ${tr(h.lab.c)} tr/kỳ</span>
-      ${h.tol > P.lateTol ? `<span class="chip info" title="Tuyến hiện nay của các điểm này mô phỏng đã trễ ${Math.round(h.tol)}'">chỉ cần không trễ hơn ${Math.round(h.tol)}'</span>` : ""}</div>`;
-    if (h.nodata || !h.sim) return `<div class="route">${head}<p class="muted" style="margin:0">Thiếu chuyến thật để mô phỏng giờ.</p></div>`;
-    const rows = h.sim.rows.map(s => s.st.map((z, k) => `<tr>${k === 0 ? `<td class="slot" rowspan="${s.st.length}">${hm(s.t)}<br><span class="muted mono">${s.nTr} xe</span>${s.grp ? `<br><span class="chip info">nhóm xe ${s.grp}/${s.of}</span>` : ""}${s.soc ? `<br><span class="muted">→ ${s.soc.replace(/\|/g, " + ")}</span>` : ""}</td>` : ""}
-      <td>${esc(short(z.i))} <span class="muted">· ${esc(modeOf(g, h, z.i))} · ${esc(C.work(z.i).sort)}</span></td><td class="r mono">${Math.round(z.q)}</td><td class="r mono">${hm(z.ready)}</td><td class="r mono">${hm(z.arr)}</td>
-      <td class="r mono">${hm(z.dep)}</td><td class="r mono">${hm(z.dl)}</td><td class="r mono late ${z.late > h.tol ? "neg" : z.late > 0 ? "" : "pos"}">${mins(z.late)}</td></tr>`).join("")).join("");
-    return `<div class="route">${head}<div class="scroll"><table class="tl"><thead><tr><th>Lượt</th><th>Điểm · người</th><th class="r">Đơn</th><th class="r">Hàng sẵn</th><th class="r">Xe tới</th><th class="r">Xe rời</th><th class="r">Hạn COT</th><th class="r">Trễ</th></tr></thead><tbody>${rows}</tbody></table></div></div>`; }
+  /* GIÁ TRỊ TỪNG TUYẾN: tiền xe hiện nay của mỗi điểm = tiền tuyến hiện nay của nó chia theo đơn; tuyến kế hoạch = tiền tuyến + xe thêm.
+     Tiền người theo từng điểm (nhóm chung đã chia về điểm). Cộng mọi tuyến = tổng của vùng */
+  const VAL = new WeakMap();
+  function values(r) { if (VAL.has(r)) return VAL.get(r); const vol = i => C.S[i].v.reduce((a, x) => a + (x || 0), 0), base = {};
+    r.T0.forEach(b => { const c = C.routeCost(b).c, V = b.reduce((a, i) => a + vol(i), 0) || 1; b.forEach(i => { base[i] = c * vol(i) / V; }); });
+    const k0 = new Set(r.T0.map(C.key)), out = r.T.map(g => { const h = r.hc(g), xa = g.reduce((a, i) => a + (base[i] || 0), 0), xb = C.routeCost(g).c + r.xCost(g);
+      const la = g.reduce((a, i) => a + (r.L0.cost[i] || 0), 0), lb = g.reduce((a, i) => a + (r.L1.cost[i] || 0), 0);
+      return { g, h, k: C.key(g), isNew: !k0.has(C.key(g)), xa, xb, la, lb, v: xa - xb + la - lb, from: r.T0.filter(b => b.some(i => g.includes(i))) }; });
+    out.sort((a, b) => b.v - a.v); VAL.set(r, out); return out; }
+  const total = r => values(r).reduce((a, x) => a + x.v, 0);
 
-  function packs(r) { const L = r.packs;
-    if (!L.length) { $("packs").innerHTML = `<header><h2>Các gói</h2></header><p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`; return; }
-    const body = L.map((p, k) => { const id = r.R + ":" + k, open = ST.open.has(id), lab = p.nw.flat().reduce((a, i) => a + r.L1.cost[i], 0) - p.cut.flat().reduce((a, i) => a + r.L0.cost[i], 0);
-      return `<tr class="pk" data-p="${id}" aria-expanded="${open}" tabindex="0"><td class="mono">${k + 1} <button type="button" class="play" data-live="${k}" aria-label="Chạy live gói ${k + 1}" title="Chạy live">▶</button></td>
-        <td><div class="grp">${p.cut.map(rt).join("")}</div></td>
-        <td><div class="grp">${p.nw.map((g, gi) => `<div class="rt"><button type="button" class="play sm" data-live="${k}" data-gi="${gi}" aria-label="Chạy live gói ${k + 1} tuyến ${gi + 1}" title="Chạy live tuyến này">▶</button>${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
-        <td class="r mono pos">${sg(p.gain)}</td><td class="r mono ${lab <= 0 ? "pos" : "neg"}">${sg(-lab)}</td></tr>
-        ${open ? `<tr class="det"><td colspan="5">${p.nw.map(g => routeDetail(r, g)).join("")}</td></tr>` : ""}`; }).join("");
-    $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span><button type="button" class="btn" data-ov="plan" style="margin-left:auto">▶ Mô phỏng toàn vùng</button></header>
-      <div class="scroll"><table><thead><tr><th>#</th><th>Hiện nay</th><th>Kế hoạch · bước 2</th><th class="r">Tiền xe tr/kỳ</th><th class="r">Tiền người tr/kỳ</th></tr></thead><tbody>${body}</tbody></table></div>`; }
+  function tabs() {
+    $("tabs").innerHTML = REGS.map(R => { const r = ST.res[R];
+      return `<button type="button" role="tab" id="tab-${R}" aria-selected="${R === ST.R}" data-r="${R}">${R}${r ? `<small class="${total(r) >= 0 ? "pos" : "neg"}">${sg(total(r))}</small>` : ""}</button>`; }).join(""); }
 
-  /* từng FM Hub có ≥ 2 điểm D2S: điểm nào vào nhóm FTE chung, điểm nào không và vì sao */
+  /* tóm tắt: một con số + vài sự thật */
+  function summary(r) { const V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
+    const ch = V.filter(x => x.isNew).length, late = V.filter(x => x.h && x.h.sim && x.h.sim.late > 0.5).length;
+    $("sum").innerHTML = `<div class="hero"><div><div class="lab">Tiết kiệm · ${nd} ngày dữ liệu · ${r.R}</div>
+      <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
+      <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL)}</div></div>
+      <ul class="facts"><li><b>${ch}</b> tuyến đổi</li><li class="${late ? "neg" : ""}"><b>${late}</b> tuyến trễ COT</li><li><b>${r.L1.teams.length}</b> nhóm người chung</li></ul>
+      <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>`; }
+
+  /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
+  const RISK = new Map();
+  const conseq = (x, b) => x.late > Math.max(0, b.late) + 0.5 ? `<span class="neg">trễ COT ${Math.round(x.late)}' ở ${esc(short(x.pt))}</span>`
+    : x.roll > b.roll + 1 ? `kịp COT, dồn ${Math.round(x.roll - b.roll)} đơn sang COT sau` : `<span class="pos">không ảnh hưởng</span>`;
+  function riskHtml(x) { const R = riskOf(x); if (!R) return `<p class="muted">Thiếu chuyến thật để mô phỏng.</p>`;
+    const side = (lab, S, tip) => `<div class="rk"><div class="rkh"><b>${lab}</b><span class="muted">${tip(S)}</span></div>
+      <table class="mini"><tbody>${S.at.map(a => `<tr><td class="mono">+${a.d}'</td><td>${conseq(a, R.base)}</td></tr>`).join("")}</tbody></table></div>`;
+    return side("Seller bàn giao trễ", R.av, S => S.ok >= 120 ? "chịu được trên 2 giờ" : `kịp COT nếu trễ ≤ ${S.ok}'`) +
+      side("Xe tới trễ so với lịch", R.tr, S => S.ok >= 120 ? "chịu được trên 2 giờ" : S.ok ? `kịp COT nếu trễ ≤ ${S.ok}'` : "trễ bao nhiêu là trễ COT bấy nhiêu"); }
+
+  /* KHÁC THỰC TẾ / GIẢ ĐỊNH đang dùng cho tuyến */
+  function notes(r, x) { const g = x.g, h = x.h, L = [], R = r.R;
+    if (x.isNew) L.push(`Tuyến mới, chưa từng chạy: tiền xe là dự báo. Thí nghiệm ghép/tách cho thấy model đoán thấp hơn thật 8–19%${P.newPen ? ` (đã cộng ${P.newPen}%)` : ""}.`);
+    if (h && h.tol > P.lateTol + 0.5) L.push(`Tuyến hiện nay của các điểm này mô phỏng đã trễ ${Math.round(h.tol)}': kế hoạch chỉ phải không trễ hơn.`);
+    g.forEach(i => { const n = esc(short(i));
+      C.dlInfo(i).forEach(d => { if (d.ov != null) L.push(`${n} · COT${d.k + 1}: hạn chỉnh tay ${hm(d.ov)}.`); else if (d.auto > d.p + 0.5) L.push(`${n} · COT${d.k + 1}: hạn = giờ xe hiện nay rời ${hm(d.auto)} (muộn hơn Packed ${hm(d.p)}).`);
+        if (d.avOv != null) L.push(`${n} · COT${d.k + 1}: giờ có hàng chỉnh tay ${hm(d.avOv)}.`); });
+      if (!C.COTW[R] && REF.HANDOVER[C.nm(i)] == null && REF.CLOSE[C.nm(i)] == null) L.push(`${n}: chưa có giờ đóng/bàn giao cuối — giả định = giờ xe tới muộn nhất (p90).`);
+      const a = h && h.A && h.A[i]; if (a && a.m === "F" && a.n > C.fteBase(i)) L.push(`${n}: thêm ${a.n - C.fteBase(i)} FTE riêng để kịp COT.`);
+      if (C.HCOV[C.nm(i)] != null) L.push(`${n}: số người chỉnh tay ${C.HCOV[C.nm(i)]}.`);
+      const sn = C.socN(i), so = C.socShare(i); if (sn != null && sn > 1) L.push(`${n}: chia ${sn} SOC (${Object.entries(so).filter(e => e[1] >= P.socMin / 100).sort((p, q) => q[1] - p[1]).map(e => `${esc(e[0].replace(/ Mega SOC| SOC/g, ""))} ${Math.round(e[1] * 100)}%`).join(", ")}).`); });
+    if (C.TROV[C.rkey(g)]) L.push(`Giờ xe chỉnh tay.`);
+    const ex = h && h.sim ? h.sim.rows.reduce((a, s) => a + (s.extra || 0), 0) : 0; if (ex) L.push(`Thêm ${ex} xe (chia điểm cho xe) để kịp COT: ${tr(r.xCost(g))} tr/kỳ đã tính vào tiền xe.`);
+    if (!g.some(i => (C.S[i].tc || []).some(t => t && t.length))) L.push(`Không có chuyến thật: thời gian chạy và đứng lấy theo trung bình vùng.`);
+    L.push(`Giờ có hàng suy từ giờ xe thật tới trừ thời gian sort (chưa có giờ bàn giao thật của seller).`);
+    return `<ul class="notes">${L.map(t => `<li>${t}</li>`).join("")}</ul>`; }
+
+  function scheduleTable(r, g) { const h = r.hc(g);
+    if (!h || h.nodata || !h.sim) return `<p class="muted">Thiếu chuyến thật để mô phỏng giờ.</p>`;
+    const rows = h.sim.rows.map(s => s.st.map((z, k) => `<tr>${k === 0 ? `<td class="slot" rowspan="${s.st.length}">${hm(s.t)}<br><span class="muted mono">${s.nTr} xe</span>${s.soc ? `<br><span class="muted">→ ${esc(s.soc.replace(/ Mega SOC| SOC/g, "").replace(/\|/g, " + "))}</span>` : ""}</td>` : ""}
+      <td>${esc(short(z.i))} <span class="muted">· ${esc(modeOf(g, h, z.i))}</span></td><td class="r mono">${Math.round(z.q)}</td><td class="r mono">${hm(z.ready)}</td><td class="r mono">${hm(z.arr)}</td>
+      <td class="r mono">${hm(z.dep)}</td><td class="r mono">${hm(z.dl)}</td><td class="r mono ${z.late > h.tol + 0.5 ? "neg" : z.late > 0.5 ? "" : "pos"}">${mins(z.late)}</td></tr>`).join("")).join("");
+    return `<div class="scroll"><table class="tl"><thead><tr><th>Lượt</th><th>Điểm · người</th><th class="r">Đơn</th><th class="r">Hàng sẵn</th><th class="r">Xe tới</th><th class="r">Xe rời</th><th class="r">Hạn</th><th class="r">So hạn</th></tr></thead><tbody>${rows}</tbody></table></div>`; }
+
+  /* độ chịu đựng: seller bàn giao trễ tối đa bao nhiêu phút mà tuyến vẫn kịp COT */
+  const riskOf = x => { if (!RISK.has(x.k)) RISK.set(x.k, x.h && x.h.A ? C.risk(x.g, x.h.A) : null); return RISK.get(x.k); };
+  const ppl = x => { let f = 0; const H = new Set(); x.g.forEach(i => { const a = x.h && x.h.A && x.h.A[i]; if (a && a.m === "H") H.add(a.team.id ?? "?"); else f += a && a.n != null ? a.n : C.fteBase(i); });
+    return [f ? `${f} FTE riêng` : "", H.size ? `nhóm chung ${[...H].join(", ")}` : ""].filter(Boolean).join(" · "); };
+  function routes(r) { const V = values(r), show = V.filter(x => x.isNew || Math.abs(x.v) >= 0.05e6), same = V.length - show.length;
+    const item = (x, n) => { const id = "r:" + x.k, open = ST.open.has(id), R = riskOf(x), late = x.h && x.h.sim ? x.h.sim.late : null;
+      const st = !R ? `<span class="muted">thiếu data giờ</span>` : late > 0.5 ? `<span class="neg">trễ COT ${Math.round(late)}'</span>` : R.av.ok >= 120 ? `<span class="pos">rất an toàn</span>`
+        : R.av.ok >= 30 ? `<span>seller trễ ≤ ${R.av.ok}' vẫn kịp</span>` : `<span class="warn">mong manh: seller trễ ${R.av.ok ? `quá ${R.av.ok}'` : "là"} trễ COT</span>`;
+      const pk = r.packs.find(p => p.nw.some(g => C.key(g) === x.k)), mates = pk && x.v < 0 ? pk.nw.filter(g => C.key(g) !== x.k).map(g => show.findIndex(y => y.k === C.key(g)) + 1).filter((n, j, A) => n > 0 && A.indexOf(n) === j) : [];
+      const pv = pk ? pk.nw.reduce((a, g) => a + (V.find(y => y.k === C.key(g)) || { v: 0 }).v, 0) : 0;
+      const from = mates.length ? `đổi cùng tuyến ${mates.join(", ")} (cả nhóm ${sg(pv)} tr)` : x.from.length && x.isNew ? `trước: ${x.from.map(b => b.map(i => esc(short(i))).join(" + ")).join(" | ")}` : x.isNew ? "" : "giữ tuyến, đổi người";
+      return `<article class="it${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
+        <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${st}${from ? ` · <span class="muted">${from}</span>` : ""}</div></div>
+        <div class="v mono ${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</div><button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>
+        ${open ? `<div class="body"><div class="cols">
+          <section><h3>Giá trị · tr/kỳ</h3><dl class="kv"><dt>Tiền xe</dt><dd>${tr(x.xa)} → ${tr(x.xb)} <b class="${x.xa - x.xb >= 0 ? "pos" : "neg"}">${sg(x.xa - x.xb)}</b></dd>
+            <dt>Tiền người</dt><dd>${tr(x.la)} → ${tr(x.lb)} <b class="${x.la - x.lb >= 0 ? "pos" : "neg"}">${sg(x.la - x.lb)}</b></dd>
+            <dt>Xe/ngày</dt><dd>${C.routeCost(x.g).t.toFixed(1)} · ${esc(C.mixLabel(C.routeCost(x.g).mix))}</dd><dt>Người</dt><dd>${esc(ppl(x))}</dd></dl></section>
+          <section><h3>Rủi ro</h3>${riskHtml(x)}</section>
+          <section><h3>Khác thực tế · giả định</h3>${notes(r, x)}</section></div>
+          <details class="sch"><summary>Lịch ngày đông</summary>${scheduleTable(r, x.g)}</details></div>` : ""}</article>`; };
+    $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${show.length} tuyến có giá trị${same ? ` · ${same} tuyến giữ nguyên` : ""} · bấm để xem rủi ro &amp; giả định</span></header>
+      ${show.length ? show.map((x, k) => item(x, k + 1)).join("") : `<p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`}`; }
+
+  /* NHÓM NGƯỜI CHUNG: giá trị = tiền người các điểm của nhóm (đã nằm trong giá trị tuyến) */
+  const TRISK = new Map();
+  function teamsL(r) { const T = r.L1.teams;
+    const item = t => { const id = "t:" + t.id, open = ST.open.has(id), v = t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
+      let rk = ""; if (open) { const k = r.R + t.id; if (!TRISK.has(k)) TRISK.set(k, C.teamRisk(r, t)); const x = TRISK.get(k);
+        rk = !x ? `<p class="muted">Nhóm 1 người: vắng là không có người làm — cần người dự phòng.</p>` : `<table class="mini"><tbody><tr><td>Thiếu 1 người (còn ${t.n - 1})</td><td>${x.late > Math.max(0, x.late0) + 0.5 ? `<span class="neg">trễ COT ${Math.round(x.late)}' ở ${esc(short(x.pt))}</span>` : x.roll > 1 ? `kịp COT, dồn ${Math.round(x.roll)} đơn sang COT sau` : `<span class="pos">vẫn kịp, không dồn đơn</span>`}</td></tr></tbody></table>`; }
+      return `<article class="it${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
+        <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người</span></div></div>
+        <div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}</div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
+        ${open ? `<div class="body"><div class="cols"><section><h3>Rủi ro</h3>${rk}</section><section><h3>Cách làm</h3><p class="muted">Đi lần lượt các điểm theo hạn COT sớm nhất; ở lại tới khi xe lên hàng xong mới đi tiếp. ${tr(t.c)} tr/kỳ.</p></section></div></div>` : ""}</article>`; };
+    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">FTE chung theo FM Hub · giá trị đã nằm trong các tuyến</span></header>` +
+      (T.length ? T.map(item).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
+
+  /* phần phụ: tuyến đã thử & bị loại, FM Hub */
   const WHY = { "xa": "cách điểm khác > " + P.hubKm + " km", "trễ": "gom thì tuyến xe trễ COT", "đắt hơn": "gom không rẻ hơn FTE riêng" };
-  function hubRep(r) { const H = r.L1.hubs || []; if (!H.length) return `<p class="empty">Không FM Hub nào cover từ 2 điểm D2S trở lên.</p>`;
-    const n = H.reduce((a, h) => a + h.pts.length, 0), nin = H.reduce((a, h) => a + h.pts.length - h.solo.length, 0);
-    return `<div class="scroll"><table><thead><tr><th>FM Hub cover ≥ 2 điểm · ${nin}/${n} điểm vào nhóm chung</th><th class="r">Điểm</th><th class="r">Xa nhất</th><th>Nhóm FTE chung</th><th>Vẫn FTE riêng · vì sao</th></tr></thead><tbody>${H.map(h =>
-      `<tr><td>${esc(h.h)}</td><td class="r mono">${h.pts.length}</td><td class="r mono">${h.km > 1e8 ? "?" : h.km.toFixed(0) + " km"}</td><td>${h.teams.map(t => `<button type="button" class="play sm" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Live nhóm này">▶</button>${t.id}: ${rt(t.pts)} <span class="muted mono">${t.n} người</span>`).join("<br>") || `<span class="muted">–</span>`}</td>
-        <td>${h.solo.map(x => `${esc(short(x.i))} <span class="muted">${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub để gom"))}</span>`).join("<br>") || `<span class="muted">–</span>`}</td></tr>`).join("")}</tbody></table></div>`; }
-  function teams(r) { const T = r.L1.teams, cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}), c0 = cnt(r.L0.A), c1 = cnt(r.L1.A);
-    const mix = c => `FTE riêng ${c.F || 0} · FTE chung ${c.H || 0}`;
-    $("teams").innerHTML = `<header><h2>Người · ${r.R}</h2><span class="muted" style="font-size:12px">số điểm theo cách dùng người: hiện nay ${mix(c0)} → kế hoạch ${mix(c1)}</span></header>` +
-      hubRep(r) + (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FTE chung</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
-        `<tr><td class="mono">${t.id} <button type="button" class="play sm" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Live nhóm này">▶</button></td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
-
-  function bans(r) { const it = r.iters.filter(x => x.banned.length);
-    $("bans").innerHTML = `<header><h2>Tuyến bị bước 2 loại</h2><span class="muted" style="font-size:12px">loại xong, bước 1 tìm lại tuyến khác</span></header>` +
-      (it.length ? `<div class="bans">${r.iters.map((x, k) => x.banned.length ? `<div class="ban"><span class="it">vòng ${k + 1}</span><div class="grp">${x.banned.map(b => `<div class="rt">${rt(b.g)} <span class="chip bad">trễ ${mins(b.late)}</span></div>`).join("")}</div></div>` : "").join("")}</div>`
-        : `<p class="empty">Không tuyến nào bị loại: mọi tuyến bước 1 tìm ra đều kịp ngay vòng đầu.</p>`); }
+  function more(r) { const it = r.iters.filter(x => x.banned.length), H = r.L1.hubs || [];
+    $("more").innerHTML = `<summary>Đã thử và loại · FM Hub</summary><div class="mb">
+      <h3>Tuyến bị loại vì trễ COT</h3>${it.length ? `<ul class="notes">${it.flatMap(x => x.banned).map(b => `<li>${names(b.g)} <span class="neg">trễ ${mins(b.late)}</span></li>`).join("")}</ul>` : `<p class="muted">Không có.</p>`}
+      <h3>FM Hub cover ≥ 2 điểm</h3>${H.length ? `<ul class="notes">${H.map(h => `<li><b>${esc(h.h)}</b> · ${h.pts.length} điểm${h.teams.length ? ` · nhóm ${h.teams.map(t => t.id).join(", ")}` : ""}${h.solo.length ? ` · <span class="muted">vẫn FTE riêng: ${h.solo.map(x => `${esc(short(x.i))} (${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub"))})`).join(", ")}</span>` : ""}</li>`).join("")}</ul>` : `<p class="muted">Không có.</p>`}</div>`; }
 
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
   const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
@@ -106,36 +155,28 @@
 
   /* ---------- DÂY CHUYỀN 0: dữ liệu & kiểm định as-is ---------- */
   const pass = ok => `<span class="chip ${ok ? "ok" : "bad"}">${ok ? "ĐẠT" : "CHƯA ĐẠT"}</span>`, pf = x => x == null ? "–" : Math.round(x) + "%";
-  function calib(R) { const c = CAL[R] || (CAL[R] = K.run(R)), p = c.ph, T = K.T;
-    $("calib").innerHTML = `<div class="gate">
-      <div class="step"><h2>Mô phỏng lại kỳ ${pass(c.ok.rep)}</h2><div class="big ${c.ok.rep ? "pos" : "neg"}">${Math.max(c.rep.cost, c.rep.trips).toFixed(1)}%</div>
-        <dl class="kv"><dt>Sai số tiền theo tuyến</dt><dd>${c.rep.cost.toFixed(1)}%</dd><dt>Sai số số chuyến theo tuyến</dt><dd>${c.rep.trips.toFixed(1)}%</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRep}%</dd></dl>
-        <p class="note2">Học và chạy lại trên chính kỳ này, mỗi tuyến hiện nay có hệ số chỉnh chuyến và giá. Đây là bài khớp lại, chưa phải bằng chứng dự báo — xem kiểm định độc lập.</p></div>
-      <div class="step"><h2>Kiểm định độc lập ${pass(c.ok.cost)}</h2><div class="big ${c.ok.cost ? "pos" : "neg"}">${c.gap >= 0 ? "+" : "−"}${Math.abs(c.gap).toFixed(1)}%</div>
-        <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dự báo</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng tổng</dt><dd>±${T.calCost}%</dd>
-        <dt>Sai số theo tuyến, cả kỳ</dt><dd class="${c.wRoute <= T.calRoute ? "pos" : "neg"}">${c.wRoute.toFixed(1)}%</dd><dt>Mức nhiễu ngày (không thể thấp hơn)</dt><dd>${c.wNoise.toFixed(1)}%</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRoute}%</dd></dl>
-        <p class="note2">Học trên ngày lẻ, dự báo ngày chẵn chỉ từ số đơn, rồi đổi vai.</p></div>
-      ${c.fwd ? `<div class="step"><h2>Dự báo theo thời gian</h2><div class="big">${c.fwd.gap >= 0 ? "+" : "−"}${Math.abs(c.fwd.gap).toFixed(1)}%</div>
-        <dl class="kv"><dt>Học ${c.fwd.nf} ngày trước ${esc(c.fwd.cut)}, dự báo ${c.fwd.nt} ngày sau</dt><dd></dd><dt>Sai số theo tuyến</dt><dd>${c.fwd.wRoute.toFixed(1)}%</dd><dt>Mức nhiễu ngày</dt><dd>${c.fwd.wNoise.toFixed(1)}%</dd>
-        <dt>Chuyến tuyến × ngày · mốc thống kê</dt><dd>${pf(c.fwd.wTrip)} · ${pf(c.fwd.wStat)}</dd><dt>Giờ rời điểm · tới SOC</dt><dd>${pf(c.fwd.dep)} · ${pf(c.fwd.soc)}</dd></dl>
-        <p class="note2">Bài khó nhất: vận hành đổi theo thời gian (đổi đội xe, đổi ghép xe, seller tăng đơn). Phần lệch trên mức nhiễu là thay đổi mà dữ liệu cũ không báo trước.</p></div>` : ""}
-      <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
-        <dl class="kv"><dt>Sai số chuyến, tuyến × ngày</dt><dd>${pf(c.wTrip)}</dd><dt>Mốc thống kê (đường thẳng theo đơn)</dt><dd>${pf(c.wStat)}</dd><dt>Sai số tiền, tuyến × ngày</dt><dd>${pf(c.wDay)}</dd></dl>
-        <p class="note2">Mốc thống kê: đoán chuyến chỉ từ số đơn, học cùng nửa ngày. Model sát mốc này là đã lấy hết phần data giải thích được.</p></div>
-      <div class="step"><h2>Vật lý mô phỏng ${pass(c.ok.time)}</h2><div class="big ${c.ok.time ? "pos" : "neg"}">${pf(Math.min(p.depSys, p.socSys))}</div>
-        <dl class="kv"><dt>Giờ rời điểm: nhóm điểm × COT lệch ≤ ${T.calTime}' (${p.n} lần dừng)</dt><dd>${pf(p.depSys)}</dd><dt>Giờ tới SOC: nhóm lệch ≤ ${T.calTime}' (${p.nSoc} chuyến)</dt><dd>${pf(p.socSys)}</dd><dt>Ngưỡng</dt><dd>≥ ${T.calShare}%</dd>
-        <dt>Từng lần dừng lệch ≤ ${T.calTime}' · trần</dt><dd>${pf(p.dep)} · ${pf(p.depCeil)}</dd><dt>Từng chuyến tới SOC · trần</dt><dd>${pf(p.soc)} · ${pf(p.socCeil)}</dd></dl>
-        <p class="note2">Phát lại từng chuyến thật. Trần = đoán mỗi lần bằng trung vị thật của nhóm; phần trên trần là dao động ngày-qua-ngày.</p></div>
-      <div class="step res"><h2>Dư địa thấy ngay</h2><div class="big">${pf(p.waitBig)}</div>
-        <dl class="kv"><dt>Lần dừng xe đứng chờ &gt; 30' ngoài thời gian chất</dt><dd>${pf(p.waitBig)}</dd></dl>
-        <p class="note2">Model vật lý không đoán được phần chờ này. Đây là thời gian xe nằm ở seller, đòn bẩy cho to-be.</p></div></div>
-      ${gapCard(R)}
-      <section class="card"><header><h2>Nguồn dữ liệu · ${R}</h2><span class="muted" style="font-size:12px">as-is bám data, thiếu thì giả định, không sửa data gốc</span></header>
-        <div class="scroll"><table><thead><tr><th>Dữ liệu</th><th class="r">Điểm có data</th><th class="r">Điểm giả định</th><th>Nguồn · cách giả định</th></tr></thead><tbody>${c.src.map(([n, a, b, w]) =>
-          `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div></section>
-      <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất · kiểm định độc lập</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
-        <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Ngày</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
-          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.nd}${x.nd < 4 ? ' <span class="muted">ít dữ liệu</span>' : ""}</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
+  function calib(R) { const c = CAL[R] || (CAL[R] = K.run(R)), p = c.ph, T = K.T, sgn = x => `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}%`;
+    const tile = (t, ok, big, line) => `<div class="tile"><div class="th"><span>${t}</span>${ok == null ? "" : pass(ok)}</div><div class="tv mono">${big}</div><div class="tl2">${line}</div></div>`;
+    const det = (t, body) => `<details class="more"><summary>${t}</summary><div class="mb">${body}</div></details>`;
+    const allOk = c.ok.rep && c.ok.cost && c.ok.time;
+    $("calib").innerHTML = `<div class="hero"><div><div class="lab">Mô hình hiện trạng · ${R}</div><div class="val ${allOk ? "pos" : "neg"}">${allOk ? "Đạt" : "Chưa đạt"}</div>
+        <div class="sub">Dự báo tiền xe từng tuyến chỉ từ số đơn, lệch ${c.wRoute.toFixed(1)}% so với thật (ngưỡng ${T.calRoute}%)</div></div></div>
+      <div class="tiles">
+        ${tile("Khớp lại kỳ", c.ok.rep, Math.max(c.rep.cost, c.rep.trips).toFixed(1) + "%", `sai số tiền & chuyến theo tuyến · ngưỡng ${T.calRep}%`)}
+        ${tile("Kiểm định độc lập", c.ok.cost, c.wRoute.toFixed(1) + "%", `học ngày lẻ, đoán ngày chẵn · tổng ${sgn(c.gap)}`)}
+        ${c.fwd ? tile("Dự báo tháng sau", null, c.fwd.wRoute.toFixed(1) + "%", `học trước ${esc(c.fwd.cut)}, đoán ${c.fwd.nt} ngày sau`) : ""}
+        ${tile("Giờ xe", c.ok.time, pf(Math.min(p.depSys, p.socSys)), `giờ rời điểm & tới SOC lệch ≤ ${T.calTime}'`)}
+      </div>
+      ${det("Chi tiết số liệu", `<dl class="kv">
+        <dt>Thực tế · mô hình (kiểm định độc lập)</dt><dd>${tr(c.rc)} · ${tr(c.mc)} tr</dd><dt>Mức nhiễu ngày (không thể thấp hơn)</dt><dd>${c.wNoise.toFixed(1)}%</dd>
+        <dt>Chuyến/ngày mô hình · thật</dt><dd>${c.mt.toFixed(0)} · ${c.rt.toFixed(0)}</dd><dt>Sai số chuyến tuyến × ngày · mốc thống kê</dt><dd>${pf(c.wTrip)} · ${pf(c.wStat)}</dd>
+        ${c.fwd ? `<dt>Dự báo tháng sau: tổng · nhiễu</dt><dd>${sgn(c.fwd.gap)} · ${c.fwd.wNoise.toFixed(1)}%</dd>` : ""}
+        <dt>Giờ rời điểm · tới SOC (nhóm) · trần</dt><dd>${pf(p.depSys)} · ${pf(p.socSys)} · ${pf(p.depCeil)}</dd><dt>Xe đứng chờ &gt; 30' ngoài thời gian chất</dt><dd>${pf(p.waitBig)}</dd></dl>`)}
+      ${det("Kế hoạch đang khác hiện trạng thế nào", gapCard(R))}
+      ${det("Nguồn dữ liệu", `<div class="scroll"><table><thead><tr><th>Dữ liệu</th><th class="r">Có data</th><th class="r">Giả định</th><th>Nguồn · cách giả định</th></tr></thead><tbody>${c.src.map(([n, a, b, w]) =>
+          `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div>`)}
+      ${det("Tuyến lệch tiền nhiều nhất", `<div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thật</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Ngày</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
+          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.nd}</td></tr>`).join("")}</tbody></table></div>`)}`; }
   /* bảng: dây chuyền 1–4 đang dùng khác dây chuyền 0 thế nào (đo trên tuyến hiện nay, ngày đông) */
   function gapCard(R) { const G = GAP[R] && GAP[R].g; if (!G) return ""; const m = x => x == null ? "–" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(Math.round(x))}'`, p = x => x == null ? "–" : Math.round(x) + "%";
     const sev = (bad, txt) => `<td class="${bad ? "neg" : "pos"}">${txt}</td>`;
@@ -150,14 +191,13 @@
       ["Trễ COT của chính tuyến hiện nay", "–", "mô phỏng tuyến hiện nay với người hiện nay", sev(G.late.late > 0, `${G.late.late}/${G.late.n} lượt-điểm trễ · nặng nhất ${Math.round(G.late.worst)}'`)],
       ["Người ở seller", "không kiểm định", "model tự bố trí cho cả \"hiện nay\"", sev(true, "chưa có dữ liệu người thật để so")],
       ["Ngày dùng để kiểm giờ", "mọi ngày", "một ngày đông (đơn p90)", sev(false, "cố ý: kiểm ngày khó nhất")]];
-    return `<section class="card"><header><h2>Dây chuyền 1–4 đang dùng khác dây chuyền 0 thế nào · ${R}</h2><span class="muted" style="font-size:12px">đo trên các tuyến hiện nay · đỏ = cần hiệu chỉnh</span></header>
-      <div class="scroll"><table><thead><tr><th>Hạng mục</th><th>Dây chuyền 0 (kiểm định)</th><th>Dây chuyền 1–4 (plan, người, live)</th><th>Chênh lệch đo được</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td>${r[3]}</tr>`).join("")}</tbody></table></div></section>`; }
+    return `<p class="muted">Đo trên các tuyến hiện nay, ngày đông · đỏ = cần hiệu chỉnh</p><div class="scroll"><table><thead><tr><th>Hạng mục</th><th>Dây chuyền 0 (kiểm định)</th><th>Dây chuyền 1–4 (plan, người, live)</th><th>Chênh lệch đo được</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td>${r[3]}</tr>`).join("")}</tbody></table></div>`; }
   function lines() { document.querySelectorAll("#lines [data-line]").forEach(b => b.setAttribute("aria-pressed", b.dataset.line === ST.line)); $("calib").hidden = ST.line !== "0"; $("plan").hidden = ST.line === "0"; }
 
   function render() { tabs(); lines(); const R = ST.R;
     if (ST.line === "0") { if (!CAL[R] || !GAP[R] || GAP[R].r !== ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { if (!CAL[R]) CAL[R] = K.run(R); const rr = res(R); GAP[R] = { r: rr, g: K.gap(R, rr) }; document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; ovr(); flow(r); packs(r); teams(r); bans(r);
+    const r = ST.res[R]; ovr(); summary(r); routes(r); teamsL(r); more(r);
     if (ST.ovOpen) { const m = ST.ovOpen; ST.ovOpen = null; openOv(r, m); } }
   /* mô phỏng toàn vùng (xe + người); đổi vùng ở thẻ trên cùng thì mở lại cho vùng mới */
   function openOv(r, mode) { ST.ov = mode; LV.openRegion(r, mode, m => { ST.ov = m; }); }
@@ -178,11 +218,11 @@
     if (t.id === "ovr-clr") { OVS().forEach(([, M]) => Object.keys(M).forEach(k => { delete M[k]; })); try { localStorage.removeItem("d2s-core-dl"); } catch (x) {}
       LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     const tmb = t.closest("[data-team]"); if (tmb) { ST.ov = null; const r = ST.res[ST.R], tm = r.L1.teams.find(x => x.id === +tmb.dataset.team); if (tm) { LV.openTeam(r, tm, `Nhóm FTE chung ${tm.id} · ${tm.hub} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
-    const lv = t.closest("[data-live]"); if (lv) { ST.ov = null; const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-    const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
+    const lv = t.closest("[data-rl]"); if (lv) { ST.ov = null; openRoute(ST.res[ST.R], lv.dataset.rl); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const tg = t.closest("[data-tg]"); if (tg) { const id = tg.dataset.tg; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); const r = ST.res[ST.R]; id[0] === "t" ? teamsL(r) : routes(r); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
-  document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("tr.pk")) { e.preventDefault(); e.target.click(); } });
+  document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();
 })();

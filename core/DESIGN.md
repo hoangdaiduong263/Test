@@ -53,6 +53,13 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - Chuyến lên ở điểm D2S, không ghé SOC, trả ở Hub = Hub tự đi lấy hàng (PBT), **không phải D2S**: bỏ khỏi chuyến D2S; đơn điểm hôm đó trừ phần đi Hub. Ngày thường VietlottClub, INDOMIE STORE, Shop Mẹ Cá Heo chạy PBT; BOX ME Tân Tạo một số chuyến; BOX ME Bình Tân do Hub 54-HCM FM 01 lấy ngày thường. Các điểm này (và Bibo Mart, AIWIBI) vốn đã nằm ngoài phạm vi D2S (`REF.HUBPAY`), nên kết quả không đổi.
 - Chuyến có ghé SOC nhưng ghi đơn xuống = 0: coi như xuống hết ở SOC đó.
 
+## Giao diện (tối giản)
+- **Kế hoạch**: một con số tiết kiệm (kỳ, ≈ tháng, xe · người) → danh sách **từng tuyến** xếp theo giá trị → nhóm người chung → phần phụ (đã thử & loại, FM Hub, tham số) gập lại.
+- **Giá trị từng tuyến** = tiền xe hiện nay của các điểm (tiền tuyến hiện nay chia theo đơn) − tiền xe tuyến kế hoạch (cả xe thêm) + tiền người hiện nay − kế hoạch (theo điểm). Cộng mọi tuyến = tổng vùng. Tuyến âm ghi "đổi cùng tuyến …" (cả nhóm dương).
+- **Rủi ro** (`risk`): mô phỏng lại tuyến với seller bàn giao trễ / xe tới trễ 5–120' → mức trễ chịu được, hậu quả ở +15/30/60' (trễ COT ở điểm nào, hay dồn bao nhiêu đơn sang COT sau). Nhóm người: thiếu 1 người (`teamRisk`).
+- **Khác thực tế · giả định** từng tuyến: tuyến mới, hạn = giờ xe hiện nay rời, chỉnh tay, giờ đóng giả định, thêm người/xe, số SOC phải chia.
+- **Kiểm định**: 4 ô (khớp lại kỳ, độc lập, tháng sau, giờ xe), chi tiết gập lại.
+
 ## Đường bộ thật
 `core/road.py` lấy km đường bộ và hình đường từ OSRM (bản đồ OpenStreetMap, miễn phí) cho cặp điểm–điểm, điểm–SOC cùng vùng; ghi vào data.js (`D.RD`).
 Có `D.RD` thì km (giá xe theo km, thời gian chạy ước tính, ghép tuyến, nhóm hub) dùng km đường bộ thay chim bay × 1,3; thời gian chạy vẫn = km ÷ tốc độ học từ chuyến thật
