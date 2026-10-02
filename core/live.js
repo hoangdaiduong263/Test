@@ -13,7 +13,8 @@ function Live(C, root, opts) {
     const pts = [...new Set(routes.flat())], inP = new Set(pts), spd = C.simK().spd, ev = [], trucks = [], sorts = [], moves = [], dls = [];
     const geoP = i => C.geo(C.nm(i)), socs = {}, hubs = {}, teams = new Map();
     const many = routes.length > 1, tn = gi => many ? `tuyến ${gi + 1} · ` : "";
-    routes.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return;
+    const HC = opt.hc || r.hc;
+    routes.forEach((g, gi) => { const h = HC(g); if (!h || !h.sim) return;
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
         socs[soc] = C.geo(soc); const tS0 = C.toSoc(z0.i), tS1 = C.toSoc(zl.i);
         const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
@@ -41,7 +42,7 @@ function Live(C, root, opts) {
     const tracks = []; teams.forEach(t => { if (opt.team && t.id !== opt.team.id) return;
       const segs = t.seg.filter(sg => inP.has(sg.i)).map(sg => { const mv = sg.from != null && sg.from !== sg.i && inP.has(sg.from) ? C.travel(sg.from, sg.i) : 0; return { i: sg.i, k: sg.k, from: sg.from, start: sg.start, end: sg.end, hold: sg.hold ?? sg.end, leave: sg.leave, mv }; }).sort((a, b) => a.start - b.start);
       if (segs.length) tracks.push({ id: t.id, n: t.n, segs }); });
-    return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes, team: opt.team || null, tracks };
+    return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes, team: opt.team || null, tracks, region: !!opt.region, HC };
   }
 
   /* ---------- TỒN tại điểm: mỗi lượt q đơn — có từ av (chờ sort) → sort a..b (chuyển dần sang chờ xe) → chất ls..dep (lên xe) ---------- */
@@ -61,24 +62,27 @@ function Live(C, root, opts) {
     const add = (A, B) => A.map((v, k) => ({ u: v.u + B[k].u, s: v.s + B[k].s, late: v.late + B[k].late })), zero = ts.map(() => ({ u: 0, s: 0, late: 0 })), pc = {};
     const wave = {};   // chuỗi tồn của từng lượt (điểm|COT) để ghi nhãn trên bản đồ
     const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => { const sr = wave[i + "|" + d.k] = series(i, d); return add(acc, sr); }, zero) } : null; }).filter(Boolean);
-    const tot = { i: null, v: rows.reduce((acc, r) => add(acc, r.v), zero) };
+    const tot = { i: null, lab: M.region ? "Cả vùng" : "Cả tuyến", v: rows.reduce((acc, r) => add(acc, r.v), zero) };
+    /* toàn vùng: tồn gom theo tuyến */
+    if (M.region) { const R2 = M.routes.map((g, gi) => ({ i: null, lab: `Tuyến ${gi + 1} · ${g.length} điểm`, v: rows.filter(x => g.includes(x.i)).reduce((acc, x) => add(acc, x.v), zero) }));
+      return { ts, wave, idx: t => Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt))), rows: [tot].concat(R2), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
     return { ts, wave, idx: t => Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt))), rows: [tot].concat(rows), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
-  function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, TL = M.team ? 40 : 0, H = TL + I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
+  function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, LN = M.team || M.region ? M.tracks : [], TL = LN.length * 36 + (LN.length ? 4 : 0), H = TL + I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
     const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
     const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
     for (let t = Math.ceil(M.t0 / 120) * 120; t <= M.t1; t += 120) { el("line", { x1: x(t), x2: x(t), y1: 0, y2: H - 16, class: "lv-grid" }, svg); el("text", { x: x(t), y: H - 4, class: "lv-ax c" }, svg).textContent = hm(t); }
     /* dải của nhóm FTE chung: di chuyển (xám) · sort tại điểm (màu) · ở lại cho xe lên hàng (nhạt) · ▼ giờ xe rời điểm đó (đỏ nếu trễ) — cùng trục giờ với tồn */
-    if (M.team) { const t = M.team, y = 6, lg = el("g", {}, svg);
-      el("text", { x: 0, y: y + 14, class: "lv-lab l" }, lg).textContent = `Nhóm ${t.id} · ${t.n} người`;
+    LN.forEach((tr, li) => { const y = 6 + li * 36, lg = el("g", {}, svg);
+      el("text", { x: 0, y: y + 14, class: "lv-lab l" + (M.region ? " sm" : "") }, lg).textContent = `Nhóm ${tr.id} · ${tr.n} người`;
       el("line", { x1: lw, x2: W - 8, y1: y + 10, y2: y + 10, class: "lv-base" }, lg);
-      t.seg.forEach(sg => { const mv = sg.from != null && sg.from !== sg.i ? C.travel(sg.from, sg.i) : 0;
+      tr.segs.forEach(sg => { const mv = sg.mv || 0;
         if (mv) el("rect", { x: x(sg.leave), y: y + 6, width: Math.max(1, x(sg.leave + mv) - x(sg.leave)), height: 8, class: "lv-tmv" }, lg);
         if ((sg.hold ?? sg.end) > sg.end + 0.5) el("rect", { x: x(sg.end), y: y + 4, width: Math.max(1, x(sg.hold) - x(sg.end)), height: 12, class: "lv-thold" }, lg);
         const bw = Math.max(2, x(sg.end) - x(sg.start)); el("rect", { x: x(sg.start), y: y + 2, width: bw, height: 16, rx: 3, class: "lv-tsort" }, lg);
         if (bw > 34) el("text", { x: x(sg.start) + 3, y: y + 14, class: "lv-tlab" }, lg).textContent = short(sg.i).slice(0, Math.floor(bw / 6));
-        const d = M.dls.find(z => z.i === sg.i && z.k === sg.k); if (d) el("path", { d: `M${x(d.dep) - 4},${y + 22} L${x(d.dep) + 4},${y + 22} L${x(d.dep)},${y + 30} Z`, class: "lv-tdep" + (d.dep > d.dl ? " late" : "") }, lg); }); }
+        const d = M.dls.find(z => z.i === sg.i && z.k === sg.k); if (d) el("path", { d: `M${x(d.dep) - 4},${y + 22} L${x(d.dep) + 4},${y + 22} L${x(d.dep)},${y + 30} Z`, class: "lv-tdep" + (d.dep > d.dl ? " late" : "") }, lg); }); });
     M.invLab = I.rows.map((r, k) => { const y0 = TL + k * (rh + gap), mx = Math.max(1, ...r.v.map(v => v.u + v.s)), y = v => y0 + rh - v / mx * (rh - 4);
-      el("text", { x: 0, y: y0 + 14, class: "lv-lab l" + (r.i == null ? "" : " sm") }, svg).textContent = r.i == null ? "Cả tuyến" : short(r.i).slice(0, 22);
+      el("text", { x: 0, y: y0 + 14, class: "lv-lab l" + (r.i == null ? "" : " sm") }, svg).textContent = r.lab || short(r.i).slice(0, 22);
       const val = el("text", { x: 0, y: y0 + 30, class: "lv-val" }, svg);
       el("line", { x1: lw, x2: W - 8, y1: y0 + rh, y2: y0 + rh, class: "lv-base" }, svg);
       const g = el("g", { "clip-path": "url(#lv-clip)" }, svg), area = (f0, f1) => "M" + I.ts.map((t, j) => `${x(t).toFixed(1)},${y(f1(r.v[j])).toFixed(1)}`).join("L") + "L" + I.ts.slice().reverse().map((t, j) => `${x(t).toFixed(1)},${y(f0(r.v[I.ts.length - 1 - j])).toFixed(1)}`).join("L") + "Z";
@@ -93,9 +97,9 @@ function Live(C, root, opts) {
 
   /* ---------- chiếu toạ độ vào khung SVG ---------- */
   /* live theo nhóm: phóng vào các điểm của nhóm (xe đi về SOC ra ngoài khung); live theo tuyến: thấy cả SOC */
-  function proj(M) { const all = (M.team ? M.team.pts.map(M.geoP) : M.pts.map(M.geoP).concat(Object.values(M.socs), Object.values(M.hubs))).filter(Boolean);
+  function proj(M) { const all = (M.team ? M.team.pts.map(M.geoP) : M.region ? M.pts.map(M.geoP).concat(Object.values(M.hubs)) : M.pts.map(M.geoP).concat(Object.values(M.socs), Object.values(M.hubs))).filter(Boolean);
     const la = all.map(x => x[0]), lo = all.map(x => x[1]), c = Math.cos((Math.min(...la) + Math.max(...la)) / 2 * Math.PI / 180);
-    const W = 760, H = 460, px = 120, py = 50, sx = (Math.max(...lo) - Math.min(...lo)) * c || 0.01, sy = (Math.max(...la) - Math.min(...la)) || 0.01, k = Math.min((W - 2 * px) / sx, (H - 2 * py) / sy);
+    const W = 760, H = M.region ? 640 : 460, px = M.region ? 90 : 120, py = 50, sx = (Math.max(...lo) - Math.min(...lo)) * c || 0.01, sy = (Math.max(...la) - Math.min(...la)) || 0.01, k = Math.min((W - 2 * px) / sx, (H - 2 * py) / sy);
     const ox = (W - sx * k) / 2, oy = (H - sy * k) / 2;
     return { W, H, f: g => g ? [ox + (g[1] - Math.min(...lo)) * c * k, H - oy - (g[0] - Math.min(...la)) * k] : null }; }
 
@@ -105,7 +109,8 @@ function Live(C, root, opts) {
     const done = [...svg.querySelectorAll("circle.lv-ring, path.lv-hub, rect.lv-soc")].map(c => { const b = c.getBBox(); return { x: b.x, y: b.y, w: b.width, h: b.height }; }), free = b => !done.some(d => hit(d, b));
     try {
       Object.values(M.ptEl).forEach(e => { const [x, y] = e.xy, L = e.lab, C = [[x, y + 28, "middle"], [x, y - 22, "middle"], [x + 20, y + 4, "start"], [x - 20, y + 4, "end"]];
-        let b = null; for (const [cx, cy, an] of C) { L.setAttribute("x", cx); L.setAttribute("y", cy); L.style.textAnchor = an; b = box(L); if (free(b)) break; }
+        let b = null, ok = false; L.style.display = ""; for (const [cx, cy, an] of C) { L.setAttribute("x", cx); L.setAttribute("y", cy); L.style.textAnchor = an; b = box(L); if (free(b)) { ok = true; break; } }
+        if (!ok && M.region) { L.style.display = "none"; return; }   // không còn chỗ: ẩn tên (rê chuột vào điểm để xem, phóng to để hiện)
         done.push(b); e.st.setAttribute("x", L.getAttribute("x")); e.st.setAttribute("y", +L.getAttribute("y") + 12); e.st.style.textAnchor = L.style.textAnchor; });
       [...svg.querySelectorAll("text.lv-lab")].filter(e => !Object.values(M.ptEl).some(p => p.lab === e)).forEach(e => { let b = box(e); for (let k = 0; k < 8 && !free(b); k++) { e.setAttribute("y", +e.getAttribute("y") + b.h); b = box(e); } done.push(b); });
     } catch (x) {} }
@@ -123,9 +128,48 @@ function Live(C, root, opts) {
   function openTeam(r, t, title) { stop(); const routes = r.T.filter(g => g.some(i => t.pts.includes(i))); M = build(r, routes, { team: t });
     const leg = routes.length > 1 ? `<div class="lv-rt">${routes.map((g, k) => `<span class="lv-rk"><b>Tuyến ${k + 1}</b> ${esc(g.map(short).join(" + ").slice(0, 60))}</span>`).join("")}</div>` : "";
     show(r, title, leg, `${t.n} người · ${t.pts.length} điểm · đi lại ${Math.round(t.mv || 0)}' ngày đông`); }
+  /* live TOÀN VÙNG: mọi tuyến xe + mọi nhóm người; mode "plan" (kế hoạch) / "base" (hiện nay) */
+  function openRegion(r, mode, onMode) { stop(); const base = mode === "base", routes = base ? r.T0 : r.T, HC = base ? (g => r.L0.routes[C.key(g)]) : r.hc;
+    M = build(r, routes, { hc: HC, region: true });
+    const L = base ? r.L0 : r.L1, nF = Object.values(L.A).filter(a => a.m === "F").length, nT = L.teams.length;
+    const top = `<div class="lv-rt" role="tablist" aria-label="Kế hoạch hay hiện nay"><button type="button" role="tab" data-ovm="plan" aria-selected="${!base}"><b>Kế hoạch</b> ${r.T.length} tuyến</button><button type="button" role="tab" data-ovm="base" aria-selected="${base}"><b>Hiện nay</b> ${r.T0.length} tuyến</button></div>`;
+    show(r, `Toàn vùng ${r.R} · ${base ? "hiện nay" : "kế hoạch"}`, top, `${routes.length} tuyến · ${M.pts.length} điểm · FTE riêng ${nF} điểm · FTE chung ${nT} nhóm · ngày đông`);
+    root.querySelectorAll("[data-ovm]").forEach(b => { b.onclick = () => { openRegion(r, b.dataset.ovm, onMode); if (onMode) onMode(b.dataset.ovm); }; }); }
+  /* vẽ bản đồ theo phép chiếu hiện tại (M.F đã gồm mức phóng): vẽ lại khi phóng / kéo để chữ giữ cỡ */
+  function drawMap() {
+    const svg = root.querySelector("#lv-svg"), F = M.F; svg.innerHTML = "";
+    /* tuyến: đường nối các điểm theo thứ tự ghé rồi về SOC */
+    M.trucks.forEach(tk => { el("polyline", { points: tk.way.map(w => F(w.xy).map(v => v.toFixed(1)).join(",")).join(" "), class: "lv-route" }, svg); });
+    Object.entries(M.socs).forEach(([n, g]) => { const [x, y] = F(g); el("rect", { x: x - 9, y: y - 9, width: 18, height: 18, rx: 3, class: "lv-soc" }, svg); el("text", { x: x + 13, y: y + 4, class: "lv-lab" }, svg).textContent = n; });
+    Object.entries(M.hubs).forEach(([n, g]) => { const [x, y] = F(g); el("path", { d: `M${x},${y - 9} L${x + 8},${y + 6} L${x - 8},${y + 6} Z`, class: "lv-hub" }, svg); el("text", { x: x + 11, y: y + 4, class: "lv-lab sm" }, svg).textContent = n.replace(/^\d+-\w+ /, ""); });
+    M.ptEl = {}; M.pts.forEach(i => { const xy = F(M.geoP(i)); if (!xy) return; const g = el("g", {}, svg);
+      const ring = el("circle", { cx: xy[0], cy: xy[1], r: 15, class: "lv-ring" }, g); const dot = el("circle", { cx: xy[0], cy: xy[1], r: 11, class: "lv-pt s-idle" }, g);
+      const lab = el("text", { x: xy[0], y: xy[1] + 28, class: "lv-lab c" }, g); lab.textContent = short(i).slice(0, 22);
+      const tip = el("title", {}, g);
+      const st = el("text", { x: xy[0], y: xy[1] + 41, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy, lab, tip }; });
+    /* nhóm người: đường đi (nét đứt) + biểu tượng người luôn hiện — đứng ở điểm khi chờ / sort, chạy dọc đường khi di chuyển */
+    M.tracks.forEach(tr => { const L = []; tr.segs.forEach(sg => { const xy = F(M.geoP(sg.i)); if (xy && (!L.length || L[L.length - 1] !== xy.join())) L.push(xy.join()); });
+      if (L.length > 1) el("polyline", { points: L.join(" "), class: "lv-tpath" }, svg); });
+    M.teamEl = {}; M.tracks.forEach(tr => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 12, class: "bg" }, g);
+      el("circle", { cx: 0, cy: -4, r: 3.2, class: "fg" }, g); el("path", { d: "M-6,7 Q-6,0 0,0 Q6,0 6,7 Z", class: "fg" }, g);
+      el("text", { x: -16, y: M.region ? 4 : -2, class: "lv-tname e" }, g).textContent = M.region ? `N${tr.id}` : `Nhóm ${tr.id} · ${tr.n} người`; const st = el("text", { x: -16, y: 10, class: "lv-tst e" }, g);
+      el("title", {}, g).textContent = `Nhóm FTE chung ${tr.id} · ${tr.n} người`; M.teamEl[tr.id] = { g, st, tr }; });
+    unclash(svg);
+    M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = (M.routes.length > 1 ? (tk.gi + 1) + (tk.n > 1 ? "×" + tk.n : "") : tk.n > 1 ? "×" + tk.n : "xe"); return g; });
+  }
+  /* phóng / thu / kéo bản đồ: đổi phép chiếu rồi vẽ lại */
+  function zoomUI() { const svg = root.querySelector("#lv-svg"), Z = M.Z, W = M.PW, H = M.PH;
+    const apply = () => { M.F = g => { const p = M.F0(g); return p ? [(p[0] - Z.cx) * Z.k + W / 2, (p[1] - Z.cy) * Z.k + H / 2] : null; }; drawMap(); draw(); };
+    const at = (k, sx, sy) => { const bx = (sx - W / 2) / Z.k + Z.cx, by = (sy - H / 2) / Z.k + Z.cy; Z.k = Math.max(1, Math.min(12, k)); Z.cx = bx - (sx - W / 2) / Z.k; Z.cy = by - (sy - H / 2) / Z.k; if (Z.k === 1) { Z.cx = W / 2; Z.cy = H / 2; } apply(); };
+    const pt = e => { const r = svg.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H]; };
+    svg.addEventListener("wheel", e => { e.preventDefault(); const [x, y] = pt(e); at(Z.k * (e.deltaY < 0 ? 1.3 : 1 / 1.3), x, y); }, { passive: false });
+    let drag = null; svg.addEventListener("pointerdown", e => { if (Z.k > 1) { drag = pt(e); svg.setPointerCapture(e.pointerId); } });
+    svg.addEventListener("pointermove", e => { if (!drag) return; const p2 = pt(e); Z.cx -= (p2[0] - drag[0]) / Z.k; Z.cy -= (p2[1] - drag[1]) / Z.k; drag = p2; apply(); });
+    svg.addEventListener("pointerup", () => { drag = null; });
+    const box = root.querySelector(".lv-zoom"); if (box) { box.querySelector("[data-z='+']").onclick = () => at(Z.k * 1.5, W / 2, H / 2); box.querySelector("[data-z='-']").onclick = () => at(Z.k / 1.5, W / 2, H / 2); box.querySelector("[data-z='0']").onclick = () => at(1, W / 2, H / 2); } }
   function show(r, title, top, sub) {
     if (!M.ev.length) { root.hidden = false; root.innerHTML = `${top}<p class="empty">Thiếu chuyến thật để phát lại.</p>`; return; }
-    const PJ = proj(M), F = PJ.f; M.F = F; M.t = M.t0; M.speed = 60; M.play = false; M.seen = 0;
+    const PJ = proj(M); M.F0 = PJ.f; M.F = PJ.f; M.PW = PJ.W; M.PH = PJ.H; M.Z = { k: 1, cx: PJ.W / 2, cy: PJ.H / 2 }; M.t = M.t0; M.speed = 60; M.play = false; M.seen = 0;
     root.hidden = false;
     root.innerHTML = `<header><h2>Live · ${esc(title)}</h2><span class="muted" style="font-size:12px">${esc(sub)}</span><button type="button" class="x" id="lv-x" aria-label="Đóng live">✕</button></header>${top}
       <div class="lv-ctl"><button type="button" class="btn" id="lv-play">▶ Chạy</button><button type="button" class="btn ghost" id="lv-reset">↺</button>
@@ -135,29 +179,14 @@ function Live(C, root, opts) {
       <div class="lv-dlw" id="lv-dl"></div>
       <div class="lv-dlw" id="lv-tm"></div>
       <div class="lv-dlw" id="lv-tr"></div>
-      <div class="lv-grid"><div class="lv-map"><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ tuyến"></svg>
+      <div class="lv-grid"><div class="lv-map"><div class="lv-zoom"><button type="button" data-z="+" aria-label="Phóng to">+</button><button type="button" data-z="-" aria-label="Thu nhỏ">−</button><button type="button" data-z="0" aria-label="Về toàn cảnh">⟲</button></div><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ tuyến"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
         <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
       <div class="lv-invw"><div class="lv-ih"><h3>Tồn tại điểm</h3><div class="lv-leg"><span><i class="s-sort"></i>chờ sort</span><span><i class="s-ready"></i>đã sort, chờ xe / đang chất</span><span><i class="s-late"></i>quá hạn COT chưa đi</span><span><b class="lv-dlk"></b>hạn COT</span></div></div>
         <div class="scroll"><svg id="lv-inv" role="img" aria-label="Tồn hàng tại từng điểm theo giờ"></svg></div></div>`;
-    const svg = root.querySelector("#lv-svg");
-    /* tuyến: đường nối các điểm theo thứ tự ghé rồi về SOC */
-    M.trucks.forEach(tk => { el("polyline", { points: tk.way.map(w => F(w.xy).map(v => v.toFixed(1)).join(",")).join(" "), class: "lv-route" }, svg); });
-    Object.entries(M.socs).forEach(([n, g]) => { const [x, y] = F(g); el("rect", { x: x - 9, y: y - 9, width: 18, height: 18, rx: 3, class: "lv-soc" }, svg); el("text", { x: x + 13, y: y + 4, class: "lv-lab" }, svg).textContent = n; });
-    Object.entries(M.hubs).forEach(([n, g]) => { const [x, y] = F(g); el("path", { d: `M${x},${y - 9} L${x + 8},${y + 6} L${x - 8},${y + 6} Z`, class: "lv-hub" }, svg); el("text", { x: x + 11, y: y + 4, class: "lv-lab sm" }, svg).textContent = n.replace(/^\d+-\w+ /, ""); });
-    M.ptEl = {}; M.pts.forEach(i => { const xy = F(M.geoP(i)); if (!xy) return; const g = el("g", {}, svg);
-      const ring = el("circle", { cx: xy[0], cy: xy[1], r: 15, class: "lv-ring" }, g); const dot = el("circle", { cx: xy[0], cy: xy[1], r: 11, class: "lv-pt s-idle" }, g);
-      const lab = el("text", { x: xy[0], y: xy[1] + 28, class: "lv-lab c" }, g); lab.textContent = short(i).slice(0, 22);
-      const st = el("text", { x: xy[0], y: xy[1] + 41, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy, lab }; });
-    /* nhóm người: đường đi (nét đứt) + biểu tượng người luôn hiện — đứng ở điểm khi chờ / sort, chạy dọc đường khi di chuyển */
-    M.tracks.forEach(tr => { const L = []; tr.segs.forEach(sg => { const xy = F(M.geoP(sg.i)); if (xy && (!L.length || L[L.length - 1] !== xy.join())) L.push(xy.join()); });
-      if (L.length > 1) el("polyline", { points: L.join(" "), class: "lv-tpath" }, svg); });
-    M.teamEl = {}; M.tracks.forEach(tr => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 12, class: "bg" }, g);
-      el("circle", { cx: 0, cy: -4, r: 3.2, class: "fg" }, g); el("path", { d: "M-6,7 Q-6,0 0,0 Q6,0 6,7 Z", class: "fg" }, g);
-      el("text", { x: -16, y: -2, class: "lv-tname e" }, g).textContent = `Nhóm ${tr.id} · ${tr.n} người`; const st = el("text", { x: -16, y: 10, class: "lv-tst e" }, g); M.teamEl[tr.id] = { g, st, tr }; });
-    unclash(svg);
-    M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = (M.routes.length > 1 ? (tk.gi + 1) + (tk.n > 1 ? "×" + tk.n : "") : tk.n > 1 ? "×" + tk.n : "xe"); return g; });
-    dlTable(r); trTable(r); tmTable(); invDraw(M); wire(); draw(); }
+    drawMap(); zoomUI();
+    if (M.region) { root.querySelector("#lv-dl").innerHTML = `<p class="muted" style="margin:0;font-size:12px">Toàn vùng chỉ để xem. Muốn chỉnh giờ có hàng, hạn COT, số người, giờ xe: mở live từng tuyến (▶ ở bảng gói).</p>`; root.querySelector("#lv-tr").innerHTML = ""; root.querySelector("#lv-tm").innerHTML = ""; }
+    else { dlTable(r); trTable(r); tmTable(); } invDraw(M); wire(); draw(); }
 
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
@@ -224,17 +253,18 @@ function Live(C, root, opts) {
     return ["s-idle", ""]; }
   function draw() { const t = M.t, F = M.F; invUpd(M);
     root.querySelector("#lv-clock").textContent = hm(t); root.querySelector("#lv-scrub").value = Math.round(t);
-    let late = 0, worst = 0, sorting = 0; M.pts.forEach(i => { const e = M.ptEl[i]; if (!e) return; const [c, txt] = stateOf(i, t); e.dot.setAttribute("class", "lv-pt " + c); e.ring.setAttribute("class", "lv-ring " + c); e.st.textContent = txt;
+    let late = 0, worst = 0, sorting = 0; M.pts.forEach(i => { const e = M.ptEl[i]; if (!e) return; const [c, txt] = stateOf(i, t); e.dot.setAttribute("class", "lv-pt " + c); e.ring.setAttribute("class", "lv-ring " + c); e.st.textContent = M.region ? "" : txt; e.tip.textContent = `${short(i)}${txt ? " · " + txt : ""}`;
       if (c === "s-sort") sorting++; });
     M.dls.forEach(d => { if (t > d.dl && d.dep > d.dl) { late++; worst = Math.max(worst, Math.min(t, d.dep) - d.dl); } });
     let road = 0; M.trucks.forEach((tk, k) => { const xy = lerp(tk.way, t), g = M.truckEl[k]; if (!xy || t >= tk.way[tk.way.length - 1].t) { g.setAttribute("visibility", "hidden"); return; }
       road += tk.n; const [x, y] = F(xy); g.setAttribute("visibility", "visible"); g.setAttribute("transform", `translate(${x.toFixed(1)},${(y - 18).toFixed(1)})`); });
     const teamTxt = []; Object.values(M.teamEl).forEach(({ g, st, tr }) => { const p = teamAt(tr, t);
       if (!p) { g.setAttribute("visibility", "hidden"); return; } g.setAttribute("visibility", "visible"); g.setAttribute("class", "lv-team " + p.c);
-      g.setAttribute("transform", `translate(${(p.xy[0] - 30).toFixed(1)},${p.xy[1].toFixed(1)})`); st.textContent = p.txt; teamTxt.push(`Nhóm ${tr.id}: ${p.txt}`); });
+      g.setAttribute("transform", `translate(${(p.xy[0] - 30).toFixed(1)},${p.xy[1].toFixed(1)})`); st.textContent = M.region ? "" : p.txt; g.querySelector("title").textContent = `Nhóm ${tr.id} · ${tr.n} người: ${p.txt}`; teamTxt.push(`Nhóm ${tr.id}: ${p.txt}`); });
     const fin = M.dls.filter(d => d.dep <= t), ok = fin.filter(d => d.dep <= d.dl).length, rolled = fin.reduce((a, d) => a + (d.roll || 0), 0);
     root.querySelector("#lv-kpi").innerHTML = `<div><span>Xe đang chạy</span><b class="mono">${road}</b></div><div><span>Điểm đang sort</span><b class="mono">${sorting}</b></div>
-      ${M.team ? `<div class="wide"><span>Người</span><b>${esc(teamTxt.join(" · ") || "chưa vào ca")}</b></div>` : ""}<div><span>Lượt đã đi · kịp</span><b class="mono">${ok}/${fin.length}</b></div><div><span>Đơn dồn sang COT sau</span><b class="mono">${Math.round(rolled).toLocaleString("vi-VN")}</b></div><div class="${late ? "bad" : ""}"><span>Quá hạn COT</span><b class="mono">${late}${late ? ` · ${Math.round(worst)}'` : ""}</b></div>`;
+      ${M.team ? `<div class="wide"><span>Người</span><b>${esc(teamTxt.join(" · ") || "chưa vào ca")}</b></div>` : M.region && M.tracks.length ? (() => { const c = { mv: 0, sort: 0, load: 0, wait: 0 }; M.tracks.forEach(tr => { const p = teamAt(tr, t); if (p && c[p.c] != null) c[p.c]++; });
+        return `<div class="wide"><span>Nhóm FTE chung (${M.tracks.length})</span><b>${c.mv} đi đường · ${c.sort} đang sort · ${c.load} ở lại cho xe · ${c.wait} chờ hàng</b></div>`; })() : ""}<div><span>Lượt đã đi · kịp</span><b class="mono">${ok}/${fin.length}</b></div><div><span>Đơn dồn sang COT sau</span><b class="mono">${Math.round(rolled).toLocaleString("vi-VN")}</b></div><div class="${late ? "bad" : ""}"><span>Quá hạn COT</span><b class="mono">${late}${late ? ` · ${Math.round(worst)}'` : ""}</b></div>`;
     const n = M.ev.filter(e => e.t <= t).length; if (n !== M.seen) { const log = root.querySelector("#lv-log");
       log.innerHTML = M.ev.slice(0, n).reverse().slice(0, 60).map((e, k) => `<li class="${e.k}${k === 0 && n > M.seen ? " new" : ""}"><span class="mono">${hm(e.t)}</span>${esc(e.txt)}</li>`).join(""); M.seen = n; } }
 
@@ -256,5 +286,5 @@ function Live(C, root, opts) {
     root.querySelector("#lv-scrub").oninput = e => { M.t = +e.target.value; M.seen = -1; draw(); };
     root.querySelector("#lv-speed").onchange = e => { M.speed = +e.target.value; };
     root.querySelector("#lv-x").onclick = () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; }; }
-  return { open, openTeam, close: () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; } };
+  return { open, openTeam, openRegion, close: () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; } };
 }

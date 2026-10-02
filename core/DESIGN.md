@@ -71,6 +71,13 @@
 ## Live
 Chạy từng tuyến đề xuất riêng. Thẻ "Tuyến 1…n" ở đầu khung live để chuyển tuyến; mỗi tuyến trong bảng gói có nút ▶ riêng.
 
+**Mô phỏng toàn vùng** (nút "▶ Mô phỏng toàn vùng" ở bảng gói; chọn vùng bằng thẻ vùng trên cùng, đổi vùng thì mở lại cho vùng mới):
+- **Hai chế độ:** "Kế hoạch" và "Hiện nay".
+- **Bản đồ:** mọi tuyến xe và mọi nhóm FTE chung; phóng / thu / kéo được. Tên điểm không có chỗ thì ẩn (rê chuột để xem, phóng to để hiện).
+- **Dải thời gian:** mỗi nhóm một dải, tồn hàng gom theo tuyến.
+- **Dải số liệu:** nhóm đang đi đường / sort / ở lại cho xe / chờ hàng.
+- **Chỉ để xem:** muốn chỉnh tay thì mở live từng tuyến.
+
 **Live theo nhóm FTE chung** (nút ▶ ở bảng nhóm và bảng FM Hub):
 - **Bản đồ:** nhóm di chuyển từ điểm sang điểm, kèm mọi tuyến xe có điểm của nhóm.
   - Biểu tượng người luôn hiện: đứng ở điểm khi chờ / sort, chạy dọc đường nét đứt khi di chuyển.

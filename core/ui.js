@@ -70,7 +70,7 @@
         <td><div class="grp">${p.nw.map((g, gi) => `<div class="rt"><button type="button" class="play sm" data-live="${k}" data-gi="${gi}" aria-label="Chạy live gói ${k + 1} tuyến ${gi + 1}" title="Chạy live tuyến này">▶</button>${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
         <td class="r mono pos">${sg(p.gain)}</td><td class="r mono ${lab <= 0 ? "pos" : "neg"}">${sg(-lab)}</td></tr>
         ${open ? `<tr class="det"><td colspan="5">${p.nw.map(g => routeDetail(r, g)).join("")}</td></tr>` : ""}`; }).join("");
-    $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span></header>
+    $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span><button type="button" class="btn" data-ov="plan" style="margin-left:auto">▶ Mô phỏng toàn vùng</button></header>
       <div class="scroll"><table><thead><tr><th>#</th><th>Hiện nay</th><th>Kế hoạch · bước 2</th><th class="r">Tiền xe tr/kỳ</th><th class="r">Tiền người tr/kỳ</th></tr></thead><tbody>${body}</tbody></table></div>`; }
 
   /* từng FM Hub có ≥ 2 điểm D2S: điểm nào vào nhóm FTE chung, điểm nào không và vì sao */
@@ -140,7 +140,10 @@
   function render() { tabs(); lines(); const R = ST.R;
     if (ST.line === "0") { if (!CAL[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { CAL[R] = K.run(R); document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; ovr(); flow(r); packs(r); teams(r); bans(r); }
+    const r = ST.res[R]; ovr(); flow(r); packs(r); teams(r); bans(r);
+    if (ST.ovOpen) { const m = ST.ovOpen; ST.ovOpen = null; openOv(r, m); } }
+  /* mô phỏng toàn vùng (xe + người); đổi vùng ở thẻ trên cùng thì mở lại cho vùng mới */
+  function openOv(r, mode) { ST.ov = mode; LV.openRegion(r, mode, m => { ST.ov = m; }); }
   /* dải báo chỉnh tay đang áp dụng (lưu trên trình duyệt, áp cho mọi vùng / mọi lần mở trang) */
   const OVS = () => [["hạn COT", C.DLOV], ["giờ có hàng", C.AVOV], ["số người", C.HCOV], ["giờ xe", C.TROV]];
   function ovr() { const L = OVS().map(([lab, M]) => [lab, Object.keys(M)]).filter(x => x[1].length), e = $("ovr");
@@ -153,11 +156,12 @@
 
   document.addEventListener("click", e => { const t = e.target;
     const ln = t.closest("[data-line]"); if (ln) { ST.line = ln.dataset.line; try { localStorage.setItem("d2s-core-line", ST.line); } catch (x) {} render(); return; }
-    const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
+    const ovb = t.closest("[data-ov]"); if (ovb) { openOv(ST.res[ST.R], ovb.dataset.ov); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const tb = t.closest("[data-r]"); if (tb) { ST.ovOpen = $("live").hidden ? null : ST.ov || null; LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
     if (t.id === "ovr-clr") { OVS().forEach(([, M]) => Object.keys(M).forEach(k => { delete M[k]; })); try { localStorage.removeItem("d2s-core-dl"); } catch (x) {}
       LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
-    const tmb = t.closest("[data-team]"); if (tmb) { const r = ST.res[ST.R], tm = r.L1.teams.find(x => x.id === +tmb.dataset.team); if (tm) { LV.openTeam(r, tm, `Nhóm FTE chung ${tm.id} · ${tm.hub} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
-    const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const tmb = t.closest("[data-team]"); if (tmb) { ST.ov = null; const r = ST.res[ST.R], tm = r.L1.teams.find(x => x.id === +tmb.dataset.team); if (tm) { LV.openTeam(r, tm, `Nhóm FTE chung ${tm.id} · ${tm.hub} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
+    const lv = t.closest("[data-live]"); if (lv) { ST.ov = null; const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
