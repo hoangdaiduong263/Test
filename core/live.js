@@ -26,7 +26,10 @@ function Live(C, root, opts) {
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = (s.soc && C.geo(s.soc.split("|").pop()) ? s.soc.split("|").pop() : null) || C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
         socs[soc] = C.geo(soc); const tS0 = s.soc ? C.toSocTo(z0.i, soc) : C.toSoc(z0.i), tS1 = s.soc ? C.toSocTo(zl.i, soc) : C.toSoc(zl.i);
         const way = roadWay([{ t: z0.arr - tS0, xy: socs[soc], n: soc }].concat(s.st.flatMap(z => [{ t: z.arr, xy: geoP(z.i), n: C.nm(z.i) }, { t: z.dep, xy: geoP(z.i), n: C.nm(z.i) }]), [{ t: zl.dep + tS1, xy: socs[soc], n: soc }]));
-        const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc }; trucks.push(tk);
+        /* đơn xe chở về từng SOC: xe trả nhiều SOC thì đơn mỗi điểm chia theo tỷ lệ SOC của điểm (trong các SOC xe trả) */
+        const ks = (s.soc || soc).split("|"), bySoc = {}; s.st.forEach(z => { const sh = C.socShare(z.i), tt = ks.reduce((a, n) => a + (sh[n] || 0), 0);
+          ks.forEach(n => { bySoc[n] = (bySoc[n] || 0) + z.q * (tt > 0 ? (sh[n] || 0) / tt : 1 / ks.length); }); });
+        const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc, bySoc, dep: zl.dep, arr: zl.dep + tS1 }; trucks.push(tk);
         ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)}${s.grp ? ` nhóm ${s.grp}/${s.of}` : ""} (${s.nTr} xe${s.soc ? ` · đơn đi ${s.soc.replace(/\|/g, " + ")}` : ""}) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe ${tn(gi)}lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
@@ -101,7 +104,25 @@ function Live(C, root, opts) {
       if (r.i != null) I.dl[r.i].forEach(d => { el("line", { x1: x(d.dl), x2: x(d.dl), y1: y0 + 2, y2: y0 + rh, class: "lv-dl" + (d.dep > d.dl ? " late" : "") }, svg); });
       return val; });
     M.invNow = el("line", { x1: lw, x2: lw, y1: 0, y2: H - 16, class: "lv-now" }, svg); M.invX = x; }
-  function invUpd(M) { const t = M.t, X = M.invX(t); M.clip.setAttribute("width", Math.max(0, X - 150)); M.invNow.setAttribute("x1", X); M.invNow.setAttribute("x2", X);
+  /* ĐƠN VỀ TỪNG SOC theo giờ (cùng trục với tồn tại điểm): nhạt = đã rời điểm cuối (đang trên xe), đậm = đã về SOC */
+  function socDraw(M) { const W = 760, lw = 150, rh = 40, gap = 8, x = M.invX, tot = {};
+    M.trucks.forEach(tk => { for (const n in tk.bySoc) tot[n] = (tot[n] || 0) + tk.bySoc[n]; });
+    const L = Object.keys(tot).filter(n => tot[n] >= 0.5).sort((a, b) => tot[b] - tot[a]), H = L.length * (rh + gap) + 18, svg = root.querySelector("#lv-soc"); if (!svg) return;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = ""; M.socRows = [];
+    for (let t = Math.ceil(M.t0 / 120) * 120; t <= M.t1; t += 120) { el("line", { x1: x(t), x2: x(t), y1: 0, y2: H - 16, class: "lv-grid" }, svg); el("text", { x: x(t), y: H - 4, class: "lv-ax c" }, svg).textContent = hm(t); }
+    const step = (ev, y0, T) => { let v = 0, d = `M${lw},${y0 + rh}`; ev.sort((a, b) => a.t - b.t).forEach(e => { const X = Math.max(lw, Math.min(W - 8, x(e.t))); d += ` L${X.toFixed(1)},${(y0 + rh - v / T * rh).toFixed(1)}`; v += e.q; d += ` L${X.toFixed(1)},${(y0 + rh - v / T * rh).toFixed(1)}`; });
+      return d + ` L${W - 8},${(y0 + rh - v / T * rh).toFixed(1)} L${W - 8},${y0 + rh} Z`; };
+    L.forEach((n, k) => { const y0 = k * (rh + gap) + 2, T = tot[n], dep = [], arr = []; M.trucks.forEach(tk => { const q = tk.bySoc[n]; if (q > 0) { dep.push({ t: tk.dep, q }); arr.push({ t: tk.arr, q }); } });
+      el("text", { x: 0, y: y0 + 14, class: "lv-lab l" }, svg).textContent = n.replace(/ Mega SOC| SOC/g, "");
+      const lab = el("text", { x: 0, y: y0 + 30, class: "lv-val" }, svg);
+      el("line", { x1: lw, x2: W - 8, y1: y0 + rh, y2: y0 + rh, class: "lv-base" }, svg);
+      el("path", { d: step(dep, y0, T), class: "lv-s-dep" }, svg); el("path", { d: step(arr, y0, T), class: "lv-s-arr" }, svg);
+      M.socRows.push({ n, T, dep, arr, lab }); });
+    M.socNow = el("line", { x1: lw, x2: lw, y1: 0, y2: H - 16, class: "lv-now" }, svg); }
+  function socUpd(M) { if (!M.socRows) return; const t = M.t, X = M.invX(t); M.socNow.setAttribute("x1", X); M.socNow.setAttribute("x2", X);
+    M.socRows.forEach(r => { const a = r.arr.reduce((s, e) => s + (e.t <= t ? e.q : 0), 0), d = r.dep.reduce((s, e) => s + (e.t <= t ? e.q : 0), 0);
+      r.lab.textContent = `${Math.round(a).toLocaleString("vi-VN")}/${Math.round(r.T).toLocaleString("vi-VN")} đơn${d - a > 0.5 ? ` · ${Math.round(d - a).toLocaleString("vi-VN")} trên xe` : ""}`; }); }
+  function invUpd(M) { socUpd(M); const t = M.t, X = M.invX(t); M.clip.setAttribute("width", Math.max(0, X - 150)); M.invNow.setAttribute("x1", X); M.invNow.setAttribute("x2", X);
     M.inv.rows.forEach((r, k) => { const v = M.inv.at(r, t), n = Math.round(v.u + v.s); M.invLab[k].textContent = n ? `${n.toLocaleString("vi-VN")} đơn${v.late > 0.5 ? " · quá hạn" : ""}` : "trống";
       M.invLab[k].setAttribute("class", "lv-val" + (v.late > 0.5 ? " bad" : "")); }); }
 
@@ -193,12 +214,14 @@ function Live(C, root, opts) {
         <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
       <div class="lv-invw"><div class="lv-ih"><h3>Tồn tại điểm</h3><div class="lv-leg"><span><i class="s-sort"></i>chờ sort</span><span><i class="s-ready"></i>đã sort, chờ xe / đang chất</span><span><i class="s-late"></i>quá hạn COT chưa đi</span><span><b class="lv-dlk"></b>hạn COT</span></div></div>
         <div class="scroll"><svg id="lv-inv" role="img" aria-label="Tồn hàng tại từng điểm theo giờ"></svg></div></div>
+      <div class="lv-invw"><div class="lv-ih"><h3>Đơn về từng SOC</h3><div class="lv-leg"><span><i class="lv-k-dep"></i>đã rời điểm (trên xe)</span><span><i class="lv-k-arr"></i>đã về SOC</span></div></div>
+        <div class="scroll"><svg id="lv-soc" role="img" aria-label="Đơn về từng SOC theo giờ"></svg></div></div>
       <details class="lv-edit" id="lv-edit"${EDIT_OPEN ? " open" : ""}><summary>${M.team ? "Lịch nhóm · " : ""}Chỉnh giờ có hàng, hạn COT, số người, giờ xe</summary>
         <div class="lv-dlw" id="lv-tm"></div><div class="lv-dlw" id="lv-dl"></div><div class="lv-dlw" id="lv-tr"></div></details>`;
     root.querySelector("#lv-edit").ontoggle = e => { EDIT_OPEN = e.target.open; };
     drawMap(); zoomUI();
     if (M.region) { root.querySelector("#lv-dl").innerHTML = `<p class="muted" style="margin:0;font-size:12px">Toàn vùng chỉ để xem. Muốn chỉnh giờ có hàng, hạn COT, số người, giờ xe: mở live từng tuyến (▶ ở bảng gói).</p>`; root.querySelector("#lv-tr").innerHTML = ""; root.querySelector("#lv-tm").innerHTML = ""; }
-    else { dlTable(r); trTable(r); tmTable(); } invDraw(M); wire(); draw(); }
+    else { dlTable(r); trTable(r); tmTable(); } invDraw(M); socDraw(M); wire(); draw(); }
 
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
