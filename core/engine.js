@@ -212,19 +212,21 @@ function Core(D, REF) {
   const dwellAt = (i, q, arr) => { const w = waves(i); if (!w || !w.dw) return dwell(i, q); const f = w.dwk[kArr(i, arr)]; return (f ?? w.dw.fix) + w.dw.rate * q; };
   /* THỜI GIAN CHẠY từ chuyến thật: trung vị theo cặp điểm đi nối nhau, và từ điểm về SOC (≥ 3 lần); thiếu thì km ÷ tốc độ trung vị của vùng */
   let TT = null;
-  function travelData() { if (TT) return TT; const ix = {}; S.forEach((s, i) => { ix[nm(i)] = i; }); const pr = {}, so = {}, sb = {}, vr = {};
+  function travelData() { if (TT) return TT; const ix = {}; S.forEach((s, i) => { ix[nm(i)] = i; }); const pr = {}, so = {}, sb = {}, s2 = {}, vr = {};
     for (const c in TRP) { if (!fitTrip(c)) continue; const P5 = TRP[c][5]; let pv = null;
       P5.forEach(p => { const i = p[1] === 0 ? ix[String(TRN[p[0]]).trim()] : null;
         if (p[1] === 0 && i != null) { if (pv && pv.dep != null && p[4] != null && p[4] > pv.dep) { const k = Math.min(pv.i, i) + "-" + Math.max(pv.i, i), m = p[4] - pv.dep; (pr[k] = pr[k] || []).push(m);
             const km = kmPt(pv.i, i); if (km > 2) (vr[S[i].R] = vr[S[i].R] || []).push(km / m); }
           pv = { i, dep: p[5] ?? p[4] }; }
-        else if (p[1] === 2 && pv && pv.dep != null && p[4] != null && p[4] > pv.dep) { (so[pv.i] = so[pv.i] || []).push(p[4] - pv.dep); (sb[pv.i + "|" + kArr(pv.i, pv.dep)] = sb[pv.i + "|" + kArr(pv.i, pv.dep)] || []).push(p[4] - pv.dep); const km = kmSoc(pv.i); if (km > 2) (vr[S[pv.i].R] = vr[S[pv.i].R] || []).push(km / (p[4] - pv.dep)); pv = null; } }); }
+        else if (p[1] === 2 && pv && pv.dep != null && p[4] != null && p[4] > pv.dep) { (so[pv.i] = so[pv.i] || []).push(p[4] - pv.dep); const k2 = pv.i + "|" + String(TRN[p[0]]).trim(); (s2[k2] = s2[k2] || []).push(p[4] - pv.dep); (sb[pv.i + "|" + kArr(pv.i, pv.dep)] = sb[pv.i + "|" + kArr(pv.i, pv.dep)] || []).push(p[4] - pv.dep); const km = kmSoc(pv.i); if (km > 2) (vr[S[pv.i].R] = vr[S[pv.i].R] || []).push(km / (p[4] - pv.dep)); pv = null; } }); }
     const md = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v.length >= 3).map(([k, v]) => [k, med(v)]));
-    return TT = { pair: md(pr), soc: md(so), socB: md(sb), spd: Object.fromEntries(Object.entries(vr).map(([k, v]) => [k, Math.min(1.2, Math.max(0.2, med(v)))])) }; }
+    return TT = { pair: md(pr), soc: md(so), socB: md(sb), socTo: md(s2), spd: Object.fromEntries(Object.entries(vr).map(([k, v]) => [k, Math.min(1.2, Math.max(0.2, med(v)))])) }; }
   const spdR = i => travelData().spd[S[i].R] || simK().spd;
   const legMin = (i, j) => { const d = travelData().pair[Math.min(i, j) + "-" + Math.max(i, j)]; return d != null ? d : 5 + (kmPt(i, j) ?? 10) / spdR(i); };
   /* as-is: thời gian chạy về SOC khi rời điểm lúc t (theo khung giờ, ≥ 3 chuyến; thiếu thì trung vị cả ngày) */
   const toSocAt = (i, t) => { const d = travelData().socB[i + "|" + kArr(i, t)]; return d != null ? d : toSoc(i); };
+  /* thời gian chạy từ điểm về đúng SOC đó (nhóm SOC của xe): trung vị chuyến thật đi thẳng (≥ 3 lần); thiếu thì km ÷ tốc độ vùng; không có toạ độ SOC thì như toSoc */
+  const toSocTo = (i, soc) => { const d = travelData().socTo[i + "|" + soc]; if (d != null) return d; const a = geo(nm(i)), b = geo(soc); return a && b ? kmAB(a, b) / spdR(i) : toSoc(i); };
   const toSoc = i => { const d = travelData().soc[i]; return d != null ? d : (kmSoc(i) ?? 15) / spdR(i); };
   const openOf = i => REF.OPENT[nm(i)] ?? Math.min(P.open, (() => { const w = waves(i); return w ? Math.min(...w.w.map(x => x.arr)) - 60 : 1e9; })());
   /* hạn của một lượt = giờ Packed của COT; nếu hiện nay xe đã đi muộn hơn thì hạn = giờ đi hiện nay (không bắt tốt hơn thực tế) */
@@ -656,7 +658,7 @@ function Core(D, REF) {
       truck: { real, base: sum(T0), plan: sum(T) + T.reduce((a, g) => a + xCost(g), 0), extra: T.reduce((a, g) => a + xCost(g), 0) }, xCost, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };

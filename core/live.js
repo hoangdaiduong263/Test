@@ -16,7 +16,7 @@ function Live(C, root, opts) {
     const HC = opt.hc || r.hc;
     routes.forEach((g, gi) => { const h = HC(g); if (!h || !h.sim) return;
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = (s.soc && C.geo(s.soc.split("|").pop()) ? s.soc.split("|").pop() : null) || C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
-        socs[soc] = C.geo(soc); const tS0 = C.toSoc(z0.i), tS1 = C.toSoc(zl.i);
+        socs[soc] = C.geo(soc); const tS0 = s.soc ? C.toSocTo(z0.i, soc) : C.toSoc(z0.i), tS1 = s.soc ? C.toSocTo(zl.i, soc) : C.toSoc(zl.i);
         const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
         const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc }; trucks.push(tk);
         ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)}${s.grp ? ` nhóm ${s.grp}/${s.of}` : ""} (${s.nTr} xe${s.soc ? ` · đơn đi ${s.soc.replace(/\|/g, " + ")}` : ""}) rời ${soc}` });
