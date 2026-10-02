@@ -102,9 +102,12 @@
   function calib(R) { const c = CAL[R] || (CAL[R] = K.run(R)), p = c.ph, T = K.T;
     $("calib").innerHTML = `<div class="gate">
       <div class="step"><h2>Tiền xe as-is ${pass(c.ok.cost)}</h2><div class="big ${c.ok.cost ? "pos" : "neg"}">${c.gap >= 0 ? "+" : "−"}${Math.abs(c.gap).toFixed(1)}%</div>
-        <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dựng lại tuyến hiện nay</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng</dt><dd>±${T.calCost}%</dd></dl></div>
+        <dl class="kv"><dt>Thực tế (chuyến thật × giá)</dt><dd>${tr(c.rc)}</dd><dt>Mô hình dự báo</dt><dd>${tr(c.mc)}</dd><dt>Ngưỡng tổng</dt><dd>±${T.calCost}%</dd>
+        <dt>Sai số theo tuyến, cả kỳ</dt><dd class="${c.wRoute <= T.calRoute ? "pos" : "neg"}">${pf(c.wRoute)}</dd><dt>Ngưỡng</dt><dd>≤ ${T.calRoute}%</dd></dl>
+        <p class="note2">Học thông số trên ngày lẻ, dự báo ngày chẵn, rồi đổi vai. Không ngày nào được chấm bằng chính dữ liệu của nó.</p></div>
       <div class="step"><h2>Số chuyến/ngày</h2><div class="big">${c.mt.toFixed(0)} <span class="muted" style="font-size:13px">vs ${c.rt.toFixed(0)} thật</span></div>
-        <dl class="kv"><dt>Lệch</dt><dd>${c.rt ? ((c.mt - c.rt) / c.rt * 100).toFixed(0) : 0}%</dd></dl></div>
+        <dl class="kv"><dt>Sai số chuyến, tuyến × ngày</dt><dd>${pf(c.wTrip)}</dd><dt>Mốc thống kê (đường thẳng theo đơn)</dt><dd>${pf(c.wStat)}</dd><dt>Sai số tiền, tuyến × ngày</dt><dd>${pf(c.wDay)}</dd></dl>
+        <p class="note2">Mốc thống kê: đoán chuyến chỉ từ số đơn, học cùng nửa ngày. Model sát mốc này là đã lấy hết phần data giải thích được.</p></div>
       <div class="step"><h2>Vật lý mô phỏng ${pass(c.ok.time)}</h2><div class="big ${c.ok.time ? "pos" : "neg"}">${pf(Math.min(p.depSys, p.socSys))}</div>
         <dl class="kv"><dt>Giờ rời điểm: nhóm điểm × COT lệch ≤ ${T.calTime}' (${p.n} lần dừng)</dt><dd>${pf(p.depSys)}</dd><dt>Giờ tới SOC: nhóm lệch ≤ ${T.calTime}' (${p.nSoc} chuyến)</dt><dd>${pf(p.socSys)}</dd><dt>Ngưỡng</dt><dd>≥ ${T.calShare}%</dd>
         <dt>Từng lần dừng lệch ≤ ${T.calTime}' · trần</dt><dd>${pf(p.dep)} · ${pf(p.depCeil)}</dd><dt>Từng chuyến tới SOC · trần</dt><dd>${pf(p.soc)} · ${pf(p.socCeil)}</dd></dl>
@@ -117,7 +120,7 @@
           `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div></section>
       <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
         <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
-          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calCost ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
+          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
   function lines() { document.querySelectorAll("#lines [data-line]").forEach(b => b.setAttribute("aria-pressed", b.dataset.line === ST.line)); $("calib").hidden = ST.line !== "0"; $("plan").hidden = ST.line === "0"; }
 
   function render() { tabs(); lines(); const R = ST.R;

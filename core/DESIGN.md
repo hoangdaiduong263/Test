@@ -52,6 +52,7 @@
 - SOC sort lại khi seller chia ít chute hơn luồng chuẩn;
 - phí thuê thêm xe khi chia xe trong lượt;
 - chi phí trễ SLA (nếu có quy đổi).
+- phụ phí xe trả nhiều SOC (`dropSur`, trước đây mặc định +10%/SOC, nay tắt).
 
 ## Bộ lọc độ phức tạp (dây chuyền 3)
 Mỗi ngưỡng là tham số:
@@ -72,14 +73,27 @@ Mỗi ngưỡng là tham số:
 5. Nạp volume theo mốc pickup từ BI khi có.
 
 ## Trạng thái
-- **Dây chuyền 0 — đã có** (`calib.js`, tab "0 · Dữ liệu & kiểm định as-is"):
-  - Tiền xe và số chuyến: model dựng lại tuyến hiện nay cho từng ngày, so với chuyến thật.
-  - Vật lý mô phỏng: phát lại từng chuyến thật (giờ tới điểm đầu thật), so giờ rời từng điểm và giờ tới SOC. Thời gian chạy lấy trung vị thật theo cặp điểm và từ điểm về SOC; thiếu thì dùng tốc độ trung vị của vùng.
-  - Bảng nguồn dữ liệu: data / giả định.
-  - "Dư địa thấy ngay": tỷ lệ lần dừng xe đứng chờ quá 30 phút ngoài thời gian chất.
-  - Ngưỡng: tiền ±5%; giờ rời điểm và giờ tới SOC: ≥ 80% lần dừng thuộc nhóm điểm × COT có trung vị lệch ≤ 15'.
-    - Không chấm từng lần dừng: kể cả đoán bằng trung vị thật của nhóm, HCM/South cũng chỉ ~55% lần dừng trong ±15'. Phần còn lại là dao động thật giữa các ngày (chờ hàng, dock). Trang vẫn hiện số từng lần dừng kèm trần đó.
-  - Gỡ lệch HCM (tiền −16% → −3%):
-    - As-is chỉ dùng loại xe điểm đang chạy thật (≥ 10% số chuyến). Đổi loại xe là đòn bẩy `vehFree`.
-    - Chuyến thật ghé cả hub ngoài mạng: tiền xe của mạng chỉ tính phần đơn của seller (`netOf`).
-  - Kết quả: cả 4 vùng đạt cổng (HN +0,1%, HCM −2,7%, North +4,7%, South −1,0%).
+- **Dây chuyền 0 — đã có, bản 2: kiểm định độc lập** (`calib.js`, tab "0 · Dữ liệu & kiểm định as-is")
+  - **Độc lập:** model học thông số as-is trên ngày lẻ, dự báo ngày chẵn chỉ từ đơn của ngày đó, rồi đổi vai. Không ngày nào được chấm bằng thông số học từ chính nó.
+  - **Model số chuyến của một tuyến trong một ngày** (học từ chuyến thật):
+    - Mỗi lượt có ba thông số: tỷ lệ ngày lượt chạy, phần đơn của lượt, số xe tách theo SOC.
+    - Loại xe và cách chọn xe theo từng tuyến: cố định theo tỷ lệ thật, rẻ nhất, hoặc vừa hàng. Tuyến nào cần thì có thêm "xe thường trực" mỗi lượt. Cách nào khớp nhất trên ngày học thì dùng cách đó.
+    - Mức lấp đầy chỉnh để số chuyến khớp thật trên ngày học. Tuyến ghép mới dùng sức chở vật lý: không vượt tải p95 của xe thật, không dưới P.fill.
+    - Tiền xe chia theo đơn khi xe thật ghé cả hub hoặc điểm ngoài tuyến.
+    - Tuyến hiện nay = các điểm đi chung ≥ 30% số chuyến.
+  - **Giờ giấc:**
+    - Thời gian xe đứng: hệ số phút/đơn cộng phần cố định theo khung giờ xe tới (60').
+    - Thời gian chạy về SOC: trung vị theo khung giờ xuất phát.
+  - **Ngưỡng đạt:**
+    - tiền tổng ±5% và sai số theo tuyến cả kỳ ≤ 10%;
+    - giờ rời điểm và giờ tới SOC: ≥ 80% lần dừng thuộc nhóm điểm × COT có trung vị lệch ≤ 15'.
+  - **Thước đo phụ:** sai số theo tuyến × ngày, đặt cạnh "mốc thống kê" (đoán số chuyến bằng đường thẳng theo đơn) để biết model còn bỏ sót bao nhiêu phần giải thích được.
+  - **Kết quả (ngoài mẫu):**
+
+    | Vùng | Tiền tổng | Tuyến cả kỳ | Chuyến tuyến × ngày (mốc thống kê) | Giờ rời / tới SOC |
+    |---|---|---|---|---|
+    | HN | +1,3% | 4% | 12% (10%) | 100% / 100% |
+    | HCM | −0,3% | 4% | 19% (19%) | 96% / 92% |
+    | North | +4,2% | 7% | 14% (12%) | 93% / 96% |
+    | South | +1,6% | 3% | 17% (16%) | 99% / 98% |
+  - **Chi phí đã tắt:** `dropSur` (xe trả nhiều SOC +%/SOC) mặc định 0. Bảng giá không có khoản này, nên nó chuyển sang danh sách chờ duyệt.
