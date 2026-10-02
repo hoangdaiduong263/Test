@@ -65,7 +65,7 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - **Chute & SOC · hiện nay vs kế hoạch** (`chuteCheck`): mỗi điểm — % đơn đi từng SOC và % ngày có xe tới SOC đó, hiện nay (chuyến thật) và kế hoạch (công thức tiền xe giữ nguyên nhóm SOC của điểm: phần đơn `e`, tỷ lệ ngày `pg`), cộng SOC có xe ở ngày đông mô phỏng. Kế hoạch chỉ đổi điểm nào đi chung xe, không đổi điều kiện chute/SOC. Mô phỏng giờ thêm xe cho SOC đi cùng ngày (≥ 50% số ngày) dù nhóm đó không có mặt ≥ `socP`% ngày.
 - **Kiểm định**: 4 ô (khớp lại kỳ, độc lập, tháng sau, giờ xe), chi tiết gập lại.
 
-## Đòn bẩy: đổi cỡ xe (`vehPlan`, kế hoạch)
+## Đòn bẩy: đổi cỡ xe (`vehPlan`, kế hoạch — lựa chọn, mặc định tắt; ô "Cho đổi cỡ xe" dưới con số tiết kiệm)
 Hiện trạng giữ đúng loại xe thật. Kế hoạch: sau khi tìm tuyến, từng tuyến (kể cả giữ nguyên) thử chọn cỡ xe rẻ nhất trong mọi loại (VAN, 1T25, 1T9, 5T, 8T — chưa có giới hạn theo vùng/kho); giữ nếu rẻ hơn và mô phỏng không trễ thêm, rồi bố trí người lại.
 Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đổi cỡ (`r.veh`); tuyến bị thay trong một nhóm thì tính vào nhóm, tuyến giữ nguyên hiện thành nhóm "Đổi cỡ xe".
 

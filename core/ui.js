@@ -68,7 +68,8 @@
       <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
       <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL)}</div></div>
       <ul class="facts"><li><b>${ch}</b> tuyến đổi</li><li class="${late ? "neg" : ""}"><b>${late}</b> tuyến trễ COT</li><li><b>${r.L1.teams.length}</b> nhóm người chung</li></ul>
-      <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>`; }
+      <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>
+      <div class="opts"><span class="muted">Lựa chọn thêm:</span><label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho đổi cỡ xe <span class="muted">(chọn xe rẻ nhất trong mọi loại cho từng tuyến, chỉ khi không trễ thêm)</span></label></div>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -257,6 +258,9 @@
     const tg = t.closest("[data-tg]"); if (tg) { const id = tg.dataset.tg; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); const r = ST.res[ST.R]; id[0] === "t" ? teamsL(r) : routes(r); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
+  document.addEventListener("change", e => { if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
+    LV.close(); ST.res = {}; ST.open.clear(); render(); });
+  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; } catch (e) {}
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();

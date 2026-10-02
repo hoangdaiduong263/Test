@@ -66,7 +66,7 @@ function Core(D, REF) {
     coMin: 30,         // as-is: hai điểm đi chung ≥ % số chuyến (của điểm ít chuyến hơn) thì là một tuyến hiện nay
     vehMin: 10,        // as-is: loại xe chiếm ≥ % số chuyến thật của điểm mới được dùng
     vehFree: 0,        // (as-is & kế hoạch) 1 = chọn mọi loại xe — để 0, as-is phải theo loại xe thật
-    vehPlan: 1,        // ĐÒN BẨY kế hoạch: mọi tuyến (kể cả giữ nguyên) được chọn cỡ xe rẻ nhất trong mọi loại; hiện trạng vẫn theo loại xe thật
+    vehPlan: 0,        // ĐÒN BẨY kế hoạch (lựa chọn, mặc định tắt): mọi tuyến (kể cả giữ nguyên) được chọn cỡ xe rẻ nhất trong mọi loại; hiện trạng vẫn theo loại xe thật
   };
   const VEH = [{ k: "VAN", n: 1000, b: 350, p: 500000 }, { k: "1T25", n: 1300, b: 450, p: 600000 }, { k: "1T9", n: 2000, b: 700, p: 790000 },
     { k: "5T", n: 3700, b: 1000, p: 1200000 }, { k: "8T", n: 6000, b: 1800, p: 1800000 }];
