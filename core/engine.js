@@ -36,6 +36,7 @@ function Core(D, REF) {
     fteH: 7,           // một người làm bao nhiêu giờ/ngày
     ftePay: 520000,    // FTE riêng: đ/người/ngày
     hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ngày
+    minTeam: 2,        // FTE chung: số điểm tối thiểu của một nhóm (1 = cho phép nhóm 1 điểm theo giá hub)
     hubKm: 15,         // nhóm FM Hub: các điểm cách nhau tối đa (km)
     hubSpd: 40,        // nhóm FM Hub di chuyển (km/giờ)
     pps: 0,            // Rider PPS: 0 = không đưa vào model (chỉ FTE riêng & FTE chung theo nhóm FM Hub)
@@ -502,17 +503,26 @@ function Core(D, REF) {
     const okWith = (pts, A2) => [...new Set(pts.map(i => routeOf[i]))].every(g => lateOf(g, A2) <= lim[key(g)] + 1e-6);
     const pc = i => A[i].m === "P" ? ppsCost(i) : A[i].m === "F" ? fCost(i, A[i].n) : 0;
     const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
-    function tryTeam(pts) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) return null;
-      const n0 = Math.max(1, Math.ceil(pts.reduce((a, i) => a + volPk(i) * work(i).w, 0) - 1e-9));
+    /* nhóm FTE chung: các điểm cách nhau ≤ hubKm; số người nhỏ nhất sao cho (1) mỗi người làm + đi lại trong ca ≤ fteH giờ ngày đông,
+       (2) mọi tuyến xe vẫn kịp. why = lý do không lập được (để báo cáo) */
+    function tryTeam(pts, why) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) { if (why) why.r = "xa"; return null; }
+      const W = pts.reduce((a, i) => a + volPk(i) * work(i).w, 0), n0 = Math.max(1, Math.ceil(W - 1e-9));
       for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, rs: tr.rs, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
-        if (okWith(pts, A2)) { t.c = tCost(t); return t; } } return null; }
+        const mv = tr.seg.reduce((a, sg) => a + (sg.from != null && sg.from !== sg.i ? travel(sg.from, sg.i) : 0), 0);
+        if (W * P.fteH * 60 / n + mv > P.fteH * 60 + 1e-6) continue;
+        if (okWith(pts, A2)) { t.c = tCost(t); t.mv = mv; return t; } } if (why) why.r = "trễ"; return null; }
     const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
-    const byHub = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h && HCOV[nm(i)] == null).forEach(i => { (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
+    const byHub = {}, byHubAll = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h).forEach(i => { (byHubAll[S[i].h] = byHubAll[S[i].h] || []).push(i); if (HCOV[nm(i)] == null) (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
+    const whyOf = {};
     for (const pts of Object.values(byHub)) {
-      pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
+      /* FTE chung = một nhóm người đi nhiều điểm: cần ≥ P.minTeam điểm (P.minTeam = 1 thì cho cả nhóm 1 điểm theo giá hub) */
+      if (P.minTeam <= 1) pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
       for (let it = 0; it < 200; it++) { let best = null; const tm = teams.filter(t => t.pts.some(i => pts.includes(i))), free = pts.filter(i => A[i].m !== "H");
-        const tryM = (P2, before, old) => { const t = tryTeam(P2); if (t && before - t.c > 1 && (!best || before - t.c > best.g)) best = { g: before - t.c, t, old }; };
+        const tryM = (P2, before, old) => { const w = {}, t = tryTeam(P2, w); if (t && before - t.c > 1 && (!best || before - t.c > best.g)) best = { g: before - t.c, t, old };
+          const r = t ? (before - t.c > 1 ? null : "đắt hơn") : w.r; if (r) P2.forEach(i => { if (A[i].m !== "H") (whyOf[i] = whyOf[i] || {})[r] = (whyOf[i][r] || 0) + 1; }); };
         tm.forEach((a, x) => { tm.slice(x + 1).forEach(b => tryM(a.pts.concat(b.pts), a.c + b.c, [a, b])); free.forEach(i => tryM(a.pts.concat([i]), a.c + pc(i), [a])); });
+        /* hai điểm đang FTE riêng gom thành một nhóm mới */
+        free.forEach((i, x) => free.slice(x + 1).forEach(j => tryM([i, j], pc(i) + pc(j), [])));
         if (!best) break; apply(best.t, best.old); } }
     teams.forEach((t, k) => { t.id = k + 1; });
     /* tiền người từng điểm: nhóm hub chia theo khối việc */
@@ -521,7 +531,10 @@ function Core(D, REF) {
     const out = {}; T.forEach(g => { const e = routeEval(g, A), b = base[key(g)];
       out[key(g)] = { ok: !e || e.late <= lim[key(g)] + 1e-6, nodata: !e, late: e ? e.late : 0, tol: tolOf(g), order: e ? e.order : routeOrder(g), sim: e ? e.sim : null,
         A: Object.fromEntries(g.map(i => [i, A[i]])), lab: { c: g.reduce((a, i) => a + cost[i], 0) } }; });
-    return { A, teams, routes: out, cost, lab: Object.values(cost).reduce((a, c) => a + c, 0) }; }
+    /* báo cáo từng FM Hub có ≥ 2 điểm: điểm nào vào nhóm chung, điểm nào không và vì sao */
+    const hubs = Object.entries(byHubAll).filter(([, pts]) => pts.length >= 2).map(([h, pts]) => ({ h, pts, km: Math.max(...pts.flatMap((i, a) => pts.slice(a + 1).map(j => kmPt(i, j) ?? 1e9))),
+      teams: teams.filter(t => t.pts.some(i => pts.includes(i))), solo: pts.filter(i => A[i].m !== "H").map(i => ({ i, why: whyOf[i] || {} })) }));
+    return { A, teams, hubs, routes: out, cost, lab: Object.values(cost).reduce((a, c) => a + c, 0) }; }
   /* nhãn cách dùng người của một điểm */
   const modeTxt = (a, i) => a.m === "H" ? `FTE chung · nhóm ${a.team.id} (${a.team.n} người)` : a.m === "P" ? "PPS" : `FTE riêng${a.n ? ` ${a.n} người` : ""}${a.n && i != null && a.n > fteBase(i) ? ` (+${a.n - fteBase(i)})` : ""}`;
   const truckOv = g => TROV[rkey(g)] || {};

@@ -54,6 +54,17 @@
 - chi phí trễ SLA (nếu có quy đổi).
 - phụ phí xe trả nhiều SOC (`dropSur`, trước đây mặc định +10%/SOC, nay tắt).
 
+## Người
+- **FTE riêng:** số người = khối việc ngày đông (p90) ÷ 7 giờ, tức đã làm 100% công suất. Không bớt thêm được; bộ lọc ≤ 85% sẽ còn đòi thêm người.
+- **FTE chung:** nhóm người của một FM Hub đi nhiều điểm D2S cùng hub.
+  - Cần ≥ 2 điểm (`minTeam`).
+  - Các điểm cách nhau ≤ 15 km.
+  - Mỗi người: làm + đi lại ≤ 7 giờ.
+  - Mọi tuyến xe vẫn kịp COT.
+  - Chỉ gom khi rẻ hơn FTE riêng.
+- **Bảng "FM Hub cover ≥ 2 điểm"** trên trang ghi điểm nào vào nhóm, điểm nào không và vì sao.
+- **Chỉnh tay** (hạn, giờ có hàng, số người, giờ xe) lưu trên trình duyệt và áp cho mọi lần mở trang. Có dải báo kèm nút "Bỏ tất cả chỉnh tay". Điểm chỉnh số người bị giữ FTE riêng.
+
 ## Live
 Chạy từng tuyến đề xuất riêng. Thẻ "Tuyến 1…n" ở đầu khung live để chuyển tuyến; mỗi tuyến trong bảng gói có nút ▶ riêng.
 

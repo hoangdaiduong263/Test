@@ -36,6 +36,9 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .tabs small{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 
 /* dải 2 bước */
+.ovr{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 14px;border:1px solid var(--warn);border-radius:10px;background:var(--panel)}
+.ovr b{color:var(--warn)}
+.ovr .muted{font-size:12px}
 .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:10px;align-items:stretch}
 .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:8px;min-width:0}
 .step.res{border-color:var(--accent)}
@@ -185,6 +188,7 @@ details.prm[open]>summary::after{content:"▴"}
   <nav class="lines" id="lines" aria-label="Dây chuyền"><button type="button" data-line="0">0 · Dữ liệu &amp; kiểm định as-is</button><button type="button" data-line="1">1–4 · Kế hoạch, lọc &amp; live</button></nav>
   <div id="calib" hidden></div>
   <div id="plan">
+  <div class="ovr" id="ovr" hidden></div>
   <div class="flow" id="flow"></div>
   <section class="card lv" id="live" hidden></section>
   <section class="card" id="packs"></section>

@@ -73,10 +73,17 @@
     $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span></header>
       <div class="scroll"><table><thead><tr><th>#</th><th>Hiện nay</th><th>Kế hoạch · bước 2</th><th class="r">Tiền xe tr/kỳ</th><th class="r">Tiền người tr/kỳ</th></tr></thead><tbody>${body}</tbody></table></div>`; }
 
+  /* từng FM Hub có ≥ 2 điểm D2S: điểm nào vào nhóm FTE chung, điểm nào không và vì sao */
+  const WHY = { "xa": "cách điểm khác > " + P.hubKm + " km", "trễ": "gom thì tuyến xe trễ COT", "đắt hơn": "gom không rẻ hơn FTE riêng" };
+  function hubRep(r) { const H = r.L1.hubs || []; if (!H.length) return `<p class="empty">Không FM Hub nào cover từ 2 điểm D2S trở lên.</p>`;
+    const n = H.reduce((a, h) => a + h.pts.length, 0), nin = H.reduce((a, h) => a + h.pts.length - h.solo.length, 0);
+    return `<div class="scroll"><table><thead><tr><th>FM Hub cover ≥ 2 điểm · ${nin}/${n} điểm vào nhóm chung</th><th class="r">Điểm</th><th class="r">Xa nhất</th><th>Nhóm FTE chung</th><th>Vẫn FTE riêng · vì sao</th></tr></thead><tbody>${H.map(h =>
+      `<tr><td>${esc(h.h)}</td><td class="r mono">${h.pts.length}</td><td class="r mono">${h.km > 1e8 ? "?" : h.km.toFixed(0) + " km"}</td><td>${h.teams.map(t => `${t.id}: ${rt(t.pts)} <span class="muted mono">${t.n} người</span>`).join("<br>") || `<span class="muted">–</span>`}</td>
+        <td>${h.solo.map(x => `${esc(short(x.i))} <span class="muted">${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub để gom"))}</span>`).join("<br>") || `<span class="muted">–</span>`}</td></tr>`).join("")}</tbody></table></div>`; }
   function teams(r) { const T = r.L1.teams, cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}), c0 = cnt(r.L0.A), c1 = cnt(r.L1.A);
     const mix = c => `FTE riêng ${c.F || 0} · FTE chung ${c.H || 0}`;
     $("teams").innerHTML = `<header><h2>Người · ${r.R}</h2><span class="muted" style="font-size:12px">số điểm theo cách dùng người: hiện nay ${mix(c0)} → kế hoạch ${mix(c1)}</span></header>` +
-      (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FTE chung</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
+      hubRep(r) + (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FTE chung</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
         `<tr><td class="mono">${t.id}</td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
   function bans(r) { const it = r.iters.filter(x => x.banned.length);
@@ -133,13 +140,22 @@
   function render() { tabs(); lines(); const R = ST.R;
     if (ST.line === "0") { if (!CAL[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { CAL[R] = K.run(R); document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; flow(r); packs(r); teams(r); bans(r); }
+    const r = ST.res[R]; ovr(); flow(r); packs(r); teams(r); bans(r); }
+  /* dải báo chỉnh tay đang áp dụng (lưu trên trình duyệt, áp cho mọi vùng / mọi lần mở trang) */
+  const OVS = () => [["hạn COT", C.DLOV], ["giờ có hàng", C.AVOV], ["số người", C.HCOV], ["giờ xe", C.TROV]];
+  function ovr() { const L = OVS().map(([lab, M]) => [lab, Object.keys(M)]).filter(x => x[1].length), e = $("ovr");
+    if (!L.length) { e.hidden = true; e.innerHTML = ""; return; }
+    e.hidden = false; e.innerHTML = `<b>Đang áp dụng chỉnh tay</b><span>${L.map(([lab, ks]) => `${lab}: ${ks.length} ${lab === "giờ xe" ? "tuyến" : "điểm"}`).join(" · ")}</span>
+      <span class="muted">${esc([...new Set(L.flatMap(x => x[1]))].map(n => n.replace(/^(HN|HCM|DNCH|North|South)\s*(SPC|Seller)?\s*[-_]\s*/i, "")).slice(0, 8).join(", "))}${new Set(L.flatMap(x => x[1])).size > 8 ? "…" : ""} · điểm chỉnh số người được giữ FTE riêng, không gom nhóm chung</span>
+      <button type="button" class="btn ghost" id="ovr-clr">Bỏ tất cả chỉnh tay</button>`; }
   /* tính dần các vùng còn lại để tab hiện số */
   function queue() { const R = REGS.find(x => !ST.res[x]); if (R) setTimeout(() => { res(R); tabs(); queue(); }, 30); }
 
   document.addEventListener("click", e => { const t = e.target;
     const ln = t.closest("[data-line]"); if (ln) { ST.line = ln.dataset.line; try { localStorage.setItem("d2s-core-line", ST.line); } catch (x) {} render(); return; }
     const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
+    if (t.id === "ovr-clr") { OVS().forEach(([, M]) => Object.keys(M).forEach(k => { delete M[k]; })); try { localStorage.removeItem("d2s-core-dl"); } catch (x) {}
+      LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
