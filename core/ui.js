@@ -144,6 +144,19 @@
     $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">mỗi nhóm rẻ hơn bao nhiêu so với thuê FTE riêng cho từng điểm</span></header>` +
       (T.length ? T.map(item).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
+  /* KIỂM TRA CHUTE: xe (hiện nay & kế hoạch) có tới đủ các SOC mà điểm chia hàng không */
+  const sn = n => esc(n.replace(/ Mega SOC| SOC/g, ""));
+  function chuteL(r) { const L = C.chuteCheck(r), gap = L.filter(x => x.miss.some(m => !m.alt)), alt = L.filter(x => x.miss.length && x.miss.every(m => m.alt)), more = L.filter(x => x.ch > Math.max(1, x.need.length));
+    const res = x => { const g = x.miss.filter(m => !m.alt), a = x.miss.filter(m => m.alt);
+      return [g.length ? `<span class="neg">thiếu xe tới ${g.map(m => sn(m.n)).join(", ")}</span>` : "", a.length ? `<span class="muted">đổi SOC theo ngày: ${a.map(m => `${sn(m.n)} ${Math.round(m.e * 100)}% đơn`).join(", ")}</span>` : "",
+        x.ch > Math.max(1, x.need.length) ? `<span class="warn">chia ${x.ch} chute, đơn đi ${x.need.length} SOC</span>` : "", !x.sim ? `<span class="muted">thiếu data giờ</span>` : ""].filter(Boolean).join(" · ") || `<span class="pos">đủ</span>`; };
+    const row = x => `<tr><td>${esc(short(x.i))}</td><td class="r mono">${x.ch}</td><td>${x.need.map(e => `${sn(e[0])} <span class="muted mono">${Math.round(e[1] * 100)}%</span>`).join("<br>")}</td>
+      <td>${x.now.map(e => `${sn(e[0])} <span class="muted mono">${Math.round(e[1] * 100)}% ngày</span>`).join("<br>")}</td><td>${x.plan.map(e => sn(e[0])).join("<br>") || "–"}</td><td>${res(x)}</td></tr>`;
+    const ord = L.slice().sort((a, b) => (b.miss.some(m => !m.alt) - a.miss.some(m => !m.alt)) || (b.ch - b.need.length) - (a.ch - a.need.length));
+    $("chute").innerHTML = `<summary>Kiểm tra chute · xe có tới đủ SOC không <span class="${gap.length ? "neg" : "pos"}">${gap.length ? `${gap.length} điểm thiếu xe` : "đủ"}</span></summary><div class="mb">
+      <p class="muted">${L.length} điểm · ${gap.length} điểm kế hoạch thiếu xe tới một SOC có đơn · ${alt.length} điểm đổi SOC theo ngày (hôm đi SOC này thì không đi SOC kia — bình thường) · ${more.length} điểm theo bảng luồng chia nhiều chute hơn số SOC đơn thật sự đi (cần xác nhận chute còn lại dùng cho gì).</p>
+      <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute (bảng luồng)</th><th>SOC đơn đi (chuyến thật)</th><th>Xe hiện nay tới</th><th>Xe kế hoạch tới (ngày đông)</th><th>Kết quả</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
+
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */
   const WHY = { "xa": "cách điểm khác > " + P.hubKm + " km", "trễ": "gom thì tuyến xe trễ COT", "đắt hơn": "gom không rẻ hơn FTE riêng" };
   function more(r) { const it = r.iters.filter(x => x.banned.length), H = r.L1.hubs || [];
@@ -208,7 +221,7 @@
   function render() { tabs(); lines(); const R = ST.R;
     if (ST.line === "0") { if (!CAL[R] || !GAP[R] || GAP[R].r !== ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { if (!CAL[R]) CAL[R] = K.run(R); const rr = res(R); GAP[R] = { r: rr, g: K.gap(R, rr) }; document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
-    const r = ST.res[R]; ovr(); summary(r); routes(r); teamsL(r); more(r);
+    const r = ST.res[R]; ovr(); summary(r); routes(r); teamsL(r); chuteL(r); more(r);
     if (ST.ovOpen) { const m = ST.ovOpen; ST.ovOpen = null; openOv(r, m); } }
   /* mô phỏng toàn vùng (xe + người); đổi vùng ở thẻ trên cùng thì mở lại cho vùng mới */
   function openOv(r, mode) { ST.ov = mode; LV.openRegion(r, mode, m => { ST.ov = m; }); }
