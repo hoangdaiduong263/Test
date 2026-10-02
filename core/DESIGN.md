@@ -41,7 +41,7 @@
 ## Phạm vi tiền
 **Đưa vào mô phỏng:**
 - tiền xe linehaul;
-- người tại seller (FTE riêng, nhóm FM Hub, PPS);
+- người tại seller: chỉ FTE riêng và FTE chung (nhóm FM Hub). Rider PPS tạm chưa đưa vào model; code còn giữ, bật bằng `pps = 1`.
 - người ở SOC;
 - tiền rider / FM Hub tiết kiệm được nhờ D2S.
 
@@ -53,6 +53,9 @@
 - phí thuê thêm xe khi chia xe trong lượt;
 - chi phí trễ SLA (nếu có quy đổi).
 - phụ phí xe trả nhiều SOC (`dropSur`, trước đây mặc định +10%/SOC, nay tắt).
+
+## Live
+Chạy từng tuyến đề xuất riêng. Thẻ "Tuyến 1…n" ở đầu khung live để chuyển tuyến; mỗi tuyến trong bảng gói có nút ▶ riêng.
 
 ## Bước 1 · Kiểm chứng tuyến ghép (đã làm)
 Chi tiết ở `core/experiments/README.md`.

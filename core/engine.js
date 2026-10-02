@@ -38,6 +38,7 @@ function Core(D, REF) {
     hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ngày
     hubKm: 15,         // nhóm FM Hub: các điểm cách nhau tối đa (km)
     hubSpd: 40,        // nhóm FM Hub di chuyển (km/giờ)
+    pps: 0,            // Rider PPS: 0 = không đưa vào model (chỉ FTE riêng & FTE chung theo nhóm FM Hub)
     ppsRate: 700,      // Rider Pay Per Scan: đ/đơn quét
     ppsSpd: 600,       // Rider quét bao nhiêu đơn/giờ (cộng vào thời gian xe đứng ở điểm)
     open: 480,         // giờ seller bắt đầu làm nếu không có dữ liệu (phút từ 0h)
@@ -477,11 +478,11 @@ function Core(D, REF) {
   const runD = i => active(i).length;
   const ppsCost = i => active(i).reduce((a, d) => a + S[i].v[d], 0) * P.ppsRate;
   const fCost = (i, n) => (n || fteBase(i)) * P.ftePay * runD(i);
-  /* [2a] từng tuyến: thử mọi tổ hợp FTE riêng / PPS, chọn rẻ nhất mà trễ ≤ tol; không có thì tuyến không khả thi */
+  /* [2a] từng tuyến: FTE riêng ở mọi điểm (P.pps = 1 thì thử thêm mọi tổ hợp FTE riêng / PPS), chọn rẻ nhất mà trễ ≤ tol; không có thì tuyến không khả thi */
   const costA = (g, A) => g.reduce((a, i) => a + (A[i].m === "P" ? ppsCost(i) : fCost(i, A[i].n)), 0);
   function routeBest(g, tol, noExtra) { let best = null; const all = [];
     const better = x => !best || (x.ok && (!best.ok || x.c < best.c)) || (!x.ok && !best.ok && x.late < best.late);
-    for (let m = 0; m < (1 << g.length); m++) { if (g.some((i, k) => (m >> k) & 1 && HCOV[nm(i)] != null)) continue;   // điểm có số FTE chỉnh tay: luôn FTE riêng
+    for (let m = 0; m < (P.pps ? 1 << g.length : 1); m++) { if (g.some((i, k) => (m >> k) & 1 && HCOV[nm(i)] != null)) continue;   // điểm có số FTE chỉnh tay: luôn FTE riêng
       const A = Object.fromEntries(g.map((i, k) => [i, (m >> k) & 1 ? { m: "P" } : { m: "F", n: fteBase(i) }])), e = routeEval(g, A);
       if (!e) return { ok: true, nodata: true, A: Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), late: 0, tol };
       const x = { ok: e.late <= tol, A, late: e.late, c: costA(g, A), tol }; all.push(x); if (better(x)) best = x; }
@@ -522,7 +523,7 @@ function Core(D, REF) {
         A: Object.fromEntries(g.map(i => [i, A[i]])), lab: { c: g.reduce((a, i) => a + cost[i], 0) } }; });
     return { A, teams, routes: out, cost, lab: Object.values(cost).reduce((a, c) => a + c, 0) }; }
   /* nhãn cách dùng người của một điểm */
-  const modeTxt = (a, i) => a.m === "H" ? `Hub nhóm ${a.team.id} (${a.team.n} người)` : a.m === "P" ? "PPS" : `FTE riêng${a.n ? ` ${a.n} người` : ""}${a.n && i != null && a.n > fteBase(i) ? ` (+${a.n - fteBase(i)})` : ""}`;
+  const modeTxt = (a, i) => a.m === "H" ? `FTE chung · nhóm ${a.team.id} (${a.team.n} người)` : a.m === "P" ? "PPS" : `FTE riêng${a.n ? ` ${a.n} người` : ""}${a.n && i != null && a.n > fteBase(i) ? ` (+${a.n - fteBase(i)})` : ""}`;
   const truckOv = g => TROV[rkey(g)] || {};
   const setHC = (name, v) => { if (v == null) delete HCOV[name]; else HCOV[name] = v; };
 

@@ -22,9 +22,9 @@
   const LV = Live(C, $("live"), { onApply(ch, pts) { ch.forEach(c => c.f === "tr" ? C.setTruck(c.rk, c.k, c.v) : c.f === "hc" ? C.setHC(c.name, c.v) : (c.f === "av" ? C.setAvail : C.setDeadline)(c.name, c.k, c.v)); try { localStorage.setItem("d2s-core-dl", JSON.stringify({ dl: C.DLOV, av: C.AVOV, hc: C.HCOV, tr: C.TROV })); } catch (e) {}
     const R = ST.R; delete ST.res[R]; ST.open.clear(); document.querySelector(".wrap").classList.add("busy");
     setTimeout(() => { const r = res(R); document.querySelector(".wrap").classList.remove("busy"); render();
-      /* mở lại gói có nhiều điểm chung nhất với gói đang xem (kế hoạch có thể đổi sau khi chạy lại) */
-      let best = -1, bn = 0; r.packs.forEach((p, k) => { const n = p.nw.flat().filter(i => pts.includes(i)).length; if (n > bn) { bn = n; best = k; } });
-      if (best >= 0) LV.open(r, r.packs[best], `Gói ${best + 1} · ${R}`); else LV.close(); }, 20); } });
+      /* mở lại tuyến có nhiều điểm chung nhất với tuyến đang xem (kế hoạch có thể đổi sau khi chạy lại) */
+      let best = -1, bg = 0, bn = 0; r.packs.forEach((p, k) => p.nw.forEach((g, gi) => { const n = g.filter(i => pts.includes(i)).length; if (n > bn) { bn = n; best = k; bg = gi; } }));
+      if (best >= 0) LV.open(r, r.packs[best], `Gói ${best + 1} · ${R}`, bg); else LV.close(); }, 20); } });
   const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
   function tabs() {
@@ -67,17 +67,17 @@
     const body = L.map((p, k) => { const id = r.R + ":" + k, open = ST.open.has(id), lab = p.nw.flat().reduce((a, i) => a + r.L1.cost[i], 0) - p.cut.flat().reduce((a, i) => a + r.L0.cost[i], 0);
       return `<tr class="pk" data-p="${id}" aria-expanded="${open}" tabindex="0"><td class="mono">${k + 1} <button type="button" class="play" data-live="${k}" aria-label="Chạy live gói ${k + 1}" title="Chạy live">▶</button></td>
         <td><div class="grp">${p.cut.map(rt).join("")}</div></td>
-        <td><div class="grp">${p.nw.map(g => `<div class="rt">${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
+        <td><div class="grp">${p.nw.map((g, gi) => `<div class="rt"><button type="button" class="play sm" data-live="${k}" data-gi="${gi}" aria-label="Chạy live gói ${k + 1} tuyến ${gi + 1}" title="Chạy live tuyến này">▶</button>${rt(g)} ${verdict(r.hc(g))}</div>`).join("")}</div></td>
         <td class="r mono pos">${sg(p.gain)}</td><td class="r mono ${lab <= 0 ? "pos" : "neg"}">${sg(-lab)}</td></tr>
         ${open ? `<tr class="det"><td colspan="5">${p.nw.map(g => routeDetail(r, g)).join("")}</td></tr>` : ""}`; }).join("");
     $("packs").innerHTML = `<header><h2>Các gói · ${r.R}</h2><span class="muted" style="font-size:12px">bấm một gói để xem lịch từng lượt ở ngày đông</span></header>
       <div class="scroll"><table><thead><tr><th>#</th><th>Hiện nay</th><th>Kế hoạch · bước 2</th><th class="r">Tiền xe tr/kỳ</th><th class="r">Tiền người tr/kỳ</th></tr></thead><tbody>${body}</tbody></table></div>`; }
 
   function teams(r) { const T = r.L1.teams, cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}), c0 = cnt(r.L0.A), c1 = cnt(r.L1.A);
-    const mix = c => `FTE riêng ${c.F || 0} · PPS ${c.P || 0} · nhóm hub ${c.H || 0}`;
+    const mix = c => `FTE riêng ${c.F || 0} · FTE chung ${c.H || 0}`;
     $("teams").innerHTML = `<header><h2>Người · ${r.R}</h2><span class="muted" style="font-size:12px">số điểm theo cách dùng người: hiện nay ${mix(c0)} → kế hoạch ${mix(c1)}</span></header>` +
-      (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FM Hub</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
-        `<tr><td class="mono">${t.id}</td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FM Hub nào rẻ hơn FTE riêng / PPS.</p>`); }
+      (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FTE chung</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
+        `<tr><td class="mono">${t.id}</td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
   function bans(r) { const it = r.iters.filter(x => x.banned.length);
     $("bans").innerHTML = `<header><h2>Tuyến bị bước 2 loại</h2><span class="muted" style="font-size:12px">loại xong, bước 1 tìm lại tuyến khác</span></header>` +
@@ -90,8 +90,8 @@
     ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Xe", "closeMin", "Chốt xe sau khi hàng cuối sẵn", "phút", 1], ["Xe", "early", "Xe đi sớm, dồn đơn chưa xong sang COT sau (1 = bật, 0 = chờ đủ đơn)", "", 1], ["Xe", "rollMax", "Mỗi lượt-điểm dồn tối đa", "% đơn", 1], ["Người", "maxExtra", "Tuyến trễ: thêm FTE riêng tối đa mỗi điểm", "người", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodChute", "Mỗi chute thêm ngoài 1", "−%", 1], ["Năng suất (theo đặc điểm seller)", "prodBulky", "Mỗi 10 điểm % hàng to lệch 10%", "−%", 1],
-    ["Loại người", "ftePay", "FTE riêng", "k/người/ngày", 1e3], ["Loại người", "hubPay", "Nhóm FM Hub", "k/người/ngày", 1e3], ["Loại người", "hubKm", "Nhóm hub: điểm cách nhau tối đa", "km", 1],
-    ["Loại người", "hubSpd", "Nhóm hub di chuyển", "km/giờ", 1], ["Loại người", "ppsRate", "Rider PPS", "đ/đơn", 1], ["Loại người", "ppsSpd", "Rider quét", "đơn/giờ", 1]];
+    ["Loại người", "ftePay", "FTE riêng", "k/người/ngày", 1e3], ["Loại người", "hubPay", "FTE chung (nhóm FM Hub)", "k/người/ngày", 1e3], ["Loại người", "hubKm", "FTE chung: điểm cách nhau tối đa", "km", 1],
+    ["Loại người", "hubSpd", "FTE chung di chuyển", "km/giờ", 1]];
   function pform() { let gr = ""; $("pform").innerHTML = `<div class="pgrid">${PF.map(([g, k, lab, u, f]) => (g !== gr ? `<h3>${(gr = g)}</h3>` : "") +
       `<div class="pf"><label for="p-${k}">${lab}</label><span><input id="p-${k}" type="number" step="any" value="${+(P[k] / f).toFixed(3)}"><span class="u">${u}</span></span></div>`).join("")}</div>
       <div class="pbar"><button type="button" class="btn" id="prun">Chạy lại</button><button type="button" class="btn ghost" id="pdef">Về mặc định</button></div>`; }
@@ -140,7 +140,7 @@
   document.addEventListener("click", e => { const t = e.target;
     const ln = t.closest("[data-line]"); if (ln) { ST.line = ln.dataset.line; try { localStorage.setItem("d2s-core-line", ST.line); } catch (x) {} render(); return; }
     const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
-    const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
