@@ -9,6 +9,17 @@
 4. **Một mô phỏng sự kiện duy nhất.** KPI, tồn, live, Lịch xe, đường cong SOC đều đọc cùng một nhật ký sự kiện.
 5. **Mỗi con số có nhãn nguồn:** `data` · `giả định` · `chỉnh tay` · `đòn bẩy`.
 
+## Mục tiêu tối ưu: không trễ trước, chi phí sau
+- **`lateTol = 0`:** chỉ điểm mà cách chạy hiện nay đã trễ (thường do dữ liệu mâu thuẫn) mới được "không trễ hơn hiện nay".
+- **Còn trễ thì gỡ theo thứ tự:**
+  - chia điểm cho các xe trong lượt (`split`), được thêm tối đa `splitExtra` = 2 xe/lượt;
+  - thêm FTE riêng (tối đa `maxExtra` = 3 người/điểm), kể cả khi tuyến đã nằm trong mức cho phép;
+  - nhóm FTE chung không được làm điểm nào trễ thêm.
+- **Tiền xe thêm** cộng vào tiền xe kế hoạch (`truck.extra`). Bản hiện nay không thêm xe, không thêm người.
+- **Kết quả 48 ngày:**
+  - HN, HCM, South: 0 tuyến trễ.
+  - North: 2 tuyến trễ, đều do dữ liệu (Nagakawa: có hàng 17:12 sau hạn 17:00; Thugiangshop: 19 phút cho cả sort và lên hàng).
+
 ## Thứ tự ưu tiên ràng buộc
 | # | Mốc | Vai trò |
 |---|---|---|
@@ -68,6 +79,11 @@
 - **Nhận nhóm FTE chung theo từng điểm** (`teamLate = 0`): không điểm nào được trễ hơn so với khi dùng FTE riêng.
   - Không còn lấy khoảng dư "tuyến hiện nay đã trễ" của cả tuyến. Trước đây các nhóm 1 người ôm 5 điểm ở Song Lô (North) dồn trễ tới 240 phút mà vẫn được nhận, vì tuyến hiện nay mô phỏng trễ 270 phút.
   - Kết quả: không tuyến nào trễ quá 60 phút. Tiền người North +61 tr, South +30 tr trong 48 ngày.
+- **Chia điểm cho xe trong lượt** (`split`): lượt đi chung bị trễ thì thử mọi cách chia các điểm (≤ 6 điểm) thành nhóm, mỗi nhóm một số xe riêng.
+  - Đủ các điểm của tuyến; mỗi nhóm cần số xe theo đúng sức chở như khi đi chung; tổng không vượt số xe của lượt, nên tiền xe không đổi.
+  - Chọn cách trễ ít nhất; thứ tự ghé trong nhóm do model chọn.
+  - Kết quả: HN 5 → 3 tuyến trễ (nặng nhất 47' → 28'), North 8 → 5 tuyến trễ.
+  - Lượt nào chia cũng cần thêm xe (ví dụ North tuyến 24) thì giữ đi chung.
 - **Bảng "FM Hub cover ≥ 2 điểm"** trên trang ghi điểm nào vào nhóm, điểm nào không và vì sao.
 - **Chỉnh tay** (hạn, giờ có hàng, số người, giờ xe) lưu trên trình duyệt và áp cho mọi lần mở trang. Có dải báo kèm nút "Bỏ tất cả chỉnh tay". Điểm chỉnh số người bị giữ FTE riêng.
 
