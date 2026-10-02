@@ -16,6 +16,7 @@ function Live(C, root, opts) {
         const D = d[d.length - 1] || 1; for (let m = 1; m < L.length - 1; m++) out.push({ t: a.t + (b.t - a.t) * d[m] / D, xy: L[m] }); }
       out.push(b); }
     return out; }
+  let EDIT_OPEN = false;   // phần chỉnh tay gập lại mặc định để bảng điều khiển nằm sát bản đồ
   function build(r, routes, opt) { opt = opt || {};
     const pts = [...new Set(routes.flat())], inP = new Set(pts), spd = C.simK().spd, ev = [], trucks = [], sorts = [], moves = [], dls = [];
     const geoP = i => C.geo(C.nm(i)), socs = {}, hubs = {}, teams = new Map();
@@ -187,14 +188,14 @@ function Live(C, root, opts) {
         <span class="lv-clock mono" id="lv-clock">${hm(M.t0)}</span>
         <input type="range" id="lv-scrub" min="${M.t0}" max="${M.t1}" step="1" value="${M.t0}" aria-label="Thời gian">
         <label class="muted" for="lv-speed">Tốc độ</label><select id="lv-speed"><option value="5">5 phút/giây</option><option value="15">15 phút/giây</option><option value="30">30 phút/giây</option><option value="60" selected>1 giờ/giây</option><option value="120">2 giờ/giây</option></select></div>
-      <div class="lv-dlw" id="lv-dl"></div>
-      <div class="lv-dlw" id="lv-tm"></div>
-      <div class="lv-dlw" id="lv-tr"></div>
       <div class="lv-grid"><div class="lv-map"><div class="lv-zoom"><button type="button" data-z="+" aria-label="Phóng to">+</button><button type="button" data-z="-" aria-label="Thu nhỏ">−</button><button type="button" data-z="0" aria-label="Về toàn cảnh">⟲</button></div><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ tuyến"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
         <div class="lv-side"><div class="lv-kpi" id="lv-kpi"></div><ol class="lv-log" id="lv-log"></ol></div></div>
       <div class="lv-invw"><div class="lv-ih"><h3>Tồn tại điểm</h3><div class="lv-leg"><span><i class="s-sort"></i>chờ sort</span><span><i class="s-ready"></i>đã sort, chờ xe / đang chất</span><span><i class="s-late"></i>quá hạn COT chưa đi</span><span><b class="lv-dlk"></b>hạn COT</span></div></div>
-        <div class="scroll"><svg id="lv-inv" role="img" aria-label="Tồn hàng tại từng điểm theo giờ"></svg></div></div>`;
+        <div class="scroll"><svg id="lv-inv" role="img" aria-label="Tồn hàng tại từng điểm theo giờ"></svg></div></div>
+      <details class="lv-edit" id="lv-edit"${EDIT_OPEN ? " open" : ""}><summary>${M.team ? "Lịch nhóm · " : ""}Chỉnh giờ có hàng, hạn COT, số người, giờ xe</summary>
+        <div class="lv-dlw" id="lv-tm"></div><div class="lv-dlw" id="lv-dl"></div><div class="lv-dlw" id="lv-tr"></div></details>`;
+    root.querySelector("#lv-edit").ontoggle = e => { EDIT_OPEN = e.target.open; };
     drawMap(); zoomUI();
     if (M.region) { root.querySelector("#lv-dl").innerHTML = `<p class="muted" style="margin:0;font-size:12px">Toàn vùng chỉ để xem. Muốn chỉnh giờ có hàng, hạn COT, số người, giờ xe: mở live từng tuyến (▶ ở bảng gói).</p>`; root.querySelector("#lv-tr").innerHTML = ""; root.querySelector("#lv-tm").innerHTML = ""; }
     else { dlTable(r); trTable(r); tmTable(); } invDraw(M); wire(); draw(); }
