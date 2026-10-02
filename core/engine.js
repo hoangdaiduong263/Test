@@ -36,6 +36,7 @@ function Core(D, REF) {
     fteH: 7,           // một người làm bao nhiêu giờ/ngày
     ftePay: 520000,    // FTE riêng: đ/người/ngày
     hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ngày
+    teamLate: 0,       // FTE chung: 1 = mỗi điểm được trễ tới lateTol (hoặc như khi dùng FTE riêng nếu đã trễ hơn); 0 = nhóm chung không được thêm trễ
     minTeam: 2,        // FTE chung: số điểm tối thiểu của một nhóm (1 = cho phép nhóm 1 điểm theo giá hub)
     hubKm: 15,         // nhóm FM Hub: các điểm cách nhau tối đa (km)
     hubSpd: 40,        // nhóm FM Hub di chuyển (km/giờ)
@@ -502,7 +503,13 @@ function Core(D, REF) {
   function assign(T, tolOf, isBase) { const A = {}, routeOf = {}, base = {};
     T.forEach(g => { const b = routeBest(g, tolOf(g), isBase); g.forEach(i => { A[i] = Object.assign({}, b.A[i]); routeOf[i] = g; }); base[key(g)] = b; });
     const lateOf = (g, A2) => { const e = routeEval(g, A2); return e ? e.late : -1e9; }, lim = {}; T.forEach(g => { lim[key(g)] = Math.max(tolOf(g), lateOf(g, A)); });
-    const okWith = (pts, A2) => [...new Set(pts.map(i => routeOf[i]))].every(g => lateOf(g, A2) <= lim[key(g)] + 1e-6);
+    /* nhận nhóm FTE chung khi KHÔNG điểm nào (trên mọi tuyến bị ảnh hưởng) trễ hơn mức cho phép của chính điểm đó:
+       P.teamLate = 1 → max(P.lateTol, trễ khi dùng FTE riêng); 0 → max(0, trễ khi dùng FTE riêng) (nhóm chung không được thêm trễ).
+       Không dùng khoảng dư "tuyến hiện nay đã trễ" của cả tuyến — tránh nhóm 1 người ôm nhiều điểm rồi dồn trễ */
+    const plate = (g, A2) => { const e = routeEval(g, A2), o = {}; if (e) e.sim.rows.forEach(s => s.st.forEach(z => { const k = z.i + "|" + z.k; o[k] = Math.max(o[k] ?? -1e9, z.dep - z.dl); })); return o; };
+    const pl0 = {}; T.forEach(g => Object.assign(pl0, plate(g, A)));
+    const okWith = (pts, A2) => [...new Set(pts.map(i => routeOf[i]))].every(g => { const o = plate(g, A2);
+      return Object.entries(o).every(([k, v]) => v <= Math.max(P.teamLate ? P.lateTol : 0, pl0[k] ?? -1e9) + 1e-6); });
     const pc = i => A[i].m === "P" ? ppsCost(i) : A[i].m === "F" ? fCost(i, A[i].n) : 0;
     const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
     /* nhóm FTE chung: các điểm cách nhau ≤ hubKm; số người nhỏ nhất sao cho (1) mỗi người làm + đi lại trong ca ≤ fteH giờ ngày đông,

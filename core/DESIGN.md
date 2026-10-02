@@ -65,6 +65,9 @@
 - **Có người mới lên hàng được:** nhóm FTE chung ở lại điểm tới khi xe lên hàng xong và rời, rồi mới đi điểm sau.
   - Mô phỏng nhóm và mô phỏng xe chạy đan nhau, lặp tới khi giờ khớp (`teamSim`). Có một vòng chốt cuối cho mọi nhóm cùng lúc.
   - Đã kiểm: 0 chặng nhóm rời trước xe, 0 chặng xe lên hàng trước khi nhóm tới.
+- **Nhận nhóm FTE chung theo từng điểm** (`teamLate = 0`): không điểm nào được trễ hơn so với khi dùng FTE riêng.
+  - Không còn lấy khoảng dư "tuyến hiện nay đã trễ" của cả tuyến. Trước đây các nhóm 1 người ôm 5 điểm ở Song Lô (North) dồn trễ tới 240 phút mà vẫn được nhận, vì tuyến hiện nay mô phỏng trễ 270 phút.
+  - Kết quả: không tuyến nào trễ quá 60 phút. Tiền người North +61 tr, South +30 tr trong 48 ngày.
 - **Bảng "FM Hub cover ≥ 2 điểm"** trên trang ghi điểm nào vào nhóm, điểm nào không và vì sao.
 - **Chỉnh tay** (hạn, giờ có hàng, số người, giờ xe) lưu trên trình duyệt và áp cho mọi lần mở trang. Có dải báo kèm nút "Bỏ tất cả chỉnh tay". Điểm chỉnh số người bị giữ FTE riêng.
 
