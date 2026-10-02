@@ -69,6 +69,9 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 Hiện trạng giữ đúng loại xe thật. Kế hoạch: sau khi tìm tuyến, từng tuyến (kể cả giữ nguyên) thử chọn cỡ xe rẻ nhất trong mọi loại (VAN, 1T25, 1T9, 5T, 8T — chưa có giới hạn theo vùng/kho); giữ nếu rẻ hơn và mô phỏng không trễ thêm, rồi bố trí người lại.
 Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đổi cỡ (`r.veh`); tuyến bị thay trong một nhóm thì tính vào nhóm, tuyến giữ nguyên hiện thành nhóm "Đổi cỡ xe".
 
+## Độ đầy xe
+Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe. Hiện dưới con số tiết kiệm (cả vùng, % chuyến chở chưa tới nửa xe) và trong từng tuyến. Có thể > 100%: tuyến mới chở tới tải cao nhất thường gặp (p95) của xe thật; `newFillMax` đặt trần (ví dụ 100%).
+
 ## Đường bộ thật
 `core/road.py` lấy km đường bộ và hình đường từ OSRM (bản đồ OpenStreetMap, miễn phí) cho cặp điểm–điểm, điểm–SOC cùng vùng; ghi vào data.js (`D.RD`).
 Có `D.RD` thì km (giá xe theo km, thời gian chạy ước tính, ghép tuyến, nhóm hub) dùng km đường bộ thay chim bay × 1,3; thời gian chạy vẫn = km ÷ tốc độ học từ chuyến thật

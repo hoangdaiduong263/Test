@@ -62,14 +62,17 @@
       return `<button type="button" role="tab" id="tab-${R}" aria-selected="${R === ST.R}" data-r="${R}">${R}${r ? `<small class="${total(r) >= 0 ? "pos" : "neg"}">${sg(total(r))}</small>` : ""}</button>`; }).join(""); }
 
   /* tóm tắt: một con số + vài sự thật */
-  function summary(r) { const V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
+  const pc = x => x == null ? "–" : Math.round(x * 100) + "%";
+  function summary(r) { const O = C.occRegion(r), V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
     const ch = V.pk.reduce((a, x) => a + x.routes.length, 0), late = r.T.filter(g => { const h = r.hc(g); return h && h.sim && h.sim.late > 0.5; }).length;
     $("sum").innerHTML = `<div class="hero"><div><div class="lab">Tiết kiệm · ${nd} ngày dữ liệu · ${r.R}</div>
       <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
       <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL)}</div></div>
       <ul class="facts"><li><b>${ch}</b> tuyến đổi</li><li class="${late ? "neg" : ""}"><b>${late}</b> tuyến trễ COT</li><li><b>${r.L1.teams.length}</b> nhóm người chung</li></ul>
       <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>
-      <div class="opts"><span class="muted">Lựa chọn thêm:</span><label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho đổi cỡ xe <span class="muted">(chọn xe rẻ nhất trong mọi loại cho từng tuyến, chỉ khi không trễ thêm)</span></label></div>`; }
+      <div class="opts"><div class="occ"><span class="muted">Độ đầy xe hiện nay</span> <b class="mono">${pc(O.now)}</b> <span class="muted" title="Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Có thể vượt 100% vì xe thật hay chở quá sức chở chuẩn.">sức chở chuẩn · ${pc(O.low)} chuyến chở chưa tới nửa xe</span>
+        ${O.plan != null ? `<span class="muted">→ kế hoạch</span> <b class="mono ${O.plan > O.now ? "pos" : ""}">${pc(O.plan)}</b>` : ""}</div>
+        <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho đổi cỡ xe <span class="muted">(${P.vehPlan ? "đang bật: mỗi tuyến chọn xe vừa tải nhất, chỉ khi rẻ hơn và không trễ thêm" : "đang tắt: giữ loại xe hiện nay — bật để model chọn xe vừa tải, xe đầy hơn"})</span></label></div>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -113,7 +116,7 @@
     const body = x => `<div class="body"><div class="cols">
           <section><h3>Giá trị · tr/kỳ</h3><dl class="kv">${x.isNew ? `<dt>Làm riêng · tiền xe</dt><dd class="${x.xs >= 0 ? "pos" : "neg"}">${sg(x.xs)}</dd><dt>Tiền người các điểm</dt><dd class="${x.ls >= 0 ? "pos" : "neg"}">${sg(x.ls)}</dd>
             <dt>Tuyến hiện nay</dt><dd class="tx">${x.from.map(b => esc(b.map(short).join(" + "))).join("<br>")}</dd>` : V.veh.includes(x) ? `<dt>Đổi cỡ xe</dt><dd class="pos">${sg(x.v)}</dd><dt>Xe/ngày hiện nay</dt><dd>${esc(x.asis)}</dd>` : `<dt>Đổi người · xe thêm</dt><dd class="${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</dd>`}
-            <dt>Xe/ngày</dt><dd>${C.planCost(x.g).t.toFixed(1)} · ${esc(C.mixLabel(C.planCost(x.g).mix))}</dd><dt>Người</dt><dd>${esc(ppl(x))}</dd></dl></section>
+            <dt>Độ đầy xe</dt><dd>${(() => { const a = C.occ(x.isNew ? x.from.flat() : x.g, false), b = C.occ(x.g, true); return `${pc(a)} → <b class="${b > a ? "pos" : ""}">${pc(b)}</b>`; })()}</dd><dt>Xe/ngày</dt><dd>${C.planCost(x.g).t.toFixed(1)} · ${esc(C.mixLabel(C.planCost(x.g).mix))}</dd><dt>Người</dt><dd>${esc(ppl(x))}</dd></dl></section>
           <section><h3>Rủi ro</h3>${riskHtml(x)}</section>
           <section><h3>Khác thực tế · giả định</h3>${notes(r, x)}</section></div>
           <details class="sch"><summary>Lịch ngày đông</summary>${scheduleTable(r, x.g)}</details></div>`;
@@ -129,7 +132,7 @@
     const html = V.pk.map(P0 => P0.routes.length === 1 ? item(P0.routes[0], vv(P0.net), P0.sideR ? `<span class="muted">gồm ${sg(P0.side)} người ở tuyến khác</span>` : "")
       : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>${side(P0)}${P0.vehV ? `<div class="gside muted">gồm ${sg(P0.vehV)} tr nhờ đổi cỡ xe</div>` : ""}
         ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < 0 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
-      + (V.veh.length ? `<div class="grp"><div class="gh"><span>Đổi cỡ xe · tuyến giữ nguyên</span><span class="mono ${V.vv >= 0 ? "pos" : "neg"}">${sg(V.vv)}</span></div>${V.veh.map(x => item(x, vv(x.v), `<span class="muted">${esc(x.asis)} → ${esc(x.plan)} xe/ngày</span>`, "in")).join("")}</div>` : "")
+      + (V.veh.length ? `<div class="grp"><div class="gh"><span>Đổi cỡ xe · tuyến giữ nguyên</span><span class="mono ${V.vv >= 0 ? "pos" : "neg"}">${sg(V.vv)}</span></div>${V.veh.map(x => item(x, vv(x.v), `<span class="muted">đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))} · ${esc(x.asis)} → ${esc(x.plan)} xe/ngày</span>`, "in")).join("")}</div>` : "")
       + (V.keep.length ? `<div class="grp"><div class="gh"><span>Giữ tuyến, đổi người / thêm xe (không do nhóm thay đổi nào)</span><span class="mono ${V.kv >= 0 ? "pos" : "neg"}">${sg(V.kv)}</span></div>${V.keep.map(x => item(x, vv(x.v), `<span class="muted">nhóm người chung xếp lại</span>`, "in")).join("")}</div>` : "");
     const nR = V.pk.reduce((a, x) => a + x.routes.length, 0);
     $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${nR} tuyến mới · ${V.nKeep} tuyến giữ nguyên · bấm để xem rủi ro &amp; giả định</span></header>
@@ -177,7 +180,7 @@
       <h3>FM Hub cover ≥ 2 điểm</h3>${H.length ? `<ul class="notes">${H.map(h => `<li><b>${esc(h.h)}</b> · ${h.pts.length} điểm${h.teams.length ? ` · nhóm ${h.teams.map(t => t.id).join(", ")}` : ""}${h.solo.length ? ` · <span class="muted">vẫn FTE riêng: ${h.solo.map(x => `${esc(short(x.i))} (${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub"))})`).join(", ")}</span>` : ""}</li>`).join("")}</ul>` : `<p class="muted">Không có.</p>`}</div>`; }
 
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
-  const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
+  const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "newFillMax", "Tuyến mới chở tối đa (0 = theo tải cao nhất thường gặp của xe thật)", "% sức chở chuẩn", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
     ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/kỳ", 1e6], ["Xe", "minPct", "Thay đổi phải lợi ít nhất", "% tiền xe hiện nay", 1], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1], ["Xe", "vehMin", "As-is: chỉ dùng loại xe chiếm ≥", "% chuyến", 1], ["Xe", "vehPlan", "Kế hoạch được đổi cỡ xe (1 = mọi loại, 0 = giữ loại xe hiện nay)", "", 1], ["Xe", "newPen", "Tuyến mới đắt hơn model (thận trọng)", "%", 1], ["Xe", "socGrp", "Tiền xe: chia đơn theo nhóm SOC đích (1 = bật)", "", 1], ["Xe", "socSim", "Mô phỏng giờ: xe riêng theo nhóm SOC (1 = bật)", "", 1], ["Xe", "socP", "Nhóm SOC có xe riêng khi có mặt ≥", "% ngày", 1], ["Xe", "split", "Lượt trễ: chia điểm cho các xe (1 = bật)", "", 1], ["Xe", "splitExtra", "Chia điểm: thêm tối đa", "xe/lượt", 1],
     ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Xe", "closeMin", "Chốt xe sau khi hàng cuối sẵn", "phút", 1], ["Xe", "early", "Xe đi sớm, dồn đơn chưa xong sang COT sau (1 = bật, 0 = chờ đủ đơn)", "", 1], ["Xe", "rollMax", "Mỗi lượt-điểm dồn tối đa", "% đơn", 1], ["Người", "maxExtra", "Tuyến trễ: thêm FTE riêng tối đa mỗi điểm", "người", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "socSt", "Số SOC phải chia theo chuyến thật (1) / theo bảng luồng (0)", "", 1], ["Năng suất (theo đặc điểm seller)", "socMin", "SOC tính là phải chia khi nhận ≥", "% đơn", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
