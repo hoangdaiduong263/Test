@@ -90,6 +90,27 @@ function Calib(C, REF) {
     const rep = { cost: r1 > 0 ? m1c / r1 * 100 : 0, trips: r1t > 0 ? m1t / r1t * 100 : 0 };
     return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, wNoise, rep, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,
       ok: { rep: rep.cost <= T.calRep && rep.trips <= T.calRep, cost: Math.abs(gap) <= T.calCost && wRoute <= T.calRoute, time: ph.depSys != null && ph.depSys >= T.calShare && ph.socSys >= T.calShare }, src: sources(C.nodes(R)) }; }
-  return { T, run };
+  /* DÂY CHUYỀN 1–4 ĐANG DÙNG KHÁC DÂY CHUYỀN 0 THẾ NÀO — đo trên các tuyến hiện nay, người như mô hình hiện nay (r.L0), ngày đông */
+  function gap(R, r) { const out = {}, stops = [], socs = [], tk = [];
+    r.T0.forEach(g => { const h = r.L0.routes[C.key(g)]; if (!h || !h.sim) return;
+      h.sim.rows.forEach(s => { const last = s.st[s.st.length - 1];
+        s.st.forEach(z => { const W = C.waves(z.i), w = W && W.w.find(x => x.k === z.k), qT = z.q / Math.max(1, s.nTr);
+          stops.push({ i: z.i, k: z.k, d0: C.dwell(z.i, qT), d1: C.dwellAt(z.i, qT, z.arr), arr: z.arr, dep: z.dep, rArr: w ? w.arr : null, rDep: w ? w.dep : null, ready: z.ready, dl: z.dl, late: z.dep - z.dl }); });
+        socs.push({ a: C.toSoc(last.i), b: C.toSocAt(last.i, last.dep) }); });
+      /* số xe ngày đông: mô phỏng giờ (tổng xe các lượt) vs công thức tiền xe & thật ở ngày có đơn gần ngày đông nhất */
+      const pk = g.reduce((a, i) => a + C.volPk(i), 0), days = C.DAYS.filter(d => ok(d) && g.some(i => (C.S[i].v[d] || 0) > 0));
+      if (days.length) { const d = days.reduce((b, x) => Math.abs(g.reduce((a, i) => a + (C.S[i].v[x] || 0), 0) - pk) < Math.abs(g.reduce((a, i) => a + (C.S[i].v[b] || 0), 0) - pk) ? x : b, days[0]);
+        const m = C.routeDay(g, d); tk.push({ sim: h.sim.rows.reduce((a, s) => a + s.nTr, 0), cost: m ? m.t : 0, real: g.reduce((a, i) => a + realTrips(i, d), 0) }); } });
+    const md = a => med(a), pin = (L, f, x) => L.length ? L.filter(v => Math.abs(f(v)) <= x).length / L.length * 100 : null;
+    const sd = stops.filter(z => z.rDep != null);
+    out.dwell = { n: stops.length, med: md(stops.map(z => z.d1 - z.d0)), big: pin(stops, z => z.d1 - z.d0, 15) };
+    out.soc = { n: socs.length, med: md(socs.map(z => z.b - z.a)), big: pin(socs, z => z.b - z.a, 15) };
+    out.dep = { n: sd.length, med: md(sd.map(z => z.dep - z.rDep)), in15: pin(sd, z => z.dep - z.rDep, 15), in60: pin(sd, z => z.dep - z.rDep, 60) };
+    out.arr = { med: md(sd.map(z => z.arr - z.rArr)), in15: pin(sd, z => z.arr - z.rArr, 15) };
+    out.late = { n: stops.length, late: stops.filter(z => z.late > 0.5).length, worst: Math.max(0, ...stops.map(z => z.late)) };
+    out.contra = stops.filter(z => z.ready > z.dl + 0.5 && z.rDep != null && z.rDep <= z.dl + 15).length;   // mô phỏng: hàng sẵn sau hạn, trong khi thật xe đã rời trước / đúng hạn
+    out.trucks = { sim: tk.reduce((a, x) => a + x.sim, 0), cost: tk.reduce((a, x) => a + x.cost, 0), real: tk.reduce((a, x) => a + x.real, 0) };
+    return out; }
+  return { T, run, gap };
 }
 if (typeof module !== "undefined") module.exports = { Calib };

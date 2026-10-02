@@ -15,7 +15,7 @@
   ST.R = ST.R || REGS[0];
 
   const res = R => ST.res[R] || (ST.res[R] = C.run(R));
-  const K = Calib(C, REF), CAL = {}; ST.line = "1"; try { ST.line = localStorage.getItem("d2s-core-line") || "1"; } catch (e) {}
+  const K = Calib(C, REF), CAL = {}, GAP = {}; ST.line = "1"; try { ST.line = localStorage.getItem("d2s-core-line") || "1"; } catch (e) {}
   /* hạn COT chỉnh tay: lưu trên trình duyệt, nạp lại khi mở trang */
   try { const o = JSON.parse(localStorage.getItem("d2s-core-dl") || "{}"), ld = (M, f) => Object.entries(M || {}).forEach(([n, m]) => Object.entries(m).forEach(([k, v]) => f(n, +k, v)));
     if (o.dl || o.av || o.hc || o.tr) { ld(o.dl, C.setDeadline); ld(o.av, C.setAvail); Object.entries(o.hc || {}).forEach(([n, v]) => C.setHC(n, v)); ld(o.tr, C.setTruck); } else ld(o, C.setDeadline); } catch (e) {}
@@ -129,16 +129,33 @@
       <div class="step res"><h2>Dư địa thấy ngay</h2><div class="big">${pf(p.waitBig)}</div>
         <dl class="kv"><dt>Lần dừng xe đứng chờ &gt; 30' ngoài thời gian chất</dt><dd>${pf(p.waitBig)}</dd></dl>
         <p class="note2">Model vật lý không đoán được phần chờ này. Đây là thời gian xe nằm ở seller, đòn bẩy cho to-be.</p></div></div>
+      ${gapCard(R)}
       <section class="card"><header><h2>Nguồn dữ liệu · ${R}</h2><span class="muted" style="font-size:12px">as-is bám data, thiếu thì giả định, không sửa data gốc</span></header>
         <div class="scroll"><table><thead><tr><th>Dữ liệu</th><th class="r">Điểm có data</th><th class="r">Điểm giả định</th><th>Nguồn · cách giả định</th></tr></thead><tbody>${c.src.map(([n, a, b, w]) =>
           `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div></section>
       <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất · kiểm định độc lập</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
         <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Ngày</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
           `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.nd}${x.nd < 4 ? ' <span class="muted">ít dữ liệu</span>' : ""}</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
+  /* bảng: dây chuyền 1–4 đang dùng khác dây chuyền 0 thế nào (đo trên tuyến hiện nay, ngày đông) */
+  function gapCard(R) { const G = GAP[R] && GAP[R].g; if (!G) return ""; const m = x => x == null ? "–" : `${x > 0 ? "+" : x < 0 ? "−" : ""}${Math.abs(Math.round(x))}'`, p = x => x == null ? "–" : Math.round(x) + "%";
+    const sev = (bad, txt) => `<td class="${bad ? "neg" : "pos"}">${txt}</td>`;
+    const rows = [
+      ["Tiền xe & số chuyến/ngày", "công thức đã hiệu chỉnh từng tuyến (lượt, lấp đầy, loại xe, hệ số)", "cùng công thức", sev(false, "giống nhau")],
+      ["Số xe mỗi lượt khi mô phỏng giờ", "chuyến thật", "tính lại theo sức chở từng lượt, ngày đông, mọi lượt đều chạy", sev(Math.abs(G.trucks.sim - G.trucks.real) > 0.1 * G.trucks.real, `mô phỏng ${Math.round(G.trucks.sim)} xe · công thức tiền ${Math.round(G.trucks.cost)} · thật ${Math.round(G.trucks.real)} (ngày đơn gần ngày đông nhất)`)],
+      ["Giờ xe tới điểm", "giờ thật", "model tự xếp (tới vừa lúc hàng sẵn)", sev(G.arr.in15 < 80, `trung vị ${m(G.arr.med)} so với thật · ${p(G.arr.in15)} lượt lệch ≤ 15'`)],
+      ["Giờ xe rời điểm", "giờ thật tới + thời gian đứng theo giờ", "model tự xếp", sev(G.dep.in15 < 80, `trung vị ${m(G.dep.med)} · ${p(G.dep.in15)} lệch ≤ 15' · ${p(G.dep.in60)} lệch ≤ 60'`)],
+      ["Thời gian xe đứng ở điểm", "theo khung giờ xe tới (gồm cả chờ hàng)", "một con số cả ngày (chờ hàng do mô phỏng tự sinh)", sev(G.dwell.big < 80, `trung vị chênh ${m(G.dwell.med)} · ${p(G.dwell.big)} lượt chênh ≤ 15'`)],
+      ["Thời gian chạy về SOC", "theo giờ xuất phát", "một con số cả ngày", sev(G.soc.big < 80, `trung vị chênh ${m(G.soc.med)} · ${p(G.soc.big)} chuyến chênh ≤ 15'`)],
+      ["Giờ có hàng & hạn COT", "không dùng", "giờ có hàng suy từ giờ xe thật tới; hạn = Packed / giờ đóng (p90 giờ xe tới muộn nhất)", sev(G.contra > 0, G.contra ? `${G.contra} lượt-điểm mô phỏng hàng sẵn sau hạn trong khi thật xe vẫn đi kịp — giả định mâu thuẫn` : "không thấy mâu thuẫn")],
+      ["Trễ COT của chính tuyến hiện nay", "–", "mô phỏng tuyến hiện nay với người hiện nay", sev(G.late.late > 0, `${G.late.late}/${G.late.n} lượt-điểm trễ · nặng nhất ${Math.round(G.late.worst)}'`)],
+      ["Người ở seller", "không kiểm định", "model tự bố trí cho cả \"hiện nay\"", sev(true, "chưa có dữ liệu người thật để so")],
+      ["Ngày dùng để kiểm giờ", "mọi ngày", "một ngày đông (đơn p90)", sev(false, "cố ý: kiểm ngày khó nhất")]];
+    return `<section class="card"><header><h2>Dây chuyền 1–4 đang dùng khác dây chuyền 0 thế nào · ${R}</h2><span class="muted" style="font-size:12px">đo trên các tuyến hiện nay · đỏ = cần hiệu chỉnh</span></header>
+      <div class="scroll"><table><thead><tr><th>Hạng mục</th><th>Dây chuyền 0 (kiểm định)</th><th>Dây chuyền 1–4 (plan, người, live)</th><th>Chênh lệch đo được</th></tr></thead><tbody>${rows.map(r => `<tr><td><b>${r[0]}</b></td><td class="muted">${r[1]}</td><td class="muted">${r[2]}</td>${r[3]}</tr>`).join("")}</tbody></table></div></section>`; }
   function lines() { document.querySelectorAll("#lines [data-line]").forEach(b => b.setAttribute("aria-pressed", b.dataset.line === ST.line)); $("calib").hidden = ST.line !== "0"; $("plan").hidden = ST.line === "0"; }
 
   function render() { tabs(); lines(); const R = ST.R;
-    if (ST.line === "0") { if (!CAL[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { CAL[R] = K.run(R); document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
+    if (ST.line === "0") { if (!CAL[R] || !GAP[R] || GAP[R].r !== ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { if (!CAL[R]) CAL[R] = K.run(R); const rr = res(R); GAP[R] = { r: rr, g: K.gap(R, rr) }; document.querySelector(".wrap").classList.remove("busy"); render(); }, 20); return; } calib(R); return; }
     if (!ST.res[R]) { document.querySelector(".wrap").classList.add("busy"); setTimeout(() => { res(R); document.querySelector(".wrap").classList.remove("busy"); render(); queue(); }, 20); return; }
     const r = ST.res[R]; ovr(); flow(r); packs(r); teams(r); bans(r);
     if (ST.ovOpen) { const m = ST.ovOpen; ST.ovOpen = null; openOv(r, m); } }
@@ -157,7 +174,7 @@
   document.addEventListener("click", e => { const t = e.target;
     const ln = t.closest("[data-line]"); if (ln) { ST.line = ln.dataset.line; try { localStorage.setItem("d2s-core-line", ST.line); } catch (x) {} render(); return; }
     const ovb = t.closest("[data-ov]"); if (ovb) { openOv(ST.res[ST.R], ovb.dataset.ov); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
-    const tb = t.closest("[data-r]"); if (tb) { ST.ovOpen = $("live").hidden ? null : ST.ov || null; LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
+    const tb = t.closest("[data-r]"); if (tb) {  ST.ovOpen = $("live").hidden ? null : ST.ov || null; LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
     if (t.id === "ovr-clr") { OVS().forEach(([, M]) => Object.keys(M).forEach(k => { delete M[k]; })); try { localStorage.removeItem("d2s-core-dl"); } catch (x) {}
       LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     const tmb = t.closest("[data-team]"); if (tmb) { ST.ov = null; const r = ST.res[ST.R], tm = r.L1.teams.find(x => x.id === +tmb.dataset.team); if (tm) { LV.openTeam(r, tm, `Nhóm FTE chung ${tm.id} · ${tm.hub} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
