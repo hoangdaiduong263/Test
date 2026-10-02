@@ -125,9 +125,9 @@
       <section class="card"><header><h2>Nguồn dữ liệu · ${R}</h2><span class="muted" style="font-size:12px">as-is bám data, thiếu thì giả định, không sửa data gốc</span></header>
         <div class="scroll"><table><thead><tr><th>Dữ liệu</th><th class="r">Điểm có data</th><th class="r">Điểm giả định</th><th>Nguồn · cách giả định</th></tr></thead><tbody>${c.src.map(([n, a, b, w]) =>
           `<tr><td>${esc(n)}</td><td class="r mono">${a}</td><td class="r mono ${b ? "neg" : ""}">${b}</td><td class="muted">${esc(w)}</td></tr>`).join("")}</tbody></table></div></section>
-      <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
-        <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
-          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
+      <section class="card"><header><h2>Tuyến hiện nay lệch tiền nhiều nhất · kiểm định độc lập</h2><span class="muted" style="font-size:12px">tr/kỳ · chuyến/ngày</span></header>
+        <div class="scroll"><table><thead><tr><th>Tuyến hiện nay</th><th class="r">Thực tế</th><th class="r">Mô hình</th><th class="r">Lệch</th><th class="r">Ngày</th><th class="r">Chuyến/ngày thật → mô hình</th></tr></thead><tbody>${c.rows.slice(0, 15).map(x =>
+          `<tr><td>${rt(x.g)}</td><td class="r mono">${tr(x.rc)}</td><td class="r mono">${tr(x.mc)}</td><td class="r mono ${Math.abs(x.gap) > T.calRoute ? "neg" : "pos"}">${x.gap >= 0 ? "+" : ""}${x.gap.toFixed(0)}%</td><td class="r mono">${x.nd}${x.nd < 4 ? ' <span class="muted">ít dữ liệu</span>' : ""}</td><td class="r mono">${x.rtd.toFixed(1)} → ${x.mtd.toFixed(1)}</td></tr>`).join("")}</tbody></table></div></section>`; }
   function lines() { document.querySelectorAll("#lines [data-line]").forEach(b => b.setAttribute("aria-pressed", b.dataset.line === ST.line)); $("calib").hidden = ST.line !== "0"; $("plan").hidden = ST.line === "0"; }
 
   function render() { tabs(); lines(); const R = ST.R;

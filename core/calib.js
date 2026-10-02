@@ -76,7 +76,7 @@ function Calib(C, REF) {
   function evalF(R, folds) { const T0 = C.baseRoutes(R), days = [], stops = [], socs = [];
     try { for (const [fit, test] of folds) { C.setFit(C.DAYS.filter(fit)); T0.forEach(g => routeDays(g, fit, test, days)); physics(R, test, stops, socs); } } finally { C.setFit(null); }
     const by = new Map(); days.forEach(x => { const o = by.get(x.g) || { g: x.g, rc: 0, mc: 0, rt: 0, mt: 0, n: 0 }; o.rc += x.rc; o.mc += x.mc; o.rt += x.rt; o.mt += x.mt; o.n++; by.set(x.g, o); });
-    const rows = [...by.values()].map(o => ({ g: o.g, rc: o.rc, mc: o.mc, gap: o.rc > 0 ? (o.mc - o.rc) / o.rc * 100 : 0, rtd: o.rt / o.n, mtd: o.mt / o.n })).sort((a, b) => Math.abs(b.mc - b.rc) - Math.abs(a.mc - a.rc));
+    const rows = [...by.values()].map(o => ({ g: o.g, rc: o.rc, mc: o.mc, gap: o.rc > 0 ? (o.mc - o.rc) / o.rc * 100 : 0, rtd: o.rt / o.n, mtd: o.mt / o.n, nd: o.n })).sort((a, b) => Math.abs(b.mc - b.rc) - Math.abs(a.mc - a.rc));
     const sum = f => days.reduce((a, x) => a + f(x), 0), rc = sum(x => x.rc), mc = sum(x => x.mc), rT = sum(x => x.rt), nDay = Math.max(1, new Set(days.map(x => x.d)).size);
     const gap = rc > 0 ? (mc - rc) / rc * 100 : 0, wRoute = rc > 0 ? rows.reduce((a, r) => a + Math.abs(r.mc - r.rc), 0) / rc * 100 : 0;
     const wDay = rc > 0 ? sum(x => Math.abs(x.mc - x.rc)) / rc * 100 : 0, wTrip = rT > 0 ? sum(x => Math.abs(x.mt - x.rt)) / rT * 100 : 0, wStat = rT > 0 ? sum(x => Math.abs(x.st - x.rt)) / rT * 100 : 0;

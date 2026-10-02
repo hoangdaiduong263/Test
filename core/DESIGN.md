@@ -122,4 +122,12 @@ Mỗi ngưỡng là tham số:
       - KhoBim 3Mien tăng đơn 10 lần và chuyển sang đi ghép;
       - POSY chở ít đơn/xe hơn.
     - Học từ ngày gần nhất không giúp (ít ngày học hơn, mất các ngày sale để model học theo).
+  - **Gỡ các tuyến còn lệch > 10%** (Elmich, Tiki Bình Tân, Innisfree, Kho Nuty, SaoThaiDuong, Fastock, ECV-HOME+HISEN):
+    - Đơn ít hơn mức thấp nhất từng có xe thì khả năng có xe giảm theo tỷ lệ (`vRunOn`).
+    - Kiểu xe theo lịch chỉ được chọn khi có ≥ 8 ngày học (`nbDays`). Số xe theo lịch = trung vị (`nbPct`).
+    - Số xe tách theo SOC = trung bình, không làm tròn (`lgMean`).
+    - Sức chở tính theo tỷ lệ hàng to bình quân của điểm, không theo từng ngày (`betaAvg`). Tỷ lệ hàng to trong file volume nhảy 21–62% giữa các ngày, trong khi xe thật không đổi.
+    - Kết quả: không còn tuyến nào lệch > 10%, trừ 2 tuyến chỉ có 1 ngày dữ liệu (không kiểm định độc lập được).
+    - Chấm độc lập ngày lẻ/chẵn, sai số theo tuyến: HN 0,7%, HCM 1,9%, North 1,7%, South 1,5%.
+    - Dự báo 1–18/9 theo tuyến: 7,5% / 11,5% / 12,1% / 7,5%.
   - **Chi phí đã tắt:** `dropSur` (xe trả nhiều SOC +%/SOC) mặc định 0. Bảng giá không có khoản này, nên nó chuyển sang danh sách chờ duyệt.

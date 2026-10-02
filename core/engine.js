@@ -44,6 +44,11 @@ function Core(D, REF) {
     dwBin: 60,         // as-is: thời gian xe đứng học riêng theo khung giờ xe tới (phút)
     polSel: 1,         // as-is: mỗi tuyến chọn cách chọn xe khớp nhất trên ngày học (0 = luôn cố định theo tỷ lệ)
     thrOn: 1,          // as-is: lượt phụ chạy theo ngưỡng đơn (0 = theo tỷ lệ ngày chạy)
+    lgMean: 1,         // as-is: số xe tách theo SOC mỗi lượt = trung bình (không làm tròn) thay vì trung vị
+    vRunOn: 1,         // as-is: đơn ít hơn mức thấp nhất từng có xe thì khả năng có xe giảm theo tỷ lệ
+    nbPct: 50,         // as-is: xe theo lịch = phân vị % số xe thật mỗi lượt
+    nbDays: 8,         // as-is: cần ≥ ngày học để được chọn kiểu xe theo lịch
+    betaAvg: 1,        // as-is: sức chở tính theo tỷ lệ hàng to bình quân của điểm (ngày học), không theo từng ngày
     calFac: 1,         // as-is: hệ số chuyến & giá theo tuyến học từ ngày học (0 = tắt)
     coMin: 30,         // as-is: hai điểm đi chung ≥ % số chuyến (của điểm ít chuyến hơn) thì là một tuyến hiện nay
     vehMin: 10,        // as-is: loại xe chiếm ≥ % số chuyến thật của điểm mới được dùng
@@ -165,12 +170,14 @@ function Core(D, REF) {
     const nv = Math.max(nd, Dv.length);
     /* sr: phần đơn của lượt trong những ngày lượt chạy; thr: ngưỡng đơn (nếu có) */
     w.forEach(x => { const L = byC[x.k], uR = L.reduce((a, y) => a + (upD[y.d] || 0), 0); x.p = Math.min(1, L.length / nv); x.thr = thrOf[x.k] ?? null;
-      x.sr = uR > 0 ? L.reduce((a, y) => a + y.up, 0) / uR : 1; x.sh = upAll > 0 ? L.reduce((a, y) => a + y.up, 0) / upAll : 1 / ks.length; x.lg = Math.max(1, Math.round(med(L.map(y => y.ds.size)))); x.nb = med(L.map(y => y.n)); });
+      x.sr = uR > 0 ? L.reduce((a, y) => a + y.up, 0) / uR : 1; x.sh = upAll > 0 ? L.reduce((a, y) => a + y.up, 0) / upAll : 1 / ks.length; x.lg = Math.max(1, P.lgMean ? L.reduce((a, y) => a + y.ds.size, 0) / L.length : Math.round(med(L.map(y => y.ds.size)))); x.nb = pct(L.map(y => y.n), P.nbPct); });
     /* legs: số xe tách theo SOC đích trong một lượt (trung vị); spt: số SOC trên một chuyến (xe trả nhiều SOC) */
     /* thời gian đứng theo khung giờ xe tới: cùng hệ số phút/đơn, phần cố định riêng mỗi khung (≥ 3 lần dừng) */
     const fd = fitDwell(dw), dk = {}; if (fd) dw.forEach(x => { (dk[x[2]] = dk[x[2]] || []).push(x[1] - fd.rate * x[0]); });
     const dwk = {}; for (const k in dk) if (dk[k].length >= 3) dwk[k] = Math.min(240, Math.max(0, med(dk[k])));
-    return STC[i] = { w, dw: fd, dwk, legs: Math.max(1, Math.round(med(legs) || 1)), spt: Math.max(1, Math.round(med(spt) || 1)) }; }
+    /* vRun: số đơn thấp nhất trong ngày mà điểm từng có xe (ngày học) — ít hơn thì khả năng có xe giảm theo tỷ lệ */
+    const ran = Dv.filter(d => ((s.tc && s.tc[d]) || []).length), vRun = ran.length ? Math.min(...ran.map(d => s.v[d])) : 0;
+    return STC[i] = { w, dw: fd, dwk, vRun, nFit: Dv.length, legs: Math.max(1, Math.round(med(legs) || 1)), spt: Math.max(1, Math.round(med(spt) || 1)) }; }
   const nWaves = i => { const w = waves(i); return w ? w.w.length : 1; };
   /* lượt xe THẬT của điểm trong một ngày (theo COT): giờ tới sớm nhất, giờ rời muộn nhất, số xe, số đơn lên */
   function dayWaves(i, d) { const W = {}; ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t) return;
@@ -253,7 +260,8 @@ function Core(D, REF) {
     if (real <= 0 || !days.length) return CAL[i];
     const rC = {}; days.forEach(d => { rC[d] = g.reduce((b, j) => b + realCost(j, d), 0); });
     let best = null;
-    for (const pol of P.vehFree ? [1] : P.polSel ? [0, 1, 2, 3, 4, 5] : [0]) { const trips = f => days.reduce((a, d) => { const x = routeDay(g, d, f, pol); return a + (x ? x.t : 0); }, 0);
+    const nF = Math.min(...g.map(j => (waves(j) || {}).nFit || 0));
+    for (const pol of P.vehFree ? [1] : P.polSel ? (nF >= P.nbDays ? [0, 1, 2, 3, 4, 5] : [0, 1, 2]) : [0]) { const trips = f => days.reduce((a, d) => { const x = routeDay(g, d, f, pol); return a + (x ? x.t : 0); }, 0);
       let lo = 0.05, hi = 8;
       /* xe theo lịch (pol ≥ 3): sức chở = sức chở vật lý, không chỉnh theo tổng chuyến */
       if (pol >= 3) hi = Math.max(P.fill / 100, g.reduce((a, j) => Math.max(a, fillCap(j)), 0));
@@ -271,6 +279,8 @@ function Core(D, REF) {
     const tf = P.calFac && mT > 0 ? cl(real / mT, 0.3, 3) : 1, cf = P.calFac && mC > 0 ? cl(rCs / (mC * tf), 0.5, 2) : 1;
     g.forEach(j => { CAL[j] = best.f; POL[j] = best.pol; TF[j] = tf; CF[j] = cf; }); return CAL[i]; }
   const polOf = i => { fillOf(i); return POL[i]; };
+  /* tỷ lệ hàng to bình quân của điểm trên ngày học (tỷ lệ theo ngày trong file volume dao động mạnh, xe thật không đổi theo) */
+  const BF = {}; const betaFit = i => { if (i in BF) return BF[i]; let v = 0, b = 0; for (const d of FD()) { v += S[i].v[d] || 0; b += S[i].b[d] || 0; } return BF[i] = v > 0 ? b / v : 0; };
   /* sức chở vật lý của điểm: tải cao nhất thường gặp (p95) của xe thật = đơn lên ở các điểm trong mạng ÷ sức chứa 100% của loại xe; không dưới P.fill.
      Tuyến mới (ghép) dùng min(mức đã chỉnh, sức chở vật lý) — tuyến hiện nay chưa bao giờ đầy xe thì không được coi là xe chở vô hạn */
   const FCAP = {};
@@ -315,11 +325,13 @@ function Core(D, REF) {
       /* lượt chạy hôm nay: r = 1/0 theo ngưỡng đơn, không có ngưỡng thì r = tỷ lệ ngày chạy (kỳ vọng); đơn chia theo phần đơn khi chạy, chuẩn hoá trong ngày */
       const L = W ? W.w : [{ k: 0, sr: 1, p: 1, lg: 1, nb: 0, thr: null }], r = L.map(x => x.thr != null ? (v >= x.thr ? 1 : 0) : x.p);
       if (!r.some(x => x > 0)) r[L.reduce((a, x, j) => x.p > L[a].p ? j : a, 0)] = 1;
+      const rho = P.vRunOn && W && W.vRun > 0 ? Math.min(1, v / W.vRun) : 1; for (let j = 0; j < r.length; j++) r[j] *= rho;
       const nz = L.reduce((a, x, j) => a + r[j] * x.sr, 0) || 1;
       L.forEach((x, j) => { if (r[j] <= 0) return; const o = K[x.k] || (K[x.k] = { q: 0, p: 0, lg: 1, nb: 0 }); o.q += v * r[j] * x.sr / nz; o.p = Math.max(o.p, r[j]); o.lg = Math.max(o.lg, x.lg); o.nb = Math.max(o.nb, x.nb || 0); }); });
     /* mỗi lượt: khi chạy chở q ÷ p đơn, tách lg xe theo SOC, mỗi xe chọn đội xe rẻ nhất trong loại xe đang dùng; kỳ vọng theo tỷ lệ ngày lượt chạy */
-    const R = S[act[0]].R, km = tripKm(act), fl = flo || (isBase(g) ? fillOf(g[0]) : grpFill(act, d)), ks = vehSet(act), pl = pol ?? polOf(act.reduce((a, i) => S[i].v[d] > S[a].v[d] ? i : a, act[0])), beta = N > 0 ? b / N : 0, mix = {}; let c = 0, t = 0, legs = 1;
-    Object.values(K).forEach(o => { if (o.q <= 0 || o.p <= 0) return; const f = fleet(o.q / o.p / o.lg, beta, R, km, fl, ks, pl % 3), w = o.p * (pl >= 3 ? Math.max(o.nb, f.t * o.lg) / Math.max(1e-9, f.t) : o.lg); c += f.c * w; t += f.t * w; legs = Math.max(legs, o.lg);
+    const R = S[act[0]].R, km = tripKm(act), fl = flo || (isBase(g) ? fillOf(g[0]) : grpFill(act, d)), ks = vehSet(act), pl = pol ?? polOf(act.reduce((a, i) => S[i].v[d] > S[a].v[d] ? i : a, act[0])), beta = N > 0 ? (P.betaAvg ? act.reduce((a, i) => a + S[i].v[d] * betaFit(i), 0) : b) / N : 0, mix = {}; let c = 0, t = 0, legs = 1;
+    Object.values(K).forEach(o => { if (o.q <= 0 || o.p <= 0) return;
+      const f = fleet(o.q / o.p / o.lg, beta, R, km, fl, ks, pl % 3), w = o.p * (pl >= 3 ? Math.max(o.nb, f.t * o.lg) / Math.max(1e-9, f.t) : o.lg); c += f.c * w; t += f.t * w; legs = Math.max(legs, o.lg);
       Object.entries(f.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n * w; }); });
     const sur = 1 + P.dropSur / 100 * (spt - 1), net = act.reduce((a, i) => a + S[i].v[d] * netOf(i, g), 0) / N;
     Object.keys(mix).forEach(v => { mix[v] *= net; });
@@ -537,7 +549,7 @@ function Core(D, REF) {
     return { R, T0, T, iters, ban: ban.map(key).concat(left.map(key)), packs: packs(T0, T), hc, L0, L1,
       truck: { real, base: sum(T0), plan: sum(T) }, lab: { base: L0.lab, plan: L1.lab }, nodes: N }; }
 
-  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, PW, VU, NET, BR].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
+  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
   return { DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; } };
 }
