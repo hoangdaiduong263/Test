@@ -62,6 +62,9 @@
   - Mỗi người: làm + đi lại ≤ 7 giờ.
   - Mọi tuyến xe vẫn kịp COT.
   - Chỉ gom khi rẻ hơn FTE riêng.
+- **Có người mới lên hàng được:** nhóm FTE chung ở lại điểm tới khi xe lên hàng xong và rời, rồi mới đi điểm sau.
+  - Mô phỏng nhóm và mô phỏng xe chạy đan nhau, lặp tới khi giờ khớp (`teamSim`). Có một vòng chốt cuối cho mọi nhóm cùng lúc.
+  - Đã kiểm: 0 chặng nhóm rời trước xe, 0 chặng xe lên hàng trước khi nhóm tới.
 - **Bảng "FM Hub cover ≥ 2 điểm"** trên trang ghi điểm nào vào nhóm, điểm nào không và vì sao.
 - **Chỉnh tay** (hạn, giờ có hàng, số người, giờ xe) lưu trên trình duyệt và áp cho mọi lần mở trang. Có dải báo kèm nút "Bỏ tất cả chỉnh tay". Điểm chỉnh số người bị giữ FTE riêng.
 

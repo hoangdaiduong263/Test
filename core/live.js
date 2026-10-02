@@ -39,7 +39,7 @@ function Live(C, root, opts) {
     const t0 = Math.floor((Math.min(...ev.map(e => e.t)) - 20) / 30) * 30, t1 = Math.ceil((Math.max(...ev.map(e => e.t)) + 20) / 30) * 30;
     /* hành trình của từng nhóm FTE chung trên bản đồ (live theo nhóm: chỉ nhóm đó) — từng chặng: đi đường from → i, rồi chờ hàng / sort tại i */
     const tracks = []; teams.forEach(t => { if (opt.team && t.id !== opt.team.id) return;
-      const segs = t.seg.filter(sg => inP.has(sg.i)).map(sg => { const mv = sg.from != null && sg.from !== sg.i && inP.has(sg.from) ? C.travel(sg.from, sg.i) : 0; return { i: sg.i, k: sg.k, from: sg.from, start: sg.start, end: sg.end, leave: sg.leave, mv }; }).sort((a, b) => a.start - b.start);
+      const segs = t.seg.filter(sg => inP.has(sg.i)).map(sg => { const mv = sg.from != null && sg.from !== sg.i && inP.has(sg.from) ? C.travel(sg.from, sg.i) : 0; return { i: sg.i, k: sg.k, from: sg.from, start: sg.start, end: sg.end, hold: sg.hold ?? sg.end, leave: sg.leave, mv }; }).sort((a, b) => a.start - b.start);
       if (segs.length) tracks.push({ id: t.id, n: t.n, segs }); });
     return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes, team: opt.team || null, tracks };
   }
@@ -67,12 +67,13 @@ function Live(C, root, opts) {
     const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
     const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
     for (let t = Math.ceil(M.t0 / 120) * 120; t <= M.t1; t += 120) { el("line", { x1: x(t), x2: x(t), y1: 0, y2: H - 16, class: "lv-grid" }, svg); el("text", { x: x(t), y: H - 4, class: "lv-ax c" }, svg).textContent = hm(t); }
-    /* dải của nhóm FTE chung: di chuyển (xám) · sort tại điểm (màu) · ▼ giờ xe rời điểm đó (đỏ nếu trễ) — cùng trục giờ với tồn */
+    /* dải của nhóm FTE chung: di chuyển (xám) · sort tại điểm (màu) · ở lại cho xe lên hàng (nhạt) · ▼ giờ xe rời điểm đó (đỏ nếu trễ) — cùng trục giờ với tồn */
     if (M.team) { const t = M.team, y = 6, lg = el("g", {}, svg);
       el("text", { x: 0, y: y + 14, class: "lv-lab l" }, lg).textContent = `Nhóm ${t.id} · ${t.n} người`;
       el("line", { x1: lw, x2: W - 8, y1: y + 10, y2: y + 10, class: "lv-base" }, lg);
       t.seg.forEach(sg => { const mv = sg.from != null && sg.from !== sg.i ? C.travel(sg.from, sg.i) : 0;
         if (mv) el("rect", { x: x(sg.leave), y: y + 6, width: Math.max(1, x(sg.leave + mv) - x(sg.leave)), height: 8, class: "lv-tmv" }, lg);
+        if ((sg.hold ?? sg.end) > sg.end + 0.5) el("rect", { x: x(sg.end), y: y + 4, width: Math.max(1, x(sg.hold) - x(sg.end)), height: 12, class: "lv-thold" }, lg);
         const bw = Math.max(2, x(sg.end) - x(sg.start)); el("rect", { x: x(sg.start), y: y + 2, width: bw, height: 16, rx: 3, class: "lv-tsort" }, lg);
         if (bw > 34) el("text", { x: x(sg.start) + 3, y: y + 14, class: "lv-tlab" }, lg).textContent = short(sg.i).slice(0, Math.floor(bw / 6));
         const d = M.dls.find(z => z.i === sg.i && z.k === sg.k); if (d) el("path", { d: `M${x(d.dep) - 4},${y + 22} L${x(d.dep) + 4},${y + 22} L${x(d.dep)},${y + 30} Z`, class: "lv-tdep" + (d.dep > d.dl ? " late" : "") }, lg); }); }
@@ -195,9 +196,10 @@ function Live(C, root, opts) {
       return `<tr><td class="mono">${k + 1}</td><td><b>${esc(short(sg.i))}</b> · COT${sg.k + 1}<br><span class="muted mono">${Math.round(sg.q)} đơn</span></td>
         <td class="mono">${mv ? `${hm(sg.leave)} → ${hm(sg.leave + mv)}<br><span class="muted">${Math.round(mv)}' từ ${esc(short(sg.from))}</span>` : `<span class="muted">bắt đầu ca</span>`}</td>
         <td class="mono">${hm(sg.start)} → ${hm(sg.end)}${wait >= 1 ? `<br><span class="muted">chờ hàng ${Math.round(wait)}'</span>` : ""}</td>
+        <td class="mono">${hm(sg.hold ?? sg.end)}${(sg.hold ?? sg.end) > sg.end + 0.5 ? `<br><span class="muted">ở lại ${Math.round(sg.hold - sg.end)}' cho xe</span>` : ""}</td>
         <td class="mono">${d ? `${hm(d.arr)} / ${hm(d.dep)}` : "–"}${d && M.routes.length > 1 ? `<br><span class="muted">tuyến ${d.gi + 1}</span>` : ""}</td><td class="mono ${d && d.dep > d.dl ? "neg" : ""}">${d ? hm(d.dl) : "–"}${d && d.dep > d.dl ? `<br>trễ ${Math.round(d.dep - d.dl)}'` : ""}</td></tr>`; });
-    e.innerHTML = `<div class="lv-ih"><h3>Lịch nhóm FTE chung ${t.id} · ${t.n} người</h3><span class="muted" style="font-size:12px">đi theo hạn COT sớm nhất trước · di chuyển ${P0.hubSpd} km/h · xong sort = hàng sẵn cho xe</span></div>
-      <div class="scroll"><table class="lv-dlt"><thead><tr><th>#</th><th>Điểm · lượt</th><th>Di chuyển</th><th>Sort</th><th>Xe tới / rời</th><th>Hạn COT</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`; }
+    e.innerHTML = `<div class="lv-ih"><h3>Lịch nhóm FTE chung ${t.id} · ${t.n} người</h3><span class="muted" style="font-size:12px">đi theo hạn COT sớm nhất trước · di chuyển ${P0.hubSpd} km/h · nhóm ở lại tới khi xe lên hàng xong mới đi tiếp</span></div>
+      <div class="scroll"><table class="lv-dlt"><thead><tr><th>#</th><th>Điểm · lượt</th><th>Di chuyển</th><th>Sort</th><th>Rời điểm</th><th>Xe tới / rời</th><th>Hạn COT</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`; }
   const P0 = C.P;
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
@@ -230,7 +232,8 @@ function Live(C, root, opts) {
   function teamAt(tr, t) { const S = tr.segs, xyOf = i => M.F(M.geoP(i)); if (!S.length || t < S[0].start - (S[0].mv || 0)) return null;
     for (const s of S) if (s.mv && t >= s.leave && t < s.leave + s.mv) { const a = xyOf(s.from), b = xyOf(s.i), f = (t - s.leave) / s.mv; if (a && b) return { xy: [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], c: "mv", txt: `đi ${short(s.from)} → ${short(s.i)} (${Math.round(s.leave + s.mv - t)}')` }; }
     let cur = S[0]; for (const s of S) if ((s.mv ? s.leave + s.mv : s.start) <= t) cur = s; const xy = xyOf(cur.i); if (!xy) return null;
-    return t < cur.start ? { xy, c: "wait", txt: `chờ hàng ở ${short(cur.i)}` } : t < cur.end ? { xy, c: "sort", txt: `sort ở ${short(cur.i)} · COT${cur.k + 1}` } : { xy, c: "idle", txt: cur === S[S.length - 1] ? "xong ca" : `xong ${short(cur.i)}, chờ đi tiếp` }; }
+    return t < cur.start ? { xy, c: "wait", txt: `chờ hàng ở ${short(cur.i)}` } : t < cur.end ? { xy, c: "sort", txt: `sort ở ${short(cur.i)} · COT${cur.k + 1}` }
+      : t < cur.hold ? { xy, c: "load", txt: `ở lại ${short(cur.i)} cho xe lên hàng (tới ${hm(cur.hold)})` } : { xy, c: "idle", txt: cur === S[S.length - 1] ? "xong ca" : `xong ${short(cur.i)}, chờ đi tiếp` }; }
   /* live theo nhóm: chậm lại còn tối đa 3 phút/giây khi nhóm đang đi đường để thấy người di chuyển */
   const moving = t => M.team && M.tracks.some(tr => tr.segs.some(s => s.mv && t >= s.leave - 1 && t < s.leave + s.mv + 1));
   function tick(ts) { if (!M || !M.play) return; if (M.last != null) M.t = Math.min(M.t1, M.t + (ts - M.last) / 1000 * (moving(M.t) ? Math.min(M.speed, 3) : M.speed)); M.last = ts; draw();

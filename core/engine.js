@@ -424,11 +424,13 @@ function Core(D, REF) {
     return Object.values(by).sort((a, b) => a.t - b.t); }
   const perms = a => a.length <= 1 ? [a] : a.flatMap((x, k) => perms(a.slice(0, k).concat(a.slice(k + 1))).map(p => [x].concat(p)));
   /* NHÓM FM HUB: n người đi lần lượt các lượt-điểm theo hạn COT sớm nhất trước; sang điểm khác mất km ÷ hubSpd */
-  function teamReady(pts, n) { const tasks = [];
+  /* nhóm FTE chung làm lần lượt theo hạn COT sớm nhất; hold[i|k] = giờ xe rời điểm i lượt k: nhóm phải Ở LẠI tới lúc đó (có người mới bàn giao / lên hàng được), rồi mới đi tiếp */
+  function teamReady(pts, n, hold) { const tasks = [];
     pts.forEach(i => { const W = waves(i); if (!W) return; const sh = shareOf(i); W.w.forEach(w => { const q = volPk(i) * sh(w); tasks.push({ i, w, q, av: avail(i, w, q), be: winEnd(i, w), dl: deadline(i, w) }); }); });
     tasks.sort((a, b) => a.dl - b.dl || a.av - b.av); let t = -1e9, at = null; const rd = {}, rs = {}, seg = [];
-    tasks.forEach(x => { const from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)); t = Math.max(x.be, st + durMin(x.i, x.q, n)); at = x.i; rd[x.i + "|" + x.w.k] = t; rs[x.i + "|" + x.w.k] = st;
-      seg.push({ i: x.i, k: x.w.k, from, leave, av: x.av, start: st, end: t, q: x.q }); });
+    tasks.forEach(x => { const kk = x.i + "|" + x.w.k, from = at, leave = t, st = at == null ? x.av : Math.max(x.av, t + travel(at, x.i)), end = Math.max(x.be, st + durMin(x.i, x.q, n));
+      const out = Math.max(end, hold && hold[kk] != null ? hold[kk] : end); at = x.i; rd[kk] = end; rs[kk] = st; t = out;
+      seg.push({ i: x.i, k: x.w.k, from, leave, av: x.av, start: st, end, hold: out, q: x.q }); });
     return { rd, rs, seg }; }
   /* mô phỏng ngày đông của tuyến g theo cách dùng người A[i] = {m: "F" | "P" | "H", team}
      F (FTE riêng): hàng sẵn như hiện nay · P (Rider PPS): seller tự đóng như hiện nay, rider quét lúc giao → cộng thời gian quét vào xe đứng
@@ -505,9 +507,20 @@ function Core(D, REF) {
     const teams = []; const tCost = t => t.n * P.hubPay * new Set(t.pts.flatMap(active)).size;
     /* nhóm FTE chung: các điểm cách nhau ≤ hubKm; số người nhỏ nhất sao cho (1) mỗi người làm + đi lại trong ca ≤ fteH giờ ngày đông,
        (2) mọi tuyến xe vẫn kịp. why = lý do không lập được (để báo cáo) */
-    function tryTeam(pts, why) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) { if (why) why.r = "xa"; return null; }
+    /* nhóm + xe chạy đan nhau: nhóm sort → xe tới lên hàng (nhóm phải còn ở đó) → xe rời → nhóm mới đi điểm sau. Lặp tới khi giờ khớp (tối đa 6 vòng) */
+    function teamSim(pts, n) { let tr = teamReady(pts, n), t, A2; const G = [...new Set(pts.map(i => routeOf[i]).filter(Boolean))];
+      for (let it = 0; it < 6; it++) { t = { pts, n, rd: tr.rd, rs: tr.rs, seg: tr.seg }; A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
+        const h = {}; G.forEach(g => { const e = routeEval(g, A2); if (e) e.sim.rows.forEach(s => s.st.forEach(z => { if (pts.includes(z.i)) h[z.i + "|" + z.k] = z.dep; })); });
+        const tr2 = teamReady(pts, n, h), d = Math.max(0, ...Object.keys(tr2.rd).map(k => Math.abs(tr2.rd[k] - tr.rd[k]))), dh = Math.max(0, ...tr2.seg.map((sg, j) => Math.abs(sg.hold - (tr.seg[j].hold ?? sg.hold))));
+        tr = tr2; if (d < 1 && dh < 1) break; }
+      t = { pts, n, rd: tr.rd, rs: tr.rs, seg: tr.seg }; A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; }); return { t, A2, tr }; }
+    function tryTeam(pts, why, before) { if (pts.some((i, a) => pts.slice(a + 1).some(j => (kmPt(i, j) ?? 1e9) > P.hubKm))) { if (why) why.r = "xa"; return null; }
       const W = pts.reduce((a, i) => a + volPk(i) * work(i).w, 0), n0 = Math.max(1, Math.ceil(W - 1e-9));
-      for (let n = n0; n <= n0 + 6; n++) { const tr = teamReady(pts, n), t = { pts, n, rd: tr.rd, rs: tr.rs, seg: tr.seg }, A2 = Object.assign({}, A); pts.forEach(i => { A2[i] = { m: "H", team: t }; });
+      const days = new Set(pts.flatMap(active)).size;
+      for (let n = n0; n <= n0 + 6; n++) { if (before != null && before - n * P.hubPay * days <= 1) { if (why) why.r = "đắt hơn"; return null; }
+        /* lọc nhanh: chưa tính việc ở lại chờ xe mà đã trễ thì chắc chắn trễ */
+        const t0 = teamReady(pts, n), q = { pts, n, rd: t0.rd, rs: t0.rs, seg: t0.seg }, A0 = Object.assign({}, A); pts.forEach(i => { A0[i] = { m: "H", team: q }; }); if (!okWith(pts, A0)) continue;
+        const { t, A2, tr } = teamSim(pts, n);
         const mv = tr.seg.reduce((a, sg) => a + (sg.from != null && sg.from !== sg.i ? travel(sg.from, sg.i) : 0), 0);
         if (W * P.fteH * 60 / n + mv > P.fteH * 60 + 1e-6) continue;
         if (okWith(pts, A2)) { t.c = tCost(t); t.mv = mv; return t; } } if (why) why.r = "trễ"; return null; }
@@ -518,12 +531,17 @@ function Core(D, REF) {
       /* FTE chung = một nhóm người đi nhiều điểm: cần ≥ P.minTeam điểm (P.minTeam = 1 thì cho cả nhóm 1 điểm theo giá hub) */
       if (P.minTeam <= 1) pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
       for (let it = 0; it < 200; it++) { let best = null; const tm = teams.filter(t => t.pts.some(i => pts.includes(i))), free = pts.filter(i => A[i].m !== "H");
-        const tryM = (P2, before, old) => { const w = {}, t = tryTeam(P2, w); if (t && before - t.c > 1 && (!best || before - t.c > best.g)) best = { g: before - t.c, t, old };
+        const tryM = (P2, before, old) => { const w = {}, t = tryTeam(P2, w, before); if (t && before - t.c > 1 && (!best || before - t.c > best.g)) best = { g: before - t.c, t, old };
           const r = t ? (before - t.c > 1 ? null : "đắt hơn") : w.r; if (r) P2.forEach(i => { if (A[i].m !== "H") (whyOf[i] = whyOf[i] || {})[r] = (whyOf[i][r] || 0) + 1; }); };
         tm.forEach((a, x) => { tm.slice(x + 1).forEach(b => tryM(a.pts.concat(b.pts), a.c + b.c, [a, b])); free.forEach(i => tryM(a.pts.concat([i]), a.c + pc(i), [a])); });
         /* hai điểm đang FTE riêng gom thành một nhóm mới */
         free.forEach((i, x) => free.slice(x + 1).forEach(j => tryM([i, j], pc(i) + pc(j), [])));
         if (!best) break; apply(best.t, best.old); } }
+    /* chốt cuối: mọi nhóm cùng lúc — nhóm ở lại tới khi xe rời (giờ xe rời đã tính với đủ các nhóm), lặp tới khi khớp */
+    const G0 = [...new Set(Object.values(routeOf))];
+    for (let it = 0; it < 8 && teams.length; it++) { const h = {}; G0.forEach(g => { const e = routeEval(g, A); if (e) e.sim.rows.forEach(s => s.st.forEach(z => { h[z.i + "|" + z.k] = z.dep; })); });
+      let d = 0; teams.forEach(t => { const tr = teamReady(t.pts, t.n, h); tr.seg.forEach((sg, j) => { d = Math.max(d, Math.abs(sg.hold - (t.seg[j] ? t.seg[j].hold : 0)), Math.abs(sg.end - (t.seg[j] ? t.seg[j].end : 0))); }); t.rd = tr.rd; t.rs = tr.rs; t.seg = tr.seg; });
+      if (d < 1) break; }
     teams.forEach((t, k) => { t.id = k + 1; });
     /* tiền người từng điểm: nhóm hub chia theo khối việc */
     const cost = {}; Object.keys(A).map(Number).forEach(i => { cost[i] = pc(i); });
