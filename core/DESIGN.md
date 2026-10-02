@@ -53,6 +53,11 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - Chuyến lên ở điểm D2S, không ghé SOC, trả ở Hub = Hub tự đi lấy hàng (PBT), **không phải D2S**: bỏ khỏi chuyến D2S; đơn điểm hôm đó trừ phần đi Hub. Ngày thường VietlottClub, INDOMIE STORE, Shop Mẹ Cá Heo chạy PBT; BOX ME Tân Tạo một số chuyến; BOX ME Bình Tân do Hub 54-HCM FM 01 lấy ngày thường. Các điểm này (và Bibo Mart, AIWIBI) vốn đã nằm ngoài phạm vi D2S (`REF.HUBPAY`), nên kết quả không đổi.
 - Chuyến có ghé SOC nhưng ghi đơn xuống = 0: coi như xuống hết ở SOC đó.
 
+## Đường bộ thật
+`core/road.py` lấy km đường bộ và hình đường từ OSRM (bản đồ OpenStreetMap, miễn phí) cho cặp điểm–điểm, điểm–SOC cùng vùng; ghi vào data.js (`D.RD`).
+Có `D.RD` thì km (giá xe theo km, thời gian chạy ước tính, ghép tuyến, nhóm hub) dùng km đường bộ thay chim bay × 1,3; thời gian chạy vẫn = km ÷ tốc độ học từ chuyến thật
+(OSRM tính cho xe con không kẹt xe, nhanh hơn xe tải thật). Live: xe chạy theo hình đường bộ. Chưa có `D.RD` thì như cũ.
+
 ## Đơn theo SOC
 Học từ chuyến thật (ngày học), không đoán khi đã có số thật:
 - **Tiền xe** (`socGrp`): mỗi lượt của điểm có các nhóm SOC đích (tập SOC một xe trả). Nhóm có `e` = phần đơn của lượt đi nhóm đó, `pg` = tỷ lệ ngày lượt chạy có xe đi nhóm đó. Xe = Σ nhóm `pg × đội xe(đơn nhóm khi có mặt)`. Trước đây: chia đều đơn cho số xe tách trung bình.

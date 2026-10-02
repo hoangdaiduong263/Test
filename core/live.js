@@ -9,6 +9,13 @@ function Live(C, root, opts) {
 
   /* ---------- dựng kịch bản phát lại từ kết quả mô phỏng ---------- */
   /* routes: các tuyến cần phát lại; opt.team: nhóm FTE chung đang xem (live theo nhóm) */
+  /* xe chạy theo hình đường bộ thật (có dữ liệu đường): chèn các điểm trên đường, giờ chia theo quãng đường */
+  function roadWay(w) { if (!C.hasRoad) return w; const out = [w[0]];
+    for (let k = 1; k < w.length; k++) { const a = w[k - 1], b = w[k], L = a.n !== b.n && b.t > a.t && a.xy && b.xy ? C.roadPath(a.n, b.n) : null;
+      if (L && L.length > 2) { const d = [0]; for (let m = 1; m < L.length; m++) d.push(d[m - 1] + Math.hypot(L[m][0] - L[m - 1][0], (L[m][1] - L[m - 1][1]) * Math.cos(L[m][0] * Math.PI / 180)));
+        const D = d[d.length - 1] || 1; for (let m = 1; m < L.length - 1; m++) out.push({ t: a.t + (b.t - a.t) * d[m] / D, xy: L[m] }); }
+      out.push(b); }
+    return out; }
   function build(r, routes, opt) { opt = opt || {};
     const pts = [...new Set(routes.flat())], inP = new Set(pts), spd = C.simK().spd, ev = [], trucks = [], sorts = [], moves = [], dls = [];
     const geoP = i => C.geo(C.nm(i)), socs = {}, hubs = {}, teams = new Map();
@@ -17,7 +24,7 @@ function Live(C, root, opts) {
     routes.forEach((g, gi) => { const h = HC(g); if (!h || !h.sim) return;
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = (s.soc && C.geo(s.soc.split("|").pop()) ? s.soc.split("|").pop() : null) || C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
         socs[soc] = C.geo(soc); const tS0 = s.soc ? C.toSocTo(z0.i, soc) : C.toSoc(z0.i), tS1 = s.soc ? C.toSocTo(zl.i, soc) : C.toSoc(zl.i);
-        const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
+        const way = roadWay([{ t: z0.arr - tS0, xy: socs[soc], n: soc }].concat(s.st.flatMap(z => [{ t: z.arr, xy: geoP(z.i), n: C.nm(z.i) }, { t: z.dep, xy: geoP(z.i), n: C.nm(z.i) }]), [{ t: zl.dep + tS1, xy: socs[soc], n: soc }]));
         const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc }; trucks.push(tk);
         ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)}${s.grp ? ` nhóm ${s.grp}/${s.of}` : ""} (${s.nTr} xe${s.soc ? ` · đơn đi ${s.soc.replace(/\|/g, " + ")}` : ""}) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe ${tn(gi)}lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
