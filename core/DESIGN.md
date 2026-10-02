@@ -72,6 +72,13 @@ Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đ
 ## Giờ bàn giao hàng như kiểm định (`readyReal`)
 Kế hoạch (1–4) dùng giờ hàng sẵn = giờ xe thật rời điểm (trung vị lượt) − `closeMin`, giống kiểm định; thêm FTE riêng thì sớm hơn đúng phần sort rút ngắn; nhóm FTE chung không sớm hơn giờ này. Kết quả: giờ xe rời điểm mô phỏng khớp thật (trung vị 0'; lệch ≤ 15': HN 90%, HCM 91%, South 71%, North 52%), trước đây HCM sớm hơn thật ~1,5 giờ.
 
+## Không để lọt đề xuất âm
+- Nhóm thay đổi lỗ/lợi < ngưỡng → trả về tuyến hiện nay.
+- Tuyến mới "làm riêng" âm → thử tách từng điểm ra đi riêng, hoặc nhập vào tuyến mới đang chở bạn đi chung cũ; giữ nếu tổng tốt hơn.
+- Thêm FTE riêng ở điểm mà hiện nay mô phỏng cũng trễ COT = chi phí tuân thủ, tách thành dòng riêng (không tính vào đề xuất).
+- "Làm riêng": tiền nhóm FTE chung chia lại giữa các điểm tính cho cả nhóm thay đổi.
+- Đổi cỡ xe: quyết định từng tuyến có kiểm tra trễ (cả tuyến chưa có lịch người); sau đó thử trả từng nhóm thay đổi về tuyến hiện nay đã đổi cỡ xe, giữ nếu tổng tốt hơn.
+
 ## Độ đầy xe
 Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Hiện nay: chuyến thật; kế hoạch: công thức tiền xe. Hiện dưới con số tiết kiệm (cả vùng, % chuyến chở chưa tới nửa xe) và trong từng tuyến. Có thể > 100%: tuyến mới chở tới tải cao nhất thường gặp (p95) của xe thật; `newFillMax` = trần (mặc định 100%, chỉnh ngay dưới con số tiết kiệm). Danh sách "Seller xe chở ít" (`occPoint`): độ đầy chuyến thật < 50%, % chuyến chưa tới nửa xe, chuyến/ngày, loại xe, độ đầy tuyến kế hoạch.
 

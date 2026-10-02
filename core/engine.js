@@ -714,8 +714,9 @@ function Core(D, REF) {
         alts.forEach(T2 => { if (T2.some(h => h.length > 1 && !k0s.has(key(h)) && !routeBest(h, tolOf(h)).ok)) return; const L2 = assign(T2, tolOf), v = totOf(T2, L2); if (v > cur + P.minGain && (!best || v > best.v)) best = { T2, L2, v }; }); });
       if (!best) break; T = best.T2; L1 = best.L2; }
     /* ĐỔI CỠ XE (kế hoạch): từng tuyến thử chọn cỡ xe rẻ nhất trong mọi loại; giữ nếu rẻ hơn ≥ 0,05 tr/kỳ và mô phỏng không trễ thêm (người như kế hoạch) */
-    const vehDecide = (g, L) => { const h = L.routes[key(g)]; const c0 = routeCost(g).c + xOf(L, g); g.forEach(i => VFREE.add(i));
-      const c1 = routeCost(g).c, e = h && h.A ? routeEval(g, h.A) : null, lt0 = h && h.sim ? h.sim.late : 0;
+    const vehDecide = (g, L) => { const h = L.routes[key(g)], A = h && h.A ? h.A : Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), e0 = h && h.sim ? null : routeEval(g, A);
+      const c0 = routeCost(g).c + xOf(L, g); g.forEach(i => VFREE.add(i));
+      const c1 = routeCost(g).c, e = routeEval(g, A), lt0 = h && h.sim ? h.sim.late : e0 ? e0.late : 0;
       if (!(c1 < c0 - 0.05e6) || (e && e.late > Math.max(lt0, tolOf(g)) + 0.5)) { g.forEach(i => VFREE.delete(i)); return false; } return true; };
     if (P.vehPlan > 0) { let any = false; T.forEach(g => { if (vehDecide(g, L1)) any = true; }); if (any) L1 = assign(T, tolOf);
       /* đổi cỡ xe ngay trên tuyến hiện nay có thể lợi hơn ghép tuyến: thử trả từng nhóm thay đổi về tuyến hiện nay (đã đổi cỡ xe), giữ nếu tổng tốt hơn */

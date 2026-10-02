@@ -134,11 +134,11 @@
       return `<article class="it ${cls || ""}${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
         <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${stTxt(x)}${sub ? ` · ${sub}` : ""}</div></div>
         ${val}<button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>${open ? body(x) : ""}</article>`; };
-    const vv = (v, lab) => `<div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}${lab ? `<small>${lab}</small>` : ""}</div>`;
+    const vv = (v, lab) => { v = Math.abs(v) < 0.05e6 ? 0 : v; return `<div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}${lab ? `<small>${lab}</small>` : ""}</div>`; };
     const side = P0 => P0.sideR ? `<div class="gside muted">gồm ${sg(P0.side)} tr tiền người ở tuyến giữ nguyên ${P0.sideR.map(x => esc(x.g.map(short).join(" + "))).join(", ")} — nhóm FTE chung của các điểm này bị xếp lại vì nhóm thay đổi này</div>` : "";
     const html = V.pk.map(P0 => P0.routes.length === 1 ? item(P0.routes[0], vv(P0.net), P0.sideR ? `<span class="muted">gồm ${sg(P0.side)} người ở tuyến khác</span>` : "")
       : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>${side(P0)}${P0.vehV ? `<div class="gside muted">gồm ${sg(P0.vehV)} tr nhờ đổi cỡ xe</div>` : ""}
-        ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < 0 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
+        ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < -0.05e6 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
       + (V.veh.length ? `<div class="grp"><div class="gh"><span>Đổi cỡ xe · tuyến giữ nguyên</span><span class="mono ${V.vv >= 0 ? "pos" : "neg"}">${sg(V.vv)}</span></div>${V.veh.map(x => item(x, vv(x.v), `<span class="muted">đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))} · ${esc(x.asis)} → ${esc(x.plan)} xe/ngày</span>`, "in")).join("")}</div>` : "")
       + (V.fix.length ? `<div class="grp"><div class="gh"><span>Thêm người để hết trễ COT đang có (hiện nay mô phỏng cũng trễ — chi phí tuân thủ, không do đề xuất)</span><span class="mono neg">${sg(V.fv)}</span></div>
         <ul class="notes" style="padding:4px 4px 10px 36px">${V.fix.map(x => `<li>${esc(short(x.i))}: thêm ${x.n} FTE riêng (${sg(x.v)} tr) — hiện nay trễ ${Math.round(x.late)}'</li>`).join("")}</ul></div>` : "")
