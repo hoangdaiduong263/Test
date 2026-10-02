@@ -56,6 +56,7 @@ function Core(D, REF) {
     betaAvg: 1,        // as-is: sức chở tính theo tỷ lệ hàng to bình quân của điểm (ngày học), không theo từng ngày
     forceNew: 0,       // thí nghiệm: coi mọi tuyến là tuyến mới (đo phần tiết kiệm "ảo" do đổi cách tính)
     newPen: 0,         // % cộng thêm vào tiền xe tuyến mới (thận trọng); thí nghiệm ghép/tách: 8–19%
+    minPct: 10,        // thay đổi phải lợi ≥ % tiền xe hiện nay của các tuyến bị đổi (thí nghiệm ghép/tách: tuyến mới đắt hơn dự báo 8–19%) — dưới mức này giữ tuyến hiện nay
     socGrp: 1,         // đơn theo SOC: mỗi lượt chia đơn theo nhóm SOC đích học từ chuyến thật (xe theo từng nhóm); 0 = chia đều cho số xe tách trung bình
     socSim: 1,         // đơn theo SOC: mô phỏng giờ tách xe theo nhóm SOC đích (nhóm có mặt ≥ socP % ngày lượt chạy)
     socP: 50,          // mô phỏng giờ: nhóm SOC đích có mặt ≥ % ngày lượt chạy thì có xe riêng; nhóm hiếm dồn vào nhóm chính của điểm
@@ -668,13 +669,13 @@ function Core(D, REF) {
     /* GIÁ TRỊ RÒNG từng nhóm thay đổi sau khi đã bố trí người: tiền xe (cả xe thêm) + tiền người các điểm của nhóm.
        Nhóm lỗ hoặc lợi dưới P.minGain (vd. phải thêm người để kịp COT) → trả về tuyến hiện nay, bố trí người lại */
     const netOfPack = (p, L) => p.gain - p.nw.reduce((a, g) => a + xOf(L, g), 0) + p.nw.flat().reduce((a, i) => a + (L0.cost[i] || 0) - (L.cost[i] || 0), 0);
-    /* thử trả từng nhóm "lỗ" về tuyến hiện nay: chỉ giữ thay đổi đó nếu tổng xe + người cả vùng thật sự tốt lên (người chung bố trí lại cả vùng) */
+    /* nhóm lỗ hoặc lợi quá ít (dưới P.minGain, dưới P.minPct % tiền xe hiện nay) → trả về tuyến hiện nay, bố trí người lại cả vùng */
     const totOf = (T, L) => -(T.reduce((a, g) => a + routeCost(g).c + xOf(L, g), 0) + L.lab);
     let T = T1; const dropped = [];
-    for (let it = 0; it < 6; it++) { const cur = totOf(T, L1), bad = packs(T0, T).map(p => Object.assign(p, { net: netOfPack(p, L1) })).filter(p => p.net < P.minGain).sort((a, b) => a.net - b.net);
+    for (let it = 0; it < 6; it++) { const cur = totOf(T, L1), bad = packs(T0, T).map(p => Object.assign(p, { net: netOfPack(p, L1) })).filter(p => p.net < Math.max(P.minGain, P.minPct / 100 * p.before)).sort((a, b) => a.net - b.net);
       let done = false;
       for (const p of bad) { const ks = new Set(p.nw.map(key)), T2 = T.filter(g => !ks.has(key(g))).concat(p.cut), L2 = assign(T2, tolOf);
-        if (totOf(T2, L2) > cur + 0.5e6) { dropped.push({ nw: p.nw, cut: p.cut, net: totOf(T2, L2) - cur }); T = T2; L1 = L2; done = true; break; } }
+        { dropped.push({ nw: p.nw, cut: p.cut, net: totOf(T2, L2) - cur }); T = T2; L1 = L2; done = true; break; } }
       if (!done) break; }
     const xCost = g => xOf(L1, g);
     const hc = g => L1.routes[key(g)] || L0.routes[key(g)];
