@@ -15,11 +15,11 @@ function Live(C, root, opts) {
     const many = routes.length > 1, tn = gi => many ? `tuyến ${gi + 1} · ` : "";
     const HC = opt.hc || r.hc;
     routes.forEach((g, gi) => { const h = HC(g); if (!h || !h.sim) return;
-      h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
+      h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = (s.soc && C.geo(s.soc.split("|").pop()) ? s.soc.split("|").pop() : null) || C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
         socs[soc] = C.geo(soc); const tS0 = C.toSoc(z0.i), tS1 = C.toSoc(zl.i);
         const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
         const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc }; trucks.push(tk);
-        ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)}${s.grp ? ` nhóm ${s.grp}/${s.of}` : ""} (${s.nTr} xe) rời ${soc}` });
+        ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)}${s.grp ? ` nhóm ${s.grp}/${s.of}` : ""} (${s.nTr} xe${s.soc ? ` · đơn đi ${s.soc.replace(/\|/g, " + ")}` : ""}) rời ${soc}` });
         ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe ${tn(gi)}lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
           dls.push({ gi, i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq, roll: z.roll || 0 });
@@ -220,7 +220,7 @@ function Live(C, root, opts) {
   function trTable(r) { const rows = [], many = M.routes.length > 1;
     M.routes.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return; const ov = C.truckOv(g), rk = C.rkey(g);
       h.sim.rows.forEach(s => { const z0 = s.st[0];
-        rows.push(`<tr>${many ? `<td class="mono">${gi + 1}</td>` : ""}<td>COT${s.k + 1}${s.grp ? `<br><span class="chip info">nhóm xe ${s.grp}/${s.of}</span>` : ""}<br><span class="muted mono">${s.nTr} xe</span></td>
+        rows.push(`<tr>${many ? `<td class="mono">${gi + 1}</td>` : ""}<td>COT${s.k + 1}${s.grp ? `<br><span class="chip info">nhóm xe ${s.grp}/${s.of}</span>` : ""}${s.soc ? `<br><span class="muted">→ ${s.soc.replace(/\|/g, " + ")}</span>` : ""}<br><span class="muted mono">${s.nTr} xe</span></td>
           <td><input type="text" inputmode="numeric" maxlength="5" size="5" data-rk="${esc(rk)}" data-k="${s.k}" data-v0="${Math.round(z0.arr)}" value="${hm(z0.arr)}" class="${ov[s.k] != null ? "ov" : ""}" aria-label="Xe tới điểm đầu tuyến ${gi + 1} COT${s.k + 1}">
             <small>${ov[s.k] != null ? "chỉnh tay" : `lúc hàng sẵn ở ${esc(short(z0.i))}`}</small></td>
           <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : z.ready > z.arr + 0.5 ? ` (chất dần tới ${hm(z.ready)})` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}${z.roll >= 1 ? ` · dồn ${Math.round(z.roll)} đơn` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });

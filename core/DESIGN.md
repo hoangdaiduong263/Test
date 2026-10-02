@@ -53,6 +53,13 @@ Quy tắc đọc data (không sửa data gốc, `build_data.py`):
 - Chuyến lên ở điểm D2S, không ghé SOC, trả ở Hub = Hub tự đi lấy hàng (PBT), **không phải D2S**: bỏ khỏi chuyến D2S; đơn điểm hôm đó trừ phần đi Hub. Ngày thường VietlottClub, INDOMIE STORE, Shop Mẹ Cá Heo chạy PBT; BOX ME Tân Tạo một số chuyến; BOX ME Bình Tân do Hub 54-HCM FM 01 lấy ngày thường. Các điểm này (và Bibo Mart, AIWIBI) vốn đã nằm ngoài phạm vi D2S (`REF.HUBPAY`), nên kết quả không đổi.
 - Chuyến có ghé SOC nhưng ghi đơn xuống = 0: coi như xuống hết ở SOC đó.
 
+## Đơn theo SOC
+Học từ chuyến thật (ngày học), không đoán khi đã có số thật:
+- **Tiền xe** (`socGrp`): mỗi lượt của điểm có các nhóm SOC đích (tập SOC một xe trả). Nhóm có `e` = phần đơn của lượt đi nhóm đó, `pg` = tỷ lệ ngày lượt chạy có xe đi nhóm đó. Xe = Σ nhóm `pg × đội xe(đơn nhóm khi có mặt)`. Trước đây: chia đều đơn cho số xe tách trung bình.
+- **Mô phỏng giờ** (`socSim`): nhóm có mặt ≥ `socP`% ngày có xe riêng, chở phần đơn của nhóm, ghé các điểm có hàng đi nhóm đó; xe một nhóm trễ thì chia điểm như `split`.
+- **Người sort** (`socSt`): số SOC phải chia = số SOC nhận ≥ `socMin`% đơn của điểm (đơn lên chia cho các SOC xe trả sau điểm theo đơn xuống). Trước đây: bảng luồng theo vùng.
+- Thử đoán tỷ lệ SOC một ngày bằng các ngày khác: sai 11% đơn (gán hết về SOC chính: 37%); tách theo lượt không tốt hơn (14%).
+
 ## Phạm vi tiền
 **Đưa vào mô phỏng:**
 - tiền xe linehaul;
