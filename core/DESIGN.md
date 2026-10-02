@@ -68,6 +68,13 @@
 ## Live
 Chạy từng tuyến đề xuất riêng. Thẻ "Tuyến 1…n" ở đầu khung live để chuyển tuyến; mỗi tuyến trong bảng gói có nút ▶ riêng.
 
+**Live theo nhóm FTE chung** (nút ▶ ở bảng nhóm và bảng FM Hub):
+- **Bản đồ:** nhóm di chuyển từ điểm sang điểm, kèm mọi tuyến xe có điểm của nhóm.
+- **Lịch nhóm:** từng chặng gồm di chuyển, sort, giờ xe tới/rời, hạn COT.
+- **Dải thời gian của nhóm:** chung trục giờ với biểu đồ tồn. Màu xám là di chuyển, màu xanh là sort, ▼ là giờ xe rời điểm (đỏ nếu trễ).
+
+Thời gian di chuyển của nhóm = km ÷ `hubSpd` (40 km/h). Nhóm đi theo hạn COT sớm nhất trước; giờ sort xong = giờ hàng sẵn cho xe.
+
 ## Bước 1 · Kiểm chứng tuyến ghép (đã làm)
 Chi tiết ở `core/experiments/README.md`.
 - **Phát hiện:** model đoán tuyến chưa từng chạy rẻ hơn thật 8–19%, vì tuyến ghép ngoài đời vẫn cho xe tới nhiều lượt và chở chưa đầy.

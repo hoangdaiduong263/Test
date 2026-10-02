@@ -78,13 +78,13 @@
   function hubRep(r) { const H = r.L1.hubs || []; if (!H.length) return `<p class="empty">Không FM Hub nào cover từ 2 điểm D2S trở lên.</p>`;
     const n = H.reduce((a, h) => a + h.pts.length, 0), nin = H.reduce((a, h) => a + h.pts.length - h.solo.length, 0);
     return `<div class="scroll"><table><thead><tr><th>FM Hub cover ≥ 2 điểm · ${nin}/${n} điểm vào nhóm chung</th><th class="r">Điểm</th><th class="r">Xa nhất</th><th>Nhóm FTE chung</th><th>Vẫn FTE riêng · vì sao</th></tr></thead><tbody>${H.map(h =>
-      `<tr><td>${esc(h.h)}</td><td class="r mono">${h.pts.length}</td><td class="r mono">${h.km > 1e8 ? "?" : h.km.toFixed(0) + " km"}</td><td>${h.teams.map(t => `${t.id}: ${rt(t.pts)} <span class="muted mono">${t.n} người</span>`).join("<br>") || `<span class="muted">–</span>`}</td>
+      `<tr><td>${esc(h.h)}</td><td class="r mono">${h.pts.length}</td><td class="r mono">${h.km > 1e8 ? "?" : h.km.toFixed(0) + " km"}</td><td>${h.teams.map(t => `<button type="button" class="play sm" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Live nhóm này">▶</button>${t.id}: ${rt(t.pts)} <span class="muted mono">${t.n} người</span>`).join("<br>") || `<span class="muted">–</span>`}</td>
         <td>${h.solo.map(x => `${esc(short(x.i))} <span class="muted">${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub để gom"))}</span>`).join("<br>") || `<span class="muted">–</span>`}</td></tr>`).join("")}</tbody></table></div>`; }
   function teams(r) { const T = r.L1.teams, cnt = A => Object.values(A).reduce((o, a) => (o[a.m] = (o[a.m] || 0) + 1, o), {}), c0 = cnt(r.L0.A), c1 = cnt(r.L1.A);
     const mix = c => `FTE riêng ${c.F || 0} · FTE chung ${c.H || 0}`;
     $("teams").innerHTML = `<header><h2>Người · ${r.R}</h2><span class="muted" style="font-size:12px">số điểm theo cách dùng người: hiện nay ${mix(c0)} → kế hoạch ${mix(c1)}</span></header>` +
       hubRep(r) + (T.length ? `<div class="scroll"><table><thead><tr><th>Nhóm FTE chung</th><th>Hub</th><th>Điểm (đi theo hạn COT sớm nhất trước)</th><th class="r">Người</th><th class="r">tr/kỳ</th></tr></thead><tbody>${T.map(t =>
-        `<tr><td class="mono">${t.id}</td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
+        `<tr><td class="mono">${t.id} <button type="button" class="play sm" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Live nhóm này">▶</button></td><td>${esc(t.hub)}</td><td>${rt(t.pts)}</td><td class="r mono">${t.n}</td><td class="r mono">${tr(t.c)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
   function bans(r) { const it = r.iters.filter(x => x.banned.length);
     $("bans").innerHTML = `<header><h2>Tuyến bị bước 2 loại</h2><span class="muted" style="font-size:12px">loại xong, bước 1 tìm lại tuyến khác</span></header>` +
@@ -156,6 +156,7 @@
     const tb = t.closest("[data-r]"); if (tb) { LV.close(); ST.R = tb.dataset.r; try { localStorage.setItem("d2s-core-R", ST.R); } catch (x) {} render(); return; }
     if (t.id === "ovr-clr") { OVS().forEach(([, M]) => Object.keys(M).forEach(k => { delete M[k]; })); try { localStorage.removeItem("d2s-core-dl"); } catch (x) {}
       LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
+    const tmb = t.closest("[data-team]"); if (tmb) { const r = ST.res[ST.R], tm = r.L1.teams.find(x => x.id === +tmb.dataset.team); if (tm) { LV.openTeam(r, tm, `Nhóm FTE chung ${tm.id} · ${tm.hub} · ${r.R}`); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); } return; }
     const lv = t.closest("[data-live]"); if (lv) { const r = ST.res[ST.R], k = +lv.dataset.live; LV.open(r, r.packs[k], `Gói ${k + 1} · ${r.R}`, +(lv.dataset.gi || 0)); $("live").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     const pk = t.closest("tr.pk"); if (pk) { const id = pk.dataset.p; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); packs(ST.res[ST.R]); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });

@@ -8,18 +8,20 @@ function Live(C, root, opts) {
   let M = null, raf = null;
 
   /* ---------- dựng kịch bản phát lại từ kết quả mô phỏng ---------- */
-  function build(r, p, gi0) {
-    const pts = [...new Set(p.nw[gi0])], inP = new Set(pts), spd = C.simK().spd, ev = [], trucks = [], sorts = [], moves = [], dls = [];
+  /* routes: các tuyến cần phát lại; opt.team: nhóm FTE chung đang xem (live theo nhóm) */
+  function build(r, routes, opt) { opt = opt || {};
+    const pts = [...new Set(routes.flat())], inP = new Set(pts), spd = C.simK().spd, ev = [], trucks = [], sorts = [], moves = [], dls = [];
     const geoP = i => C.geo(C.nm(i)), socs = {}, hubs = {}, teams = new Map();
-    p.nw.forEach((g, gi) => { const h = r.hc(g); if (gi !== gi0 || !h || !h.sim) return;
+    const many = routes.length > 1, tn = gi => many ? `tuyến ${gi + 1} · ` : "";
+    routes.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return;
       h.sim.rows.forEach((s, si) => { const z0 = s.st[0], zl = s.st[s.st.length - 1], soc = C.socOf(zl.i), late = Math.max(...s.st.map(z => z.dep - z.dl));
         socs[soc] = C.geo(soc); const tS0 = C.toSoc(z0.i), tS1 = C.toSoc(zl.i);
         const way = [{ t: z0.arr - tS0, xy: socs[soc] }]; s.st.forEach(z => { way.push({ t: z.arr, xy: geoP(z.i) }, { t: z.dep, xy: geoP(z.i) }); }); way.push({ t: zl.dep + tS1, xy: socs[soc] });
-        const tk = { id: `${si + 1}`, n: s.nTr, way, late, soc }; trucks.push(tk);
-        ev.push({ t: way[0].t, k: "truck", txt: `Xe lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });
-        ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
+        const tk = { id: `${gi + 1}.${si + 1}`, gi, n: s.nTr, way, late, soc }; trucks.push(tk);
+        ev.push({ t: way[0].t, k: "truck", txt: `Xe ${tn(gi)}lượt ${hm(s.t)} (${s.nTr} xe) rời ${soc}` });
+        ev.push({ t: way[way.length - 1].t, k: late > 0 ? "late" : "ok", txt: `Xe ${tn(gi)}lượt ${hm(s.t)} về ${soc}${late > 0 ? ` · trễ ${Math.round(late)}'` : ""}` });
         s.st.forEach(z => { const a = h.A[z.i], nm = short(z.i);
-          dls.push({ i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq, roll: z.roll || 0 });
+          dls.push({ gi, i: z.i, k: z.k, q: z.q, dl: z.dl, dep: z.dep, arr: z.arr, ls: z.ls, ready: z.ready, dwq: z.dwq, roll: z.roll || 0 });
           ev.push({ t: z.ready, k: "ready", txt: `Hàng sẵn · ${nm} (${Math.round(z.q)} đơn)` });
           ev.push({ t: z.arr, k: "truck", txt: `Xe tới ${nm}${z.ls > z.arr + 0.5 ? ` · chờ hàng ${Math.round(z.ls - z.arr)}'` : z.ready > z.arr + 0.5 ? ` · chất dần, chờ đơn cuối (${hm(z.ready)})` : ""}` });
           ev.push({ t: z.dep, k: z.dep > z.dl ? "late" : "ok", txt: `Xe rời ${nm} · ${z.dep > z.dl ? `trễ ${Math.round(z.dep - z.dl)}'` : `kịp, dư ${Math.round(z.dl - z.dep)}'`} (hạn ${hm(z.dl)})${z.roll >= 1 ? ` · dồn ${Math.round(z.roll)} đơn sang COT sau` : ""}` });
@@ -27,14 +29,15 @@ function Live(C, root, opts) {
           if (a.m !== "H") { const nn = a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i), st = C.ownReady(z.i, nn)[z.k].st; sorts.push({ i: z.i, k: z.k, av: st, a: st, b: z.ready, n: nn, p0: st, p1: 1e9, who: a.m === "P" ? "seller đóng (PPS)" : `${nn} FTE riêng` });
             ev.push({ t: st, k: "sort", txt: `${a.m === "P" ? "Seller bắt đầu đóng hàng" : `${a.m === "F" ? (a.n || C.fteBase(z.i)) : C.fteN(z.i)} FTE riêng bắt đầu sort`} · ${nm}` }); }
           else teams.set(a.team.id, a.team); }); }); });
+    if (opt.team) teams.set(opt.team.id, opt.team);
     teams.forEach(t => { const hg = C.geo(t.hub); if (hg) hubs[t.hub] = hg;
       t.seg.forEach(sg => { if (!inP.has(sg.i)) return; sorts.push({ i: sg.i, k: sg.k, av: sg.av, a: sg.start, b: sg.end, n: t.n, p0: sg.start, p1: sg.end, who: `FTE chung nhóm ${t.id} (${t.n} người)` });
         ev.push({ t: sg.start, k: "sort", txt: `FTE chung nhóm ${t.id} (${t.n} người) bắt đầu sort · ${short(sg.i)}` });
-        if (sg.from != null && sg.from !== sg.i && inP.has(sg.from)) { moves.push({ id: t.id, a: sg.leave, b: sg.leave + C.travel(sg.from, sg.i), p0: geoP(sg.from), p1: geoP(sg.i) });
+        if (sg.from != null && sg.from !== sg.i && inP.has(sg.from) && (!opt.team || t.id === opt.team.id)) { moves.push({ id: t.id, a: sg.leave, b: sg.leave + C.travel(sg.from, sg.i), p0: geoP(sg.from), p1: geoP(sg.i) });
           ev.push({ t: sg.leave, k: "team", txt: `FTE chung nhóm ${t.id} đi ${short(sg.from)} → ${short(sg.i)} (${Math.round(C.travel(sg.from, sg.i))}')` }); } }); });
     ev.sort((a, b) => a.t - b.t);
     const t0 = Math.floor((Math.min(...ev.map(e => e.t)) - 20) / 30) * 30, t1 = Math.ceil((Math.max(...ev.map(e => e.t)) + 20) / 30) * 30;
-    return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes: [p.nw[gi0]] };
+    return { pts, geoP, socs, hubs, trucks, sorts, moves, dls, ev, t0, t1, routes, team: opt.team || null };
   }
 
   /* ---------- TỒN tại điểm: mỗi lượt q đơn — có từ av (chờ sort) → sort a..b (chuyển dần sang chờ xe) → chất ls..dep (lên xe) ---------- */
@@ -56,11 +59,20 @@ function Live(C, root, opts) {
     const rows = M.pts.map(i => { const L = M.dls.filter(d => d.i === i); L.forEach(d => { (pc[i] = pc[i] || []).push(d); }); return L.length ? { i, v: L.reduce((acc, d) => { const sr = wave[i + "|" + d.k] = series(i, d); return add(acc, sr); }, zero) } : null; }).filter(Boolean);
     const tot = { i: null, v: rows.reduce((acc, r) => add(acc, r.v), zero) };
     return { ts, wave, idx: t => Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt))), rows: [tot].concat(rows), at: (r, t) => r.v[Math.max(0, Math.min(ts.length - 1, Math.round((t - M.t0) / dt)))], dl: pc }; }
-  function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, H = I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
+  function invDraw(M) { const I = M.inv = invOf(M), W = 760, lw = 150, rh = 46, gap = 8, TL = M.team ? 40 : 0, H = TL + I.rows.length * (rh + gap) + 18, x = t => lw + (t - M.t0) / (M.t1 - M.t0) * (W - lw - 8);
     const svg = root.querySelector("#lv-inv"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = "";
     const cp = el("clipPath", { id: "lv-clip" }, el("defs", {}, svg)); M.clip = el("rect", { x: lw, y: 0, width: 0, height: H }, cp);
     for (let t = Math.ceil(M.t0 / 120) * 120; t <= M.t1; t += 120) { el("line", { x1: x(t), x2: x(t), y1: 0, y2: H - 16, class: "lv-grid" }, svg); el("text", { x: x(t), y: H - 4, class: "lv-ax c" }, svg).textContent = hm(t); }
-    M.invLab = I.rows.map((r, k) => { const y0 = k * (rh + gap), mx = Math.max(1, ...r.v.map(v => v.u + v.s)), y = v => y0 + rh - v / mx * (rh - 4);
+    /* dải của nhóm FTE chung: di chuyển (xám) · sort tại điểm (màu) · ▼ giờ xe rời điểm đó (đỏ nếu trễ) — cùng trục giờ với tồn */
+    if (M.team) { const t = M.team, y = 6, lg = el("g", {}, svg);
+      el("text", { x: 0, y: y + 14, class: "lv-lab l" }, lg).textContent = `Nhóm ${t.id} · ${t.n} người`;
+      el("line", { x1: lw, x2: W - 8, y1: y + 10, y2: y + 10, class: "lv-base" }, lg);
+      t.seg.forEach(sg => { const mv = sg.from != null && sg.from !== sg.i ? C.travel(sg.from, sg.i) : 0;
+        if (mv) el("rect", { x: x(sg.leave), y: y + 6, width: Math.max(1, x(sg.leave + mv) - x(sg.leave)), height: 8, class: "lv-tmv" }, lg);
+        const bw = Math.max(2, x(sg.end) - x(sg.start)); el("rect", { x: x(sg.start), y: y + 2, width: bw, height: 16, rx: 3, class: "lv-tsort" }, lg);
+        if (bw > 34) el("text", { x: x(sg.start) + 3, y: y + 14, class: "lv-tlab" }, lg).textContent = short(sg.i).slice(0, Math.floor(bw / 6));
+        const d = M.dls.find(z => z.i === sg.i && z.k === sg.k); if (d) el("path", { d: `M${x(d.dep) - 4},${y + 22} L${x(d.dep) + 4},${y + 22} L${x(d.dep)},${y + 30} Z`, class: "lv-tdep" + (d.dep > d.dl ? " late" : "") }, lg); }); }
+    M.invLab = I.rows.map((r, k) => { const y0 = TL + k * (rh + gap), mx = Math.max(1, ...r.v.map(v => v.u + v.s)), y = v => y0 + rh - v / mx * (rh - 4);
       el("text", { x: 0, y: y0 + 14, class: "lv-lab l" + (r.i == null ? "" : " sm") }, svg).textContent = r.i == null ? "Cả tuyến" : short(r.i).slice(0, 22);
       const val = el("text", { x: 0, y: y0 + 30, class: "lv-val" }, svg);
       el("line", { x1: lw, x2: W - 8, y1: y0 + rh, y2: y0 + rh, class: "lv-base" }, svg);
@@ -87,16 +99,25 @@ function Live(C, root, opts) {
   /* thẻ chọn tuyến đề xuất trong gói */
   const tabsOf = (r, p, gi) => p.nw.length < 2 ? "" : `<div class="lv-rt" role="tablist" aria-label="Tuyến đề xuất trong gói">${p.nw.map((g, k) => { const h = r.hc(g), bad = h && !h.ok;
     return `<button type="button" role="tab" aria-selected="${k === gi}" data-lvg="${k}" class="${bad ? "bad" : ""}"><b>Tuyến ${k + 1}</b> ${esc(g.map(short).join(" + ").slice(0, 48))}</button>`; }).join("")}</div>`;
-  function open(r, p, title, gi) { gi = gi || 0; stop(); M = build(r, p, gi); const tabs = tabsOf(r, p, gi);
-    if (!M.ev.length) { root.hidden = false; root.innerHTML = `${tabs}<p class="empty">Tuyến này thiếu chuyến thật để phát lại.</p>`; wireTabs(r, p, title); return; }
+  /* live MỘT tuyến đề xuất của gói */
+  function open(r, p, title, gi) { gi = gi || 0; stop(); M = build(r, [p.nw[gi]]);
+    show(r, `${title}${p.nw.length > 1 ? ` · tuyến ${gi + 1}/${p.nw.length}` : ""}`, tabsOf(r, p, gi), "ngày đông · phát lại mô phỏng");
+    root.querySelectorAll("[data-lvg]").forEach(b => { b.onclick = () => open(r, p, title, +b.dataset.lvg); }); }
+  /* live MỘT nhóm FTE chung: nhóm đi từ điểm sang điểm + mọi tuyến xe có điểm của nhóm (cùng trục giờ) */
+  function openTeam(r, t, title) { stop(); const routes = r.T.filter(g => g.some(i => t.pts.includes(i))); M = build(r, routes, { team: t });
+    const leg = routes.length > 1 ? `<div class="lv-rt">${routes.map((g, k) => `<span class="lv-rk"><b>Tuyến ${k + 1}</b> ${esc(g.map(short).join(" + ").slice(0, 60))}</span>`).join("")}</div>` : "";
+    show(r, title, leg, `${t.n} người · ${t.pts.length} điểm · đi lại ${Math.round(t.mv || 0)}' ngày đông`); }
+  function show(r, title, top, sub) {
+    if (!M.ev.length) { root.hidden = false; root.innerHTML = `${top}<p class="empty">Thiếu chuyến thật để phát lại.</p>`; return; }
     const PJ = proj(M), F = PJ.f; M.F = F; M.t = M.t0; M.speed = 60; M.play = false; M.seen = 0;
     root.hidden = false;
-    root.innerHTML = `<header><h2>Live · ${esc(title)}${p.nw.length > 1 ? ` · tuyến ${gi + 1}/${p.nw.length}` : ""}</h2><span class="muted" style="font-size:12px">ngày đông · phát lại mô phỏng</span><button type="button" class="x" id="lv-x" aria-label="Đóng live">✕</button></header>${tabs}
+    root.innerHTML = `<header><h2>Live · ${esc(title)}</h2><span class="muted" style="font-size:12px">${esc(sub)}</span><button type="button" class="x" id="lv-x" aria-label="Đóng live">✕</button></header>${top}
       <div class="lv-ctl"><button type="button" class="btn" id="lv-play">▶ Chạy</button><button type="button" class="btn ghost" id="lv-reset">↺</button>
         <span class="lv-clock mono" id="lv-clock">${hm(M.t0)}</span>
         <input type="range" id="lv-scrub" min="${M.t0}" max="${M.t1}" step="1" value="${M.t0}" aria-label="Thời gian">
         <label class="muted" for="lv-speed">Tốc độ</label><select id="lv-speed"><option value="15">15 phút/giây</option><option value="30">30 phút/giây</option><option value="60" selected>1 giờ/giây</option><option value="120">2 giờ/giây</option></select></div>
       <div class="lv-dlw" id="lv-dl"></div>
+      <div class="lv-dlw" id="lv-tm"></div>
       <div class="lv-dlw" id="lv-tr"></div>
       <div class="lv-grid"><div class="lv-map"><svg id="lv-svg" viewBox="0 0 ${PJ.W} ${PJ.H}" role="img" aria-label="Bản đồ tuyến"></svg>
         <div class="lv-leg"><span><i class="s-idle"></i>chưa có hàng</span><span><i class="s-sort"></i>đang sort</span><span><i class="s-ready"></i>hàng chờ xe</span><span><i class="s-load"></i>xe đang chất</span><span><i class="s-done"></i>đã đi</span><span><i class="s-late"></i>quá hạn COT</span></div></div>
@@ -113,13 +134,12 @@ function Live(C, root, opts) {
       el("text", { x: xy[0], y: xy[1] + 28, class: "lv-lab c" }, g).textContent = short(i).slice(0, 22);
       const st = el("text", { x: xy[0], y: xy[1] - 20, class: "lv-st c" }, g); M.ptEl[i] = { dot, ring, st, xy }; });
     M.teamEl = {}; [...new Set(M.moves.map(m => m.id))].forEach(id => { const g = el("g", { class: "lv-team" }, svg); el("circle", { r: 8 }, g); el("text", { y: 3.5, class: "c" }, g).textContent = "H" + id; M.teamEl[id] = g; });
-    M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = tk.n > 1 ? "×" + tk.n : "xe"; return g; });
-    dlTable(r, p); trTable(r, p, gi); invDraw(M); wire(); wireTabs(r, p, title); draw(); }
-  function wireTabs(r, p, title) { root.querySelectorAll("[data-lvg]").forEach(b => { b.onclick = () => open(r, p, title, +b.dataset.lvg); }); }
+    M.truckEl = M.trucks.map(tk => { const g = el("g", { class: "lv-truck" + (tk.late > 0 ? " late" : "") }, svg); el("rect", { x: -13, y: -8, width: 26, height: 16, rx: 4 }, g); el("text", { y: 4, class: "c" }, g).textContent = (M.routes.length > 1 ? (tk.gi + 1) + (tk.n > 1 ? "×" + tk.n : "") : tk.n > 1 ? "×" + tk.n : "xe"); return g; });
+    dlTable(r); trTable(r); tmTable(); invDraw(M); wire(); draw(); }
 
   /* ---------- bảng HẠN COT: sửa tay từng điểm × COT rồi chạy lại cả 2 bước ---------- */
   const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ""); return m ? +m[1] * 60 + +m[2] : null; };
-  function dlTable(r, p) { const pts = M.pts, aOf = i => { const g = p.nw.find(x => x.includes(i)), h = g && r.hc(g); return h && h.A ? h.A[i] : null; }, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
+  function dlTable(r) { const pts = M.pts, aOf = i => { const g = M.routes.find(x => x.includes(i)), h = g && r.hc(g); return h && h.A ? h.A[i] : null; }, info = Object.fromEntries(pts.map(i => [i, C.dlInfo(i)])), ks = [...new Set(pts.flatMap(i => info[i].map(x => x.k)))].sort((a, b) => a - b);
     const why = x => x.ov != null ? "chỉnh tay" : x.close ? "bàn giao cuối" : x.auto > x.p ? `nới: hiện nay rời ${hm(x.dep)}` : `Packed ${hm(x.p)}`;
     const whyA = x => x.avOv != null ? "chỉnh tay" : x.win ? `nhận đơn ${hm(x.a)}→${hm(x.b - 1)}` : `suy từ xe tới ${hm(x.arr)}`;
     const inp = (i, k, f, v, cls, lab) => `<input type="text" inputmode="numeric" pattern="[0-9]{1,2}:[0-9]{2}" maxlength="5" size="5" placeholder="hh:mm" id="${f}-${i}-${k}" data-i="${i}" data-k="${k}" data-f="${f}" value="${hm(v)}" class="${cls}" aria-label="${lab}">`;
@@ -142,22 +162,33 @@ function Live(C, root, opts) {
     root.querySelectorAll("#lv-dl tbody input").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
 
   /* ---------- bảng LỊCH XE: mỗi tuyến × lượt COT, sửa giờ xe tới điểm đầu ---------- */
-  function trTable(r, p, gi0) { const rows = [];
-    p.nw.forEach((g, gi) => { const h = r.hc(g); if (gi !== gi0 || !h || !h.sim) return; const ov = C.truckOv(g), rk = C.rkey(g);
+  function trTable(r) { const rows = [], many = M.routes.length > 1;
+    M.routes.forEach((g, gi) => { const h = r.hc(g); if (!h || !h.sim) return; const ov = C.truckOv(g), rk = C.rkey(g);
       h.sim.rows.forEach(s => { const z0 = s.st[0];
-        rows.push(`<tr><td>COT${s.k + 1}<br><span class="muted mono">${s.nTr} xe</span></td>
+        rows.push(`<tr>${many ? `<td class="mono">${gi + 1}</td>` : ""}<td>COT${s.k + 1}<br><span class="muted mono">${s.nTr} xe</span></td>
           <td><input type="text" inputmode="numeric" maxlength="5" size="5" data-rk="${esc(rk)}" data-k="${s.k}" data-v0="${Math.round(z0.arr)}" value="${hm(z0.arr)}" class="${ov[s.k] != null ? "ov" : ""}" aria-label="Xe tới điểm đầu tuyến ${gi + 1} COT${s.k + 1}">
             <small>${ov[s.k] != null ? "chỉnh tay" : `lúc hàng sẵn ở ${esc(short(z0.i))}`}</small></td>
           <td><div class="trs">${s.st.map(z => `<span class="${z.late > 0 ? "neg" : ""}"><b>${esc(short(z.i))}</b> tới ${hm(z.arr)}${z.ls > z.arr + 0.5 ? ` (chờ hàng ${Math.round(z.ls - z.arr)}')` : z.ready > z.arr + 0.5 ? ` (chất dần tới ${hm(z.ready)})` : ""} · rời ${hm(z.dep)} · hạn ${hm(z.dl)}${z.late > 0 ? ` · trễ ${Math.round(z.late)}'` : ""}${z.roll >= 1 ? ` · dồn ${Math.round(z.roll)} đơn` : ""}</span>`).join("<i>→</i>")}</div></td></tr>`); }); });
     const el2 = root.querySelector("#lv-tr"); if (!rows.length) { el2.innerHTML = ""; return; }
     el2.innerHTML = `<div class="lv-ih"><h3>Lịch xe</h3><span class="muted" style="font-size:12px">sửa giờ xe tới điểm đầu của lượt · xe tới trước giờ hàng sẵn thì đứng chờ</span></div>
-      <div class="scroll"><table class="lv-dlt lv-trt"><thead><tr><th>Lượt</th><th>Xe tới điểm đầu</th><th>Thứ tự ghé · giờ tới / rời từng điểm</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
+      <div class="scroll"><table class="lv-dlt lv-trt"><thead><tr>${many ? "<th>Tuyến</th>" : ""}<th>Lượt</th><th>Xe tới điểm đầu</th><th>Thứ tự ghé · giờ tới / rời từng điểm</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
       <div class="pbar" style="padding:8px 0 0"><button type="button" class="btn" id="lv-trrun">Chạy lại với giờ xe này</button><button type="button" class="btn ghost" id="lv-trclr">Bỏ chỉnh giờ xe</button></div>`;
     const send = clr => { const ch = []; el2.querySelectorAll("input[data-rk]").forEach(e => { const rk = e.dataset.rk, k = +e.dataset.k, v = toMin(e.value), has = (C.TROV[rk] || {})[k] != null;
       if (clr) { if (has) ch.push({ f: "tr", rk, k, v: null }); } else if (v != null && e.classList.contains("chg") && v !== +e.dataset.v0) ch.push({ f: "tr", rk, k, v }); });
       if (ch.length && opts && opts.onApply) opts.onApply(ch, M.pts); };
     el2.querySelector("#lv-trrun").onclick = () => send(false); el2.querySelector("#lv-trclr").onclick = () => send(true);
     el2.querySelectorAll("input[data-rk]").forEach(e => { e.oninput = () => e.classList.add("chg"); }); }
+
+  /* ---------- LỊCH NHÓM FTE CHUNG: từng chặng, đặt cạnh giờ xe của đúng điểm × COT ---------- */
+  function tmTable() { const e = root.querySelector("#lv-tm"), t = M.team; if (!t) { e.innerHTML = ""; return; }
+    const rows = t.seg.map((sg, k) => { const d = M.dls.find(x => x.i === sg.i && x.k === sg.k), mv = sg.from != null && sg.from !== sg.i ? C.travel(sg.from, sg.i) : 0, wait = mv ? Math.max(0, sg.start - (sg.leave + mv)) : 0;
+      return `<tr><td class="mono">${k + 1}</td><td><b>${esc(short(sg.i))}</b> · COT${sg.k + 1}<br><span class="muted mono">${Math.round(sg.q)} đơn</span></td>
+        <td class="mono">${mv ? `${hm(sg.leave)} → ${hm(sg.leave + mv)}<br><span class="muted">${Math.round(mv)}' từ ${esc(short(sg.from))}</span>` : `<span class="muted">bắt đầu ca</span>`}</td>
+        <td class="mono">${hm(sg.start)} → ${hm(sg.end)}${wait >= 1 ? `<br><span class="muted">chờ hàng ${Math.round(wait)}'</span>` : ""}</td>
+        <td class="mono">${d ? `${hm(d.arr)} / ${hm(d.dep)}` : "–"}${d && M.routes.length > 1 ? `<br><span class="muted">tuyến ${d.gi + 1}</span>` : ""}</td><td class="mono ${d && d.dep > d.dl ? "neg" : ""}">${d ? hm(d.dl) : "–"}${d && d.dep > d.dl ? `<br>trễ ${Math.round(d.dep - d.dl)}'` : ""}</td></tr>`; });
+    e.innerHTML = `<div class="lv-ih"><h3>Lịch nhóm FTE chung ${t.id} · ${t.n} người</h3><span class="muted" style="font-size:12px">đi theo hạn COT sớm nhất trước · di chuyển ${P0.hubSpd} km/h · xong sort = hàng sẵn cho xe</span></div>
+      <div class="scroll"><table class="lv-dlt"><thead><tr><th>#</th><th>Điểm · lượt</th><th>Di chuyển</th><th>Sort</th><th>Xe tới / rời</th><th>Hạn COT</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`; }
+  const P0 = C.P;
 
   /* ---------- vẽ trạng thái ở thời điểm M.t ---------- */
   function stateOf(i, t) { const L = M.dls.filter(d => d.i === i).sort((a, b) => a.dep - b.dep), cur = L.find(d => d.dep > t);
@@ -194,5 +225,5 @@ function Live(C, root, opts) {
     root.querySelector("#lv-scrub").oninput = e => { M.t = +e.target.value; M.seen = -1; draw(); };
     root.querySelector("#lv-speed").onchange = e => { M.speed = +e.target.value; };
     root.querySelector("#lv-x").onclick = () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; }; }
-  return { open, close: () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; } };
+  return { open, openTeam, close: () => { stop(); M = null; root.hidden = true; root.innerHTML = ""; } };
 }
