@@ -54,6 +54,13 @@
 - chi phí trễ SLA (nếu có quy đổi).
 - phụ phí xe trả nhiều SOC (`dropSur`, trước đây mặc định +10%/SOC, nay tắt).
 
+## Bước 1 · Kiểm chứng tuyến ghép (đã làm)
+Chi tiết ở `core/experiments/README.md`.
+- **Phát hiện:** model đoán tuyến chưa từng chạy rẻ hơn thật 8–19%, vì tuyến ghép ngoài đời vẫn cho xe tới nhiều lượt và chở chưa đầy.
+- **Cách báo tiết kiệm:** luôn kèm khoảng thận trọng (`newPen` 8% và 19%).
+- **Kết quả 48 ngày:** 2,85 tỷ (27%) theo model, 2,43 tỷ (23%) và 1,90 tỷ (18%) khi thận trọng.
+- **Còn mở:** làm sao cho tuyến ghép đạt hiệu quả của model (gom lượt, xe đầy hơn). Đây là đòn bẩy vận hành riêng, cần dây chuyền 2 (mô phỏng theo từng ngày) chứng minh khả thi.
+
 ## Bộ lọc độ phức tạp (dây chuyền 3)
 Mỗi ngưỡng là tham số:
 - Một lượt xe ghé **> 5 điểm** thì loại.

@@ -49,6 +49,8 @@ function Core(D, REF) {
     nbPct: 50,         // as-is: xe theo lịch = phân vị % số xe thật mỗi lượt
     nbDays: 8,         // as-is: cần ≥ ngày học để được chọn kiểu xe theo lịch
     betaAvg: 1,        // as-is: sức chở tính theo tỷ lệ hàng to bình quân của điểm (ngày học), không theo từng ngày
+    forceNew: 0,       // thí nghiệm: coi mọi tuyến là tuyến mới (đo phần tiết kiệm "ảo" do đổi cách tính)
+    newPen: 0,         // % cộng thêm vào tiền xe tuyến mới (thận trọng); thí nghiệm ghép/tách: 8–19%
     calFac: 1,         // as-is: hệ số chuyến & giá theo tuyến học từ ngày học (0 = tắt)
     coMin: 30,         // as-is: hai điểm đi chung ≥ % số chuyến (của điểm ít chuyến hơn) thì là một tuyến hiện nay
     vehMin: 10,        // as-is: loại xe chiếm ≥ % số chuyến thật của điểm mới được dùng
@@ -290,7 +292,7 @@ function Core(D, REF) {
       const vv = VEH.find(u => u.k === (TY[t[1]] === "KHAC" ? "VAN" : TY[t[1]])); if (!vv) return; let u = 0;
       t[5].forEach(p => { if (p[1] === 0 && inS.has(String(TRN[p[0]]).trim())) u += p[2] || 0; }); if (u > 0) L.push(u / cap(vv, beta, 1)); });
     return FCAP[i] = Math.max(P.fill / 100, L.length >= 3 ? pct(L, 95) : 0); }
-  const isBase = g => { const b = base0(S[g[0]].R).find(x => x.includes(g[0])); return !!b && b.length === g.length && g.every(i => b.includes(i)); };
+  const isBase = g => { if (P.forceNew) return false; const b = base0(S[g[0]].R).find(x => x.includes(g[0])); return !!b && b.length === g.length && g.every(i => b.includes(i)); };
   const realTrips = (i, d) => { const tr = S[i].tr && S[i].tr[d]; return Array.isArray(tr) ? tr.reduce((a, x) => a + x, 0) : 0; };
   /* loại xe điểm đang dùng thật (≥ P.vehMin % số chuyến thật; KHAC tính là VAN). As-is chỉ chọn trong các loại này;
      đòn bẩy P.vehFree = 1 cho chọn mọi loại xe. Tuyến nhiều điểm: hợp các loại của từng điểm */
@@ -336,7 +338,9 @@ function Core(D, REF) {
     const sur = 1 + P.dropSur / 100 * (spt - 1), net = act.reduce((a, i) => a + S[i].v[d] * netOf(i, g), 0) / N;
     Object.keys(mix).forEach(v => { mix[v] *= net; });
     /* hệ số chỉnh của tuyến hiện nay (chuyến × giá); tuyến ghép mới chỉ mang hệ số giá của các điểm (bình quân theo đơn) */
-    let tf = 1, cf = 1; if (pol == null) { if (isBase(g)) { fillOf(g[0]); tf = TF[g[0]]; cf = CF[g[0]]; } else cf = act.reduce((a, i) => { fillOf(i); return a + S[i].v[d] * CF[i]; }, 0) / N; }
+    let tf = 1, cf = 1; if (pol == null) { if (isBase(g)) { fillOf(g[0]); tf = TF[g[0]]; cf = CF[g[0]]; } else { cf = act.reduce((a, i) => { fillOf(i); return a + S[i].v[d] * CF[i]; }, 0) / N;
+      /* phụ phí thận trọng cho tuyến mới: thí nghiệm ghép/tách cho thấy model đoán tuyến chưa từng chạy rẻ hơn thật 8–19% */
+      cf *= 1 + P.newPen / 100; } }
     Object.keys(mix).forEach(v => { mix[v] *= tf; });
     return { c: c * sur * net * tf * cf, t: t * net * tf, net, mix, N, mt: Object.keys(K).length, legs, tf, cf }; }
   const RC = {};
@@ -551,6 +555,8 @@ function Core(D, REF) {
 
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
   return { DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
-    reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; } };
+    reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
+    /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
+    setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
 }
 if (typeof module !== "undefined") module.exports = { Core };
