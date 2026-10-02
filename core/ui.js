@@ -41,8 +41,16 @@
     const pk = r.packs.map(p => ({ p, net: p.net, routes: p.nw.map(g => ({ g, h: r.hc(g), k: C.key(g), isNew: true, solo: C.standalone(r, g) + lab(g), xs: C.standalone(r, g), ls: lab(g),
       from: p.cut.filter(b => b.some(i => g.includes(i))) })).sort((a, b) => b.solo - a.solo) }));
     pk.sort((a, b) => b.net - a.net);
-    const inP = new Set(r.packs.flatMap(p => p.nw.flat())), keep = r.T.filter(g => !g.some(i => inP.has(i))), kv = keep.reduce((a, g) => a + lab(g) - r.xCost(g), 0);
-    const out = { pk, keep: keep.filter(g => Math.abs(lab(g) - r.xCost(g)) >= 0.05e6).map(g => ({ g, h: r.hc(g), k: C.key(g), v: lab(g) - r.xCost(g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep.length };
+    const inP = new Set(r.packs.flatMap(p => p.nw.flat())), keep0 = r.T.filter(g => !g.some(i => inP.has(i)));
+    /* tuyến giữ nguyên mà tiền người đổi: do nhóm FTE chung của nó (hiện nay hoặc kế hoạch) có điểm thuộc một nhóm thay đổi → tính vào nhóm thay đổi đó */
+    const owner = g => { for (const i of g) for (const A of [r.L0.A, r.L1.A]) { const t = A[i] && A[i].m === "H" ? A[i].team : null; if (!t) continue;
+      const x = pk.find(P0 => P0.p.nw.some(h => h.some(j => t.pts.includes(j)))); if (x) return x; } return null; };
+    const keep = []; keep0.forEach(g => { const d = lab(g), o = Math.abs(d) >= 0.05e6 ? owner(g) : null;
+      if (o) { o.net += d; o.side = (o.side || 0) + d; (o.sideR = o.sideR || []).push({ g, d }); if (Math.abs(r.xCost(g)) >= 0.05e6) keep.push({ g, v: -r.xCost(g) }); }
+      else if (Math.abs(d - r.xCost(g)) >= 0.05e6) keep.push({ g, v: d - r.xCost(g) }); });
+    pk.sort((a, b) => b.net - a.net);
+    const kv = keep.reduce((a, x) => a + x.v, 0);
+    const out = { pk, keep: keep.map(x => Object.assign(x, { h: r.hc(x.g), k: C.key(x.g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep0.length };
     VAL.set(r, out); return out; }
   const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
 
@@ -113,10 +121,11 @@
         <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${stTxt(x)}${sub ? ` · ${sub}` : ""}</div></div>
         ${val}<button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>${open ? body(x) : ""}</article>`; };
     const vv = (v, lab) => `<div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}${lab ? `<small>${lab}</small>` : ""}</div>`;
-    const html = V.pk.map(P0 => P0.routes.length === 1 ? item(P0.routes[0], vv(P0.net), "")
-      : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>
+    const side = P0 => P0.sideR ? `<div class="gside muted">gồm ${sg(P0.side)} tr tiền người ở tuyến giữ nguyên ${P0.sideR.map(x => esc(x.g.map(short).join(" + "))).join(", ")} — nhóm FTE chung của các điểm này bị xếp lại vì nhóm thay đổi này</div>` : "";
+    const html = V.pk.map(P0 => P0.routes.length === 1 ? item(P0.routes[0], vv(P0.net), P0.sideR ? `<span class="muted">gồm ${sg(P0.side)} người ở tuyến khác</span>` : "")
+      : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến đổi điểm cho nhau</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">làm cả nhóm ${sg(P0.net)}</span></div>${side(P0)}
         ${P0.routes.map(x => item(x, vv(x.solo, "làm riêng"), x.solo < 0 ? `<span class="warn">chỉ lợi khi làm cùng nhóm</span>` : "", "in")).join("")}</div>`).join("")
-      + (V.keep.length ? `<div class="grp"><div class="gh"><span>Giữ tuyến, đổi người / thêm xe</span><span class="mono ${V.kv >= 0 ? "pos" : "neg"}">${sg(V.kv)}</span></div>${V.keep.map(x => item(x, vv(x.v), `<span class="muted">nhóm người chung xếp lại</span>`, "in")).join("")}</div>` : "");
+      + (V.keep.length ? `<div class="grp"><div class="gh"><span>Giữ tuyến, đổi người / thêm xe (không do nhóm thay đổi nào)</span><span class="mono ${V.kv >= 0 ? "pos" : "neg"}">${sg(V.kv)}</span></div>${V.keep.map(x => item(x, vv(x.v), `<span class="muted">nhóm người chung xếp lại</span>`, "in")).join("")}</div>` : "");
     const nR = V.pk.reduce((a, x) => a + x.routes.length, 0);
     $("routes").innerHTML = `<header class="sh"><h2>Tuyến</h2><span class="muted">${nR} tuyến mới · ${V.nKeep} tuyến giữ nguyên · bấm để xem rủi ro &amp; giả định</span></header>
       ${html || `<p class="empty">Không có thay đổi nào lợi hơn ${tr(P.minGain)} tr/kỳ.</p>`}
