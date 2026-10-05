@@ -159,9 +159,15 @@
       <tr><th class="r">Đơn/lượt</th>${isNew ? "" : "<th>Hiện nay</th>"}<th>Kế hoạch</th><th class="r">Đơn/lượt</th>${isNew ? "" : "<th>Hiện nay</th>"}<th>Kế hoạch</th></tr></thead><tbody>${rows}</tbody></table></div>
       <p class="muted">Số xe là số xe cần khi lượt đó có hàng${isNew ? "" : "; “Hiện nay” là model chạy lại cách đang làm"}. Mỗi xe chở tối đa ${P.newFillMax}% sức chở chuẩn. “Số ngày có chạy”: tỷ lệ ngày lượt này có hàng về SOC đó.</p>`; }
   function routes(r) { const V = values(r); let n = 0;
-    const body = x => `<div class="body"><div class="cols">
+    /* so sánh: tuyến hiện nay bị thay (tiền & xe của cả tuyến cũ) → tuyến mới */
+    const cmp = x => { if (!x.isNew) return ""; const row = (lab, g, c, part) => `<tr><td class="${lab === "Kế hoạch" ? "" : "muted"}">${lab === "Kế hoạch" ? "<b>Kế hoạch</b>" : lab}</td><td>${names(g)}${part ? ` <span class="muted">(${part})</span>` : ""}</td><td class="r mono">${c.t.toFixed(1)}</td><td>${esc(C.mixLabel(c.mix))}</td><td class="r mono">${tr(c.c)}</td></tr>`;
+      const c1 = C.planCost(x.g);
+      return `<div class="cmp"><h3>Tuyến này thay cho</h3><div class="scroll"><table class="mini"><thead><tr><th></th><th>Tuyến (điểm)</th><th class="r">Xe/ngày</th><th>Cỡ xe (bình quân/ngày)</th><th class="r">Tiền xe 48 ngày (tr)</th></tr></thead><tbody>
+        ${x.from.map((b, k) => { const out = b.filter(i => !x.g.includes(i)); return row(`Hiện nay · tuyến ${k + 1}`, b, C.routeCost(b), out.length ? `${out.map(short).join(", ")} sang tuyến mới khác` : ""); }).join("")}
+        ${row("Kế hoạch", x.g, c1, "")}</tbody></table></div></div>`; };
+    const body = x => `<div class="body">${cmp(x)}<div class="cols">
           <section><h3>Giá trị · tr trong 48 ngày</h3><dl class="kv">${x.isNew ? `<dt>Tiền xe bớt được (nếu chỉ làm tuyến này)</dt><dd class="${x.xs >= 0 ? "pos" : "neg"}">${sg(x.xs)}</dd><dt>Tiền người các điểm (so với hiện nay)</dt><dd class="${x.ls >= 0 ? "pos" : "neg"}">${sg(x.ls)}</dd>
-            <dt>Thay cho tuyến hiện nay</dt><dd class="tx">${x.from.map(b => esc(b.map(short).join(" + "))).join("<br>")}</dd>` : V.veh.includes(x) ? `<dt>Đổi cỡ xe</dt><dd class="pos">${sg(x.v)}</dd><dt>Xe/ngày hiện nay (bình quân)</dt><dd>${esc(x.asis)}</dd>` : `<dt>Đổi người · xe thêm</dt><dd class="${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</dd>`}
+` : V.veh.includes(x) ? `<dt>Đổi cỡ xe</dt><dd class="pos">${sg(x.v)}</dd><dt>Xe/ngày hiện nay (bình quân)</dt><dd>${esc(x.asis)}</dd>` : `<dt>Đổi người · xe thêm</dt><dd class="${x.v >= 0 ? "pos" : "neg"}">${sg(x.v)}</dd>`}
             <dt>Xe chở đầy (hiện nay → kế hoạch)</dt><dd>${(() => { const a = C.occ(x.isNew ? x.from.flat() : x.g, false), b = C.occ(x.g, true); return `${pc(a)} → <b class="${b > a ? "pos" : ""}">${pc(b)}</b>`; })()}</dd><dt>Xe/ngày kế hoạch (bình quân)</dt><dd>${C.planCost(x.g).t.toFixed(1)} · ${esc(C.mixLabel(C.planCost(x.g).mix))}</dd><dt>Người</dt><dd>${esc(ppl(x))}</dd></dl></section>
           <section><h3>Rủi ro trễ COT</h3>${riskHtml(x)}</section>
           <section><h3>Giả định đang dùng</h3>${notes(r, x)}</section></div>
