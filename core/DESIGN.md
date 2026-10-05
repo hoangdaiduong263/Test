@@ -238,3 +238,11 @@ Mỗi ngưỡng là tham số:
     - Chấm độc lập ngày lẻ/chẵn, sai số theo tuyến: HN 0,7%, HCM 1,9%, North 1,7%, South 1,5%.
     - Dự báo 1–18/9 theo tuyến: 7,5% / 11,5% / 12,1% / 7,5%.
   - **Chi phí đã tắt:** `dropSur` (xe trả nhiều SOC +%/SOC) mặc định 0. Bảng giá không có khoản này, nên nó chuyển sang danh sách chờ duyệt.
+
+## Cập nhật 05/10 — sửa logic và luật trình bày
+- **Chia phần xe đi chung (netOf):** điểm D2S khác trong mô hình mà không thuộc tuyến thì không còn chia phần xe (trước đây tuyến ghép/tách được giảm xe hai lần → tiết kiệm bị thổi phồng ~1,1 tỷ).
+- **Trần độ đầy 85%** áp cho mọi xe trong kế hoạch: tuyến ghép mới và tuyến giữ nguyên được đổi cỡ xe; tính trên cả xe (× phần xe của tuyến).
+- **Chọn cách chọn xe as-is theo số chuyến từng loại xe** (polBy = 1), không theo tiền (giá xe là giả định). Kiểm định chấm theo số chuyến và số chuyến × loại xe.
+- **Luật trình bày:** đề xuất phải kịp COT. Ngoại lệ duy nhất: điểm hiện nay đã trễ và thêm người tối đa vẫn trễ (xe linehaul tới muộn) → được trễ tới mức đó (`lhLate`), không hơn.
+- **Chi phí sửa trễ đang có** (điểm hiện nay đã trễ mà kế hoạch thêm người, kể cả tách khỏi nhóm FTE chung) tách riêng, không tính vào tiết kiệm.
+- **Giao diện:** tổng tiết kiệm = Ghép tuyến + Đổi cỡ xe tuyến giữ nguyên + Nhóm người chung (tuyến giữ nguyên) + Tuyến giữ nguyên có đổi; mỗi mục có tổng riêng. Bảng xe theo từng lượt (giờ xe × nhóm SOC, ngày thường và ngày đông, hiện nay vs kế hoạch) — `routeDetail`.
