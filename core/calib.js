@@ -25,7 +25,8 @@ function Calib(C, REF) {
     if (F.length) { const mv = F.reduce((s, x) => s + x.v, 0) / F.length, mt = F.reduce((s, x) => s + x.t, 0) / F.length; let sxy = 0, sxx = 0;
       F.forEach(x => { sxy += (x.v - mv) * (x.t - mt); sxx += (x.v - mv) ** 2; }); b = sxx > 0 ? Math.max(0, sxy / sxx) : 0; a = mt - b * mv; }
     pts.filter(x => test(x.d)).forEach(x => { const m = C.routeDay(g, x.d);
-      out.push({ g, d: x.d, rc: g.reduce((s, i) => s + C.realCost(i, x.d), 0), mc: m ? m.c : 0, rt: x.t, mt: m ? m.t : 0, st: F.length ? Math.max(0, a + b * x.v) : x.t }); }); }
+      const rm = {}; g.forEach(i => { const tr = C.S[i].tr && C.S[i].tr[x.d]; if (Array.isArray(tr)) tr.forEach((n, j) => { if (n > 0) { const k = C.TY[j] === "KHAC" ? "VAN" : C.TY[j]; rm[k] = (rm[k] || 0) + n; } }); });
+      out.push({ g, d: x.d, rc: g.reduce((s, i) => s + C.realCost(i, x.d), 0), mc: m ? m.c : 0, rt: x.t, mt: m ? m.t : 0, st: F.length ? Math.max(0, a + b * x.v) : x.t, rm, mm: m ? m.mix : {} }); }); }
 
   /* VẬT LÝ MÔ PHỎNG: phát lại từng chuyến thật — xe tới điểm đầu đúng giờ thật, model tính thời gian chất (cố định + phút/đơn)
      và thời gian chạy giữa các điểm / về SOC; so giờ rời từng điểm và giờ tới SOC với thật. Không đụng chính sách điều xe. */
@@ -71,7 +72,7 @@ function Calib(C, REF) {
 
   /* folds: mặc định 2 nửa ngày lẻ/chẵn; truyền [[fit, test]] để kiểm định theo thời gian (ví dụ học tháng 8, dự báo tháng 9) */
   function run(R, folds) { const out = evalF(R, folds || FOLDS);
-    if (!folds) { const fw = fwdFold(); if (fw) { const x = evalF(R, fw.folds); out.fwd = { cut: fw.cut, nf: fw.nf, nt: fw.nt, gap: x.gap, wRoute: x.wRoute, wNoise: x.wNoise, wStat: x.wStat, wTrip: x.wTrip, dep: x.ph.depSys, soc: x.ph.socSys }; } }
+    if (!folds) { const fw = fwdFold(); if (fw) { const x = evalF(R, fw.folds); out.fwd = { cut: fw.cut, nf: fw.nf, nt: fw.nt, acc: x.acc, gap: x.gap, wRoute: x.wRoute, wNoise: x.wNoise, wStat: x.wStat, wTrip: x.wTrip, dep: x.ph.depSys, soc: x.ph.socSys }; } }
     return out; }
   function evalF(R, folds) { const T0 = C.baseRoutes(R), days = [], stops = [], socs = [];
     try { for (const [fit, test] of folds) { C.setFit(C.DAYS.filter(fit)); T0.forEach(g => routeDays(g, fit, test, days)); physics(R, test, stops, socs); } } finally { C.setFit(null); }
@@ -81,6 +82,12 @@ function Calib(C, REF) {
     const gap = rc > 0 ? (mc - rc) / rc * 100 : 0, wRoute = rc > 0 ? rows.reduce((a, r) => a + Math.abs(r.mc - r.rc), 0) / rc * 100 : 0;
     const wDay = rc > 0 ? sum(x => Math.abs(x.mc - x.rc)) / rc * 100 : 0, wTrip = rT > 0 ? sum(x => Math.abs(x.mt - x.rt)) / rT * 100 : 0, wStat = rT > 0 ? sum(x => Math.abs(x.st - x.rt)) / rT * 100 : 0;
     const ph = physSum(stops, socs);
+    /* ĐỘ CHÍNH XÁC THEO SỐ CHUYẾN (không phụ thuộc giá xe): theo tuyến cả kỳ và theo tuyến × ngày; số chuyến × loại xe: lệch từng loại xe cộng lại */
+    const acc = (() => { const G = new Map(); let tD = 0, kD = 0;
+      days.forEach(x => { const o = G.get(x.g) || { rt: 0, mt: 0, rm: {}, mm: {} }; o.rt += x.rt; o.mt += x.mt; for (const k in x.rm) o.rm[k] = (o.rm[k] || 0) + x.rm[k]; for (const k in x.mm) o.mm[k] = (o.mm[k] || 0) + x.mm[k]; G.set(x.g, o);
+        tD += Math.abs(x.mt - x.rt); new Set(Object.keys(x.rm).concat(Object.keys(x.mm))).forEach(k => { kD += Math.abs((x.mm[k] || 0) - (x.rm[k] || 0)); }); });
+      let tR = 0, kR = 0; const byT = {}; G.forEach(o => { tR += Math.abs(o.mt - o.rt); new Set(Object.keys(o.rm).concat(Object.keys(o.mm))).forEach(k => { const e = Math.abs((o.mm[k] || 0) - (o.rm[k] || 0)); kR += e; const t = byT[k] || (byT[k] = { r: 0, m: 0, e: 0 }); t.r += o.rm[k] || 0; t.m += o.mm[k] || 0; t.e += e; }); });
+      const N = rT || 1; return { trip: 100 - tR / N * 100, tripType: 100 - kR / N * 100, tripDay: 100 - tD / N * 100, tripTypeDay: 100 - kD / N * 100, byType: byT, real: rT, model: sum(x => x.mt) }; })();
     /* nhiễu ngày: nếu sai số từng ngày là ngẫu nhiên (trung bình 0), tổng theo tuyến vẫn lệch khoảng 0,8 × căn(tổng bình phương) — mức không model nào xuống thấp hơn được */
     const e2 = new Map(); days.forEach(x => e2.set(x.g, (e2.get(x.g) || 0) + (x.mc - x.rc) ** 2)); const wNoise = rc > 0 ? [...e2.values()].reduce((a, v) => a + 0.798 * Math.sqrt(v), 0) / rc * 100 : 0;
     /* MÔ PHỎNG LẠI KỲ: học trên toàn kỳ, chạy lại toàn kỳ — sai số theo tuyến (tiền, chuyến) */
@@ -88,7 +95,7 @@ function Calib(C, REF) {
     T0.forEach(g => { let a = 0, b = 0, c = 0, d2 = 0; for (const d of C.DAYS) { if (!ok(d) || !g.some(i => (C.S[i].v[d] || 0) > 0)) continue; const m = C.routeDay(g, d); a += g.reduce((s, i) => s + C.realCost(i, d), 0); b += m ? m.c : 0; c += g.reduce((s, i) => s + realTrips(i, d), 0); d2 += m ? m.t : 0; }
       r1 += a; m1c += Math.abs(b - a); r1t += c; m1t += Math.abs(d2 - c); });
     const rep = { cost: r1 > 0 ? m1c / r1 * 100 : 0, trips: r1t > 0 ? m1t / r1t * 100 : 0 };
-    return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, wNoise, rep, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,
+    return { R, rows, rc, mc, gap, wRoute, wDay, wTrip, wStat, wNoise, rep, acc, rt: rT / nDay, mt: sum(x => x.mt) / nDay, ph,
       ok: { rep: rep.cost <= T.calRep && rep.trips <= T.calRep, cost: Math.abs(gap) <= T.calCost && wRoute <= T.calRoute, time: ph.depSys != null && ph.depSys >= T.calShare && ph.socSys >= T.calShare }, src: sources(C.nodes(R)) }; }
   /* DÂY CHUYỀN 1–4 ĐANG DÙNG KHÁC DÂY CHUYỀN 0 THẾ NÀO — đo trên các tuyến hiện nay, người như mô hình hiện nay (r.L0), ngày đông */
   function gap(R, r) { const out = {}, stops = [], socs = [], tk = [];

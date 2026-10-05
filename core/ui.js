@@ -69,7 +69,7 @@
 
   /* tóm tắt: một con số + vài sự thật */
   const pc = x => x == null ? "–" : Math.round(x * 100) + "%";
-  function summary(r) { const O = C.occRegion(r), V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
+  function summary(r) { const O = C.occRegion(r), OC = C.occChanged(r), V = values(r), t = total(r), dT = r.truck.base - r.truck.plan, dL = r.lab.base - r.lab.plan, nd = DAYS();
     const ch = V.pk.reduce((a, x) => a + x.routes.length, 0), late = r.T.filter(g => { const h = r.hc(g); return h && h.sim && h.sim.late > 0.5; }).length;
     $("sum").innerHTML = `<div class="hero"><div><div class="lab">Tiết kiệm · ${nd} ngày dữ liệu · ${r.R}</div>
       <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
@@ -77,9 +77,9 @@
       <ul class="facts"><li><b>${ch}</b> tuyến đổi</li><li class="${late ? "neg" : ""}"><b>${late}</b> tuyến trễ COT</li><li><b>${r.L1.teams.length}</b> nhóm người chung</li></ul>
       <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>
       <div class="opts"><div class="occ"><span class="muted">Độ đầy xe hiện nay</span> <b class="mono">${pc(O.now)}</b> <span class="muted" title="Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Có thể vượt 100% vì xe thật hay chở quá sức chở chuẩn.">sức chở chuẩn · ${pc(O.low)} chuyến chở chưa tới nửa xe</span>
-        ${O.plan != null ? `<span class="muted">→ kế hoạch</span> <b class="mono ${O.plan > O.now ? "pos" : ""}">${pc(O.plan)}</b>` : ""}</div>
+        ${OC.nNew ? `<br><span class="muted">Trên ${OC.nCut} tuyến được đổi:</span> <b class="mono">${pc(OC.now)}</b> <span class="muted">→ ${OC.nNew} tuyến mới</span> <b class="mono pos">${pc(OC.plan)}</b>` : ""}</div>
         <label class="sw">Tuyến mới chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở chuẩn <span class="muted">(0 = như xe thật chở nhiều nhất)</span></label>
-        <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho đổi cỡ xe <span class="muted">(${P.vehPlan ? "đang bật: mỗi tuyến chọn xe vừa tải nhất, chỉ khi rẻ hơn và không trễ thêm" : "đang tắt: giữ loại xe hiện nay — bật để model chọn xe vừa tải, xe đầy hơn"})</span></label></div>`; }
+        <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Mở thêm cỡ xe mới <span class="muted">(${P.vehPlan ? "đang bật: mọi tuyến được chọn cỡ xe vừa tải nhất (VAN–8T), chỉ khi rẻ hơn và không trễ thêm" : "đang tắt: tuyến ghép chỉ chọn lại số xe trong các cỡ điểm đang chạy"})</span></label></div>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
