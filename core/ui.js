@@ -94,7 +94,7 @@
       <div class="bridge"><h3>Tiết kiệm đến từ đâu (bấm để tới mục)</h3><table><tbody>${parts.map(x => row(x[0], x[1], x[2])).join("")}${Math.abs(resid) >= 0.05e6 ? row("", "Làm tròn / khác", resid) : ""}
         <tr class="tot"><td>Tổng</td><td class="r mono ${t >= 0 ? "pos" : "neg"}">${sg(t)}</td></tr></tbody></table>
         ${V.fv ? `<p class="muted">Không tính vào tiết kiệm: thêm người ở ${V.fix.length} điểm đang trễ COT ngay từ hiện nay, ${sg(V.fv)} tr (<a href="#sec-fix">xem</a>).</p>` : ""}</div>
-      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở chuẩn của loại xe)</span></span>
+      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở: chuẩn của loại xe; seller vốn chở đầy hơn thì mức chở p95 của chính seller = ${P.newFillMax}%)</span></span>
         <span>Cả vùng hiện nay: xe chở trung bình <b class="mono">${pc(O.now)}</b>, <b class="mono">${pc(O.low)}</b> số chuyến chở chưa tới nửa xe.</span>
         ${OC.nNew ? `<span>Riêng các tuyến được ghép: ${OC.nCut} tuyến hiện nay chở trung bình <b class="mono">${pc(OC.now)}</b> → ${OC.nNew} tuyến mới chở <b class="mono pos">${pc(OC.plan)}</b>.</span>` : ""}</div>
         <div class="occ"><b>Cài đặt kế hoạch</b></div>
