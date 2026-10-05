@@ -345,7 +345,7 @@ function Core(D, REF) {
       if (all > 0) { a += u / all; n++; } });
     return NET[k] = n ? a / n : 1; }
   /* nhiều điểm chung xe: mức lấp đầy chung = bình quân theo chỗ chiếm */
-  function grpFill(g, d, gg) { if (isBase(g)) return fillOf(g[0]); let U = 0, W = 0; g.forEach(i => { const u = (S[i].v[d] - (S[i].b[d] || 0)) / 2000 + (S[i].b[d] || 0) / 700; U += u; W += u / Math.min(fillOf(i), fillCap(i), (P.newFillMax > 0 ? P.newFillMax / 100 : 99) * (gg ? netOf(i, gg) : 1)); }); return U > 0 && W > 0 ? U / W : P.fill / 100; }
+  function grpFill(g, d, gg, force) { if (isBase(g) && !force) return fillOf(g[0]); let U = 0, W = 0; g.forEach(i => { const u = (S[i].v[d] - (S[i].b[d] || 0)) / 2000 + (S[i].b[d] || 0) / 700; U += u; W += u / Math.min(fillOf(i), fillCap(i), (P.newFillMax > 0 ? P.newFillMax / 100 : 99) * (gg ? netOf(i, gg) : 1)); }); return U > 0 && W > 0 ? U / W : P.fill / 100; }
 
   /* ---------- [1] TIỀN XE ---------- */
   /* tiền xe thật của điểm cả kỳ: số chuyến thật theo loại xe (đã chia phần nếu đi chung) × giá chuyến */
@@ -364,7 +364,7 @@ function Core(D, REF) {
       L.forEach((x, j) => { if (r[j] <= 0) return; const o = K[x.k] || (K[x.k] = { q: 0, p: 0, lg: 1, nb: 0, G: {} }), qx = v * r[j] * x.sr / nz; o.q += qx; o.p = Math.max(o.p, r[j]); o.lg = Math.max(o.lg, x.lg); o.nb = Math.max(o.nb, x.nb || 0);
         (x.gr && x.gr.length ? x.gr : [{ key: "", e: 1, pg: 1 }]).forEach(z => { const G = o.G[z.key] || (o.G[z.key] = { q: 0, p: 0 }); G.q += qx * z.e; G.p = Math.max(G.p, r[j] * z.pg); }); }); });
     /* mỗi lượt: khi chạy chở q ÷ p đơn, tách lg xe theo SOC, mỗi xe chọn đội xe rẻ nhất trong loại xe đang dùng; kỳ vọng theo tỷ lệ ngày lượt chạy */
-    const R = S[act[0]].R, km = tripKm(act), fl = flo || (isBase(g) ? fillOf(g[0]) : grpFill(act, d, g)), ks = vehSet(act), pl = pol ?? polOf(act.reduce((a, i) => S[i].v[d] > S[a].v[d] ? i : a, act[0])), beta = N > 0 ? (P.betaAvg ? act.reduce((a, i) => a + S[i].v[d] * betaFit(i), 0) : b) / N : 0, mix = {}; let c = 0, t = 0, legs = 1;
+    const R = S[act[0]].R, km = tripKm(act), fl = flo || (isBase(g) && !vfree(g) ? fillOf(g[0]) : grpFill(act, d, g, true)), ks = vehSet(act), pl = pol ?? polOf(act.reduce((a, i) => S[i].v[d] > S[a].v[d] ? i : a, act[0])), beta = N > 0 ? (P.betaAvg ? act.reduce((a, i) => a + S[i].v[d] * betaFit(i), 0) : b) / N : 0, mix = {}; let c = 0, t = 0, legs = 1;
     Object.values(K).forEach(o => { if (o.q <= 0 || o.p <= 0) return;
       /* đơn theo SOC: mỗi nhóm SOC đích một (vài) xe riêng, chở phần đơn của nhóm khi nhóm có mặt; xe theo lịch (pl ≥ 3): tổng xe không dưới số xe theo lịch */
       if (P.socGrp) { const Gs = Object.values(o.G).filter(G => G.q > 0 && G.p > 0); if (Gs.length) { const fs = Gs.map(G => fleet(G.q / G.p, beta, R, km, fl, ks, pl % 3)), tot = Gs.reduce((a, G, j) => a + G.p * fs[j].t, 0);
