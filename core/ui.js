@@ -53,7 +53,8 @@
       const x = pk.find(P0 => P0.p.nw.some(h => h.some(j => t.pts.includes(j)))); if (x) return x; } return null; };
     const keep = []; keep0.forEach(g => { const d = lab(g), o = Math.abs(d) >= 0.05e6 ? owner(g) : null;
       if (o) { o.net += d; o.side = (o.side || 0) + d; (o.sideR = o.sideR || []).push({ g, d }); if (Math.abs(r.xCost(g)) >= 0.05e6) keep.push({ g, v: -r.xCost(g) }); }
-      else if (Math.abs(d - r.xCost(g)) >= 0.05e6) keep.push({ g, v: d - r.xCost(g) }); });
+      /* tiền người đổi vì xếp lại nhóm FTE chung → hiện ở mục "Nhóm người chung" (không kéo tuyến xe giữ nguyên vào); ở đây chỉ còn phần xe */
+      else { const tm = g.some(i => (r.L0.A[i] && r.L0.A[i].m === "H") || (r.L1.A[i] && r.L1.A[i].m === "H")), v = tm ? -r.xCost(g) : d - r.xCost(g); if (Math.abs(v) >= 0.05e6) keep.push({ g, v }); } });
     /* đòn bẩy đổi cỡ xe: tuyến hiện nay bị thay trong một nhóm → tính vào nhóm đó; tuyến giữ nguyên → nhóm "đổi cỡ xe" */
     const veh = []; (r.veh || []).forEach(c => { const o = pk.find(P0 => P0.p.cut.some(b => C.key(b) === C.key(c.g))); if (o) { o.net += c.v; o.vehV = (o.vehV || 0) + c.v; }
       else veh.push(Object.assign({}, c, { h: r.hc(c.g), k: C.key(c.g), asis: C.mixLabel(C.routeCost(c.g).mix), plan: C.mixLabel(C.planCost(c.g).mix) })); });
@@ -155,12 +156,15 @@
     const item = t => { const id = "t:" + t.id, open = ST.open.has(id), own = t.pts.reduce((a, i) => a + C.fCost(i), 0), v = own - t.c, dv = t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0);
       let rk = ""; if (open) { const k = r.R + t.id; if (!TRISK.has(k)) TRISK.set(k, C.teamRisk(r, t)); const x = TRISK.get(k);
         rk = !x ? `<p class="muted">Nhóm 1 người: vắng là không có người làm — cần người dự phòng.</p>` : `<table class="mini"><tbody><tr><td>Thiếu 1 người (còn ${t.n - 1})</td><td>${x.late > Math.max(0, x.late0) + 0.5 ? `<span class="neg">trễ COT ${Math.round(x.late)}' ở ${esc(short(x.pt))}</span>` : x.roll > 1 ? `kịp COT, dồn ${Math.round(x.roll)} đơn sang COT sau` : `<span class="pos">vẫn kịp, không dồn đơn</span>`}</td></tr></tbody></table>`; }
+      const ch = Math.abs(dv) >= 0.05e6, now = t.pts.map(i => r.L0.A[i]).map(a => !a ? "?" : a.m === "H" ? "nhóm chung" : `${a.n ?? 1} FTE riêng`);
       return `<article class="it${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
-        <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người chung thay vì ${t.pts.reduce((a, i) => a + C.fteBase(i), 0)} FTE riêng${Math.abs(dv) >= 0.05e6 ? ` · so với hiện nay ${sg(dv)}` : ""}</span></div></div>
-        <div class="v mono ${v >= 0 ? "pos" : "neg"}">${sg(v)}<small>so với FTE riêng</small></div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
+        <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người chung${ch ? ` · hiện nay: ${t.pts.map((i, k) => esc(short(i)) + " " + now[k]).join(", ")}` : " · giữ như hiện nay"} · rẻ hơn FTE riêng ${sg(v)}</span></div></div>
+        <div class="v mono ${ch ? (dv >= 0 ? "pos" : "neg") : "muted"}">${ch ? sg(dv) : "0"}<small>so với hiện nay</small></div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
         ${open ? `<div class="body"><div class="cols"><section><h3>Rủi ro</h3>${rk}</section><section><h3>Cách làm</h3><p class="muted">Đi lần lượt các điểm theo hạn COT sớm nhất; ở lại tới khi xe lên hàng xong mới đi tiếp. ${tr(t.c)} tr/kỳ.</p></section></div></div>` : ""}</article>`; };
-    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">mỗi nhóm rẻ hơn bao nhiêu so với thuê FTE riêng cho từng điểm</span></header>` +
-      (T.length ? T.map(item).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
+    const dvs = T.map(t => t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0)), nNew = dvs.filter(x => Math.abs(x) >= 0.05e6).length;
+    const L = T.map((t, k) => ({ t, d: dvs[k] })).sort((a, b) => (Math.abs(b.d) >= 0.05e6) - (Math.abs(a.d) >= 0.05e6) || b.d - a.d);
+    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">${nNew ? `${nNew} nhóm mới / đổi · ` : ""}nhóm FTE chung của FM Hub đi lần lượt các điểm gần nhau · số bên phải: tiền người so với hiện nay</span></header>` +
+      (T.length ? L.map(x => item(x.t)).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
 
   /* KIỂM TRA CHUTE: xe (hiện nay & kế hoạch) có tới đủ các SOC mà điểm chia hàng không */
   const sn = n => esc(n.replace(/ Mega SOC| SOC/g, ""));
