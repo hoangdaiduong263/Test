@@ -99,7 +99,14 @@
         ${OC.nNew ? `<span>Riêng các tuyến được ghép: ${OC.nCut} tuyến hiện nay chở trung bình <b class="mono">${pc(OC.now)}</b> → ${OC.nNew} tuyến mới chở <b class="mono pos">${pc(OC.plan)}</b>.</span>` : ""}</div>
         <div class="occ"><b>Cài đặt kế hoạch</b></div>
         <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở chuẩn</label>
-        <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label></div>`; }
+        <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label>
+        <label class="sw"><input type="checkbox" id="opt-own"${P.ownCap ? " checked" : ""}> Sức chở theo chuyến thật của từng seller <span class="muted">(seller thường chở nhiều hơn ${P.newFillMax}% thì trần = mức chở p95 của chính seller trên loại xe đó)</span></label>
+        ${P.ownCap ? ownList(r.R) : ""}</div>`; }
+  /* seller × loại xe có tải p95 > ownCapMax: nghi lỗi data, chỉ dùng khi đã xác nhận */
+  function ownList(R) { const L = []; C.S.forEach((s, i) => { if (s.R !== R) return; Object.entries(C.ownCap(i)).forEach(([k, x]) => { if (x.p95 * 100 > P.ownCapMax) L.push({ i, n: C.nm(i), k, x }); }); });
+    if (!L.length) return "";
+    return `<div class="occ"><span class="muted">Chờ xác nhận — chở trên ${P.ownCapMax}% sức chở chuẩn, nghi lỗi data, chưa dùng tới khi tick:</span>
+      ${L.map(z => `<label class="sw"><input type="checkbox" data-ownok="${esc(z.n)}"${C.OWNOK.has(z.n) ? " checked" : ""}> ${esc(short(z.i))} · ${z.k} · p95 ${Math.round(z.x.p95 * 100)}% · ${z.x.n} chuyến · hàng to ${Math.round(z.x.beta * 100)}%</label>`).join("")}</div>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -339,9 +346,12 @@
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
+    if (e.target.id === "opt-own" || e.target.dataset.ownok) { if (e.target.id === "opt-own") { P.ownCap = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-own", P.ownCap); } catch (x) {} }
+      else e.target.checked ? C.OWNOK.add(e.target.dataset.ownok) : C.OWNOK.delete(e.target.dataset.ownok);
+      LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
     LV.close(); ST.res = {}; ST.open.clear(); render(); });
-  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
+  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; if (localStorage.getItem("d2s-core-own") === "1") P.ownCap = 1; const f = localStorage.getItem("d2s-core-fill"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();
