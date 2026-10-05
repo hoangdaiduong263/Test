@@ -72,6 +72,8 @@ Giá trị trên từng tuyến hiện nay = tiền hiện nay − tiền khi đ
 ## Giờ bàn giao hàng như kiểm định (`readyReal`)
 Kế hoạch (1–4) dùng giờ hàng sẵn = giờ xe thật rời điểm (trung vị lượt) − `closeMin`, giống kiểm định; thêm FTE riêng thì sớm hơn đúng phần sort rút ngắn; nhóm FTE chung không sớm hơn giờ này. Kết quả: giờ xe rời điểm mô phỏng khớp thật (trung vị 0'; lệch ≤ 15': HN 90%, HCM 91%, South 71%, North 52%), trước đây HCM sớm hơn thật ~1,5 giờ.
 
+Kiểm giờ bằng phát lại từng ngày thật (`calib.replay`, `C.setDay`): ngày đông tổng hợp cho mọi điểm, mọi lượt cùng chạy, trong khi thật ngày peak của từng seller khác nhau và không phải lượt nào cũng có xe. Phát lại: mỗi tuyến hiện nay × mỗi ngày có xe thật, chỉ các điểm & lượt có xe thật hôm đó, đơn mỗi lượt = đơn lên thật của lượt; so giờ rời điểm mô phỏng với giờ rời thật của chính ngày đó. Trần = đoán mỗi lần dừng bằng trung vị thật của điểm × lượt (giờ thật dao động ngày qua ngày, không mô hình tất định nào vượt được). Lệch ≤ 15': HCM 39% (trần 40%), HN 39% (43%), North 32% (44%), South 32% (43%) → đạt 97%, 91%, 73%, 74% trần.
+
 ## Không để lọt đề xuất âm
 - Nhóm thay đổi lỗ/lợi < ngưỡng → trả về tuyến hiện nay.
 - Tuyến mới "làm riêng" âm → thử tách từng điểm ra đi riêng, hoặc nhập vào tuyến mới đang chở bạn đi chung cũ; giữ nếu tổng tốt hơn.

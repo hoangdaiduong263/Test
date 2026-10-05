@@ -110,7 +110,19 @@ function Calib(C, REF) {
     out.late = { n: stops.length, late: stops.filter(z => z.late > 0.5).length, worst: Math.max(0, ...stops.map(z => z.late)) };
     out.contra = stops.filter(z => z.ready > z.dl + 0.5 && z.rDep != null && z.rDep <= z.dl + 15).length;   // mô phỏng: hàng sẵn sau hạn, trong khi thật xe đã rời trước / đúng hạn
     out.trucks = { sim: tk.reduce((a, x) => a + x.sim, 0), cost: tk.reduce((a, x) => a + x.cost, 0), real: tk.reduce((a, x) => a + x.real, 0) };
+    out.rep = replay(r);
     return out; }
+  /* PHÁT LẠI TỪNG NGÀY THẬT: mỗi tuyến hiện nay, mỗi ngày có xe thật — chỉ các điểm & lượt có xe thật hôm đó, đơn lên thật của lượt.
+     So giờ xe rời điểm mô phỏng với giờ rời thật CỦA CHÍNH NGÀY ĐÓ. Trần = đoán mỗi lần dừng bằng trung vị thật của điểm × lượt (không mô hình tất định nào vượt được). */
+  function replay(r) { const L = [], G = {};
+    r.T0.forEach(g => { for (const d of C.DAYS) { if (!ok(d)) continue; const real = {}; let any = false;
+        g.forEach(i => C.dayWaves(i, d).forEach(x => { real[i + "|" + x.k] = x.dep; any = true; })); if (!any) continue;
+        C.setDay(d); let sim = null; try { sim = C.simRoute(g, r.L0.A, null, d); } finally { C.setDay(null); }
+        if (!sim) continue; sim.rows.forEach(s => s.st.forEach(z => { const rd = real[z.i + "|" + z.k]; if (rd == null) return; const k = z.i + "|" + z.k;
+          L.push({ k, e: z.dep - rd, real: rd }); (G[k] = G[k] || []).push(rd); })); } });
+    if (!L.length) return null; const m = {}; for (const k in G) m[k] = med(G[k]);
+    const pin = (f, x) => L.filter(v => Math.abs(f(v)) <= x).length / L.length * 100;
+    return { n: L.length, med: med(L.map(x => x.e)), in15: pin(x => x.e, 15), in30: pin(x => x.e, 30), in60: pin(x => x.e, 60), ceil15: pin(x => x.real - m[x.k], 15), ceil30: pin(x => x.real - m[x.k], 30) }; }
   return { T, run, gap };
 }
 if (typeof module !== "undefined") module.exports = { Calib };
