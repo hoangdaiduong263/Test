@@ -161,10 +161,11 @@
         <span class="no mono">${t.id}</span><div class="main"><div class="nm">${names(t.pts)}</div><div class="meta"><span class="muted">${esc(t.hub || "")} · ${t.n} người chung${ch ? ` · hiện nay: ${t.pts.map((i, k) => esc(short(i)) + " " + now[k]).join(", ")}` : " · giữ như hiện nay"} · rẻ hơn FTE riêng ${sg(v)}</span></div></div>
         <div class="v mono ${ch ? (dv >= 0 ? "pos" : "neg") : "muted"}">${ch ? sg(dv) : "0"}<small>so với hiện nay</small></div><button type="button" class="play" data-team="${t.id}" aria-label="Chạy live nhóm ${t.id}" title="Chạy live">▶</button></div>
         ${open ? `<div class="body"><div class="cols"><section><h3>Rủi ro</h3>${rk}</section><section><h3>Cách làm</h3><p class="muted">Đi lần lượt các điểm theo hạn COT sớm nhất; ở lại tới khi xe lên hàng xong mới đi tiếp. ${tr(t.c)} tr/kỳ.</p></section></div></div>` : ""}</article>`; };
-    const dvs = T.map(t => t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0)), nNew = dvs.filter(x => Math.abs(x) >= 0.05e6).length;
-    const L = T.map((t, k) => ({ t, d: dvs[k] })).sort((a, b) => (Math.abs(b.d) >= 0.05e6) - (Math.abs(a.d) >= 0.05e6) || b.d - a.d);
-    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">${nNew ? `${nNew} nhóm mới / đổi · ` : ""}nhóm FTE chung của FM Hub đi lần lượt các điểm gần nhau · số bên phải: tiền người so với hiện nay</span></header>` +
-      (T.length ? L.map(x => item(x.t)).join("") : `<p class="empty">Không có nhóm FTE chung nào rẻ hơn FTE riêng.</p>`); }
+    const dvs = T.map(t => t.pts.reduce((a, i) => a + (r.L0.cost[i] || 0) - (r.L1.cost[i] || 0), 0));
+    /* chỉ hiện nhóm MỚI hoặc ĐỔI so với hiện nay; nhóm giữ nguyên chỉ đếm */
+    const L = T.map((t, k) => ({ t, d: dvs[k] })).filter(x => Math.abs(x.d) >= 0.05e6).sort((a, b) => b.d - a.d), nKeep = T.length - L.length;
+    $("teams").innerHTML = `<header class="sh"><h2>Nhóm người chung</h2><span class="muted">nhóm FTE chung của FM Hub đi lần lượt các điểm gần nhau · chỉ hiện nhóm mới / đổi · số bên phải: tiền người so với hiện nay${nKeep ? ` · ${nKeep} nhóm hiện có giữ nguyên` : ""}</span></header>` +
+      (L.length ? L.map(x => item(x.t)).join("") : `<p class="empty">Không có thay đổi về nhóm người chung.</p>`); }
 
   /* KIỂM TRA CHUTE: xe (hiện nay & kế hoạch) có tới đủ các SOC mà điểm chia hàng không */
   const sn = n => esc(n.replace(/ Mega SOC| SOC/g, ""));
