@@ -61,7 +61,8 @@
     const kv = keep.reduce((a, x) => a + x.v, 0);
     const out = { pk, fix, fv: fix.reduce((a, x) => a + x.v, 0), veh, vv: veh.reduce((a, x) => a + x.v, 0), keep: keep.map(x => Object.assign(x, { h: r.hc(x.g), k: C.key(x.g) })).sort((a, b) => a.v - b.v), kv, nKeep: keep0.length };
     VAL.set(r, out); return out; }
-  const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan);
+  /* giá trị đề xuất: không tính phần thêm người ở điểm HIỆN NAY đã trễ COT (chi phí sửa trễ đang có, hiện riêng) */
+  const total = r => (r.truck.base - r.truck.plan) + (r.lab.base - r.lab.plan) - values(r).fv;
 
   function tabs() {
     $("tabs").innerHTML = REGS.map(R => { const r = ST.res[R];
@@ -73,7 +74,7 @@
     const ch = V.pk.reduce((a, x) => a + x.routes.length, 0), late = r.T.filter(g => { const h = r.hc(g); return h && h.sim && h.sim.late > 0.5; }).length;
     $("sum").innerHTML = `<div class="hero"><div><div class="lab">Tiết kiệm · ${nd} ngày dữ liệu · ${r.R}</div>
       <div class="val ${t >= 0 ? "pos" : "neg"}">${sg(t)} <span>tr</span></div>
-      <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL)}</div></div>
+      <div class="sub">≈ ${sg(t / nd * 30)} tr/tháng · xe ${sg(dT)} · người ${sg(dL - V.fv)}${V.fv ? ` · <span title="thêm người ở điểm hiện nay đã trễ COT — chi phí sửa trễ đang có, không do đề xuất">sửa trễ hiện có ${sg(V.fv)}</span>` : ""}</div></div>
       <ul class="facts"><li><b>${ch}</b> tuyến đổi</li><li class="${late ? "neg" : ""}"><b>${late}</b> tuyến trễ COT</li><li><b>${r.L1.teams.length}</b> nhóm người chung</li></ul>
       <button type="button" class="btn ghost" data-ov="plan">▶ Mô phỏng cả vùng</button></div>
       <div class="opts"><div class="occ"><span class="muted">Độ đầy xe hiện nay</span> <b class="mono">${pc(O.now)}</b> <span class="muted" title="Đơn ÷ sức chở chuẩn của loại xe (theo tỷ lệ hàng to). Có thể vượt 100% vì xe thật hay chở quá sức chở chuẩn.">sức chở chuẩn · ${pc(O.low)} chuyến chở chưa tới nửa xe</span>
