@@ -104,11 +104,12 @@
     const rows = C.S.map((s, i) => i).filter(i => C.S[i].R === R).sort((x, y) => C.nm(x).localeCompare(C.nm(y)));
     const nb = rows.reduce((a, i) => a + Object.values(K.bad[i] || {}).reduce((b, x) => b + x, 0), 0);
     return `<details class="occ"><summary><b>Sức chở từng seller × cỡ xe — học từ chuyến thật</b> <span class="muted">(đơn/xe ở mức chở thường làm = ${P.capOvAt}%; không dùng sức chở chuẩn)</span></summary>
-      <p class="muted">Tỷ lệ sức chở giữa cỡ xe học được: ${ks.map(k => `${k} ${K.RHO[k].toFixed(2)}`).join(" · ")} (1T9 = 1). Đường chung (${K.nSat} seller × cỡ xe đã chạm trần): 1T9 chở ~${f(K.a)} đơn hàng nhỏ hoặc ~${f(K.b)} đơn hàng to.
-        Kiểm định trên ${f(K.chk.n)} xe chung nhiều seller: độ đầy dự báo trung vị ${Math.round(K.chk.p50 * 100)}%, p90 ${Math.round(K.chk.p90 * 100)}% (≈100% là khớp). ${nb ? `Tự loại ${nb} chuyến bất thường (nghi lỗi data) của vùng.` : ""}</p>
+      <p class="muted">So với xe 1T9, các loại xe khác chở được: ${ks.filter(k => k !== "1T9").map(k => `${k} gấp ${K.RHO[k].toFixed(2).replace(".", ",")} lần`).join(", ")} (học từ các seller đã chạy cả hai loại xe; riêng 1T25 chưa có dữ liệu nên tạm lấy theo thể tích thùng xe).
+        Với seller chưa có chuyến nào, một xe 1T9 ước chở khoảng ${f(K.a)} đơn nếu toàn hàng nhỏ, hoặc ${f(K.b)} đơn nếu toàn hàng to (học từ ${K.nSat} trường hợp xe đã chở đầy).
+        Kiểm tra lại trên ${f(K.chk.n)} chuyến xe chở chung nhiều seller: theo các số này, chuyến điển hình đầy ${Math.round(K.chk.p50 * 100)}% và 90% số chuyến đầy không quá ${Math.round(K.chk.p90 * 100)}%, tức là khớp với thực tế.${nb ? ` Đã tự loại ${nb} chuyến có số đơn bất thường (nghi lỗi dữ liệu).` : ""}</p>
       <table class="cap"><tr><th>Seller</th>${ks.map(k => `<th>${k}</th>`).join("")}</tr>${rows.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const src = K.src(i, k);
         return `<td title="${esc(src)}" class="${/chạm trần/.test(src) ? "pos" : /đã thấy|xe chung/.test(src) ? "" : "muted"}">${f(K.cap(i, k))}</td>`; }).join("")}</tr>`).join("")}</table>
-      <p class="muted">Độ tin — xanh = cao: xe đã chạm trần (chạy song song) · đen = vừa: đã thấy chở được (chưa chạm trần — chỉ tính số đã chứng minh) hoặc học từ xe chung · nhạt = thấp: quy từ cỡ xe khác, hoặc đường chung khi seller chưa có chuyến — tạm dùng, tuyến kế hoạch dựa vào số này được gắn cờ. Rê chuột để xem nguồn.</p></details>`; }
+      <p class="muted">Màu xanh: số đo được khi xe đã chở đầy (tin cậy cao). Màu đen: số đơn nhiều nhất từng chở trên loại xe đó, xe chưa đầy (tin cậy vừa). Màu nhạt: số ước tính, quy từ loại xe khác hoặc từ các seller tương tự (tin cậy thấp); tuyến nào dựa vào số này sẽ được đánh dấu để hỏi Sup. Rê chuột vào từng số để xem nguồn.</p></details>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -193,8 +194,14 @@
       return !R ? `<span class="muted">thiếu data giờ</span>` : late > 0.5 ? (late <= Math.max(0, lh) + 0.5 ? `<span class="warn">trễ COT ${Math.round(late)}' do xe linehaul tới muộn — hiện nay cũng trễ, thêm người không cứu được</span>` : `<span class="neg">không kịp COT ${Math.round(late)}'</span>`) : R.av.ok >= 120 ? `<span class="pos">rất an toàn</span>`
         : R.av.ok >= 30 ? `<span>seller trễ ≤ ${R.av.ok}' vẫn kịp</span>` : `<span class="warn">mong manh: seller trễ ${R.av.ok ? `quá ${R.av.ok}'` : "là"} trễ COT</span>`; };
     /* sức chở độ tin thấp: cỡ xe kế hoạch mà seller chưa đo trên cỡ đó (quy đổi) — tạm chấp nhận, cần Sup xác nhận */
-    const lowTxt = g => { const L = C.lowCap(g); if (!L.length) return ""; const by = {}; L.forEach(z => { (by[z.k] = by[z.k] || []).push(short(z.i)); });
-      return `<span class="warn" title="${esc(L.map(z => short(z.i) + " " + z.k + ": " + Math.round(C.learnK().cap(z.i, z.k)) + " đơn/xe (" + z.src + ")").join("; "))}">sức chở độ tin thấp ở ${Math.round([...new Set(L.map(z => z.k))].reduce((a, k) => a + L.find(z => z.k === k).sh, 0) * 100)}% số xe: ${Object.entries(by).map(([k, a]) => `${k} (${esc(a.join(", "))})`).join(" · ")} — cần Sup xác nhận</span>`; };
+    /* tuyến kế hoạch dùng loại xe mà số đơn mỗi xe của seller chỉ là ước tính (chưa từng chạy loại xe đó / chưa có dữ liệu) — tạm dùng, cần Sup xác nhận */
+    const lowTxt = g => { const L = C.lowCap(g); if (!L.length) return ""; const ks = [...new Set(L.map(z => z.k))];
+      const pct = Math.round(ks.reduce((a, k) => a + L.find(z => z.k === k).sh, 0) * 100), by = {};
+      /* gom theo nhóm seller giống nhau: "A, B chưa từng chạy xe 8T và 1T25; C chưa có đủ dữ liệu với xe 1T9" */
+      ks.forEach(k => { const z = L.filter(x => x.k === k), nv = z.every(x => /^quy từ/.test(x.src)), key = z.map(x => short(x.i)).join(", ") + "|" + nv; (by[key] = by[key] || []).push(k); });
+      const parts = Object.entries(by).map(([key, k]) => { const [sel, nv] = key.split("|"); return `${esc(sel)} ${nv === "true" ? "chưa từng chạy" : "chưa có đủ dữ liệu chở thật với"} xe ${k.join(" và ")}`; });
+      const tip = L.map(z => `${short(z.i)}, xe ${z.k}: ước tính ${Math.round(C.learnK().cap(z.i, z.k))} đơn/xe`).join("; ");
+      return `<span class="warn" title="${esc(tip)}">${pct}% số xe trong kế hoạch là loại xe chưa được kiểm chứng: ${parts.join("; ")}. Số đơn mỗi xe mới chỉ là ước tính, cần Sup xác nhận.</span>`; };
     const item = (x, val, sub, cls) => { const id = "r:" + x.k, open = ST.open.has(id); n++; const lw = lowTxt(x.g); sub = [sub, lw].filter(Boolean).join(" · ");
       return `<article class="it ${cls || ""}${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
         <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${stTxt(x)}${sub ? ` · ${sub}` : ""}</div></div>
@@ -207,7 +214,7 @@
       : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến mới thay cho ${P0.p.cut.length} tuyến hiện nay — các tuyến đổi điểm cho nhau nên phải làm cả nhóm</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">cả nhóm ${sg(P0.net)}</span></div>${side(P0)}${P0.vehV ? `<div class="gside muted">gồm ${sg(P0.vehV)} tr nhờ đổi cỡ xe</div>` : ""}
         ${P0.routes.map(x => item(x, vv(x.solo, "phần của tuyến"), "", "in")).join("")}</div>`).join("");
     const html = (nR ? sec("sec-pk", "① Ghép tuyến", `${nR} tuyến mới thay cho ${nCut} tuyến hiện nay · bấm từng tuyến để xem xe theo lượt, rủi ro, giả định`, pkv, pkHtml) : "")
-      + (V.veh.length ? sec("sec-veh", "② Đổi cỡ xe ở tuyến giữ nguyên", `điểm và lượt giữ nguyên, chỉ đổi cỡ xe · bấm để xem lượt nào đi xe gì${(() => { const lo = V.veh.filter(x => C.lowCap(x.g).length), v = lo.reduce((a, x) => a + x.v, 0); return lo.length ? ` · <span class="warn">${lo.length} tuyến (${sg(v)} tr) dựa trên sức chở độ tin thấp</span>` : ""; })()}`, V.vv, V.veh.map(x => item(x, vv(x.v), `<span class="muted">xe đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))}</span>`)).join("")) : "")
+      + (V.veh.length ? sec("sec-veh", "② Đổi cỡ xe ở tuyến giữ nguyên", `điểm và lượt giữ nguyên, chỉ đổi cỡ xe · bấm để xem lượt nào đi xe gì${(() => { const lo = V.veh.filter(x => C.lowCap(x.g).length), v = lo.reduce((a, x) => a + x.v, 0); return lo.length ? ` · <span class="warn">${lo.length} tuyến (${sg(v)} tr) có dùng loại xe mà seller chưa từng chạy, số đơn mỗi xe mới là ước tính, cần Sup xác nhận</span>` : ""; })()}`, V.vv, V.veh.map(x => item(x, vv(x.v), `<span class="muted">xe đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))}</span>`)).join("")) : "")
       + (V.keep.length ? sec("sec-keep", "Tuyến giữ nguyên có đổi", "thêm xe để kịp COT hoặc đổi người (không thuộc nhóm người chung)", V.kv, V.keep.map(x => item(x, vv(x.v), "")).join("")) : "")
       + (V.fix.length ? sec("sec-fix", "Không tính vào tiết kiệm", "thêm người ở điểm đang trễ COT ngay từ hiện nay (chi phí sửa trễ đang có, không do kế hoạch)", V.fv,
         `<ul class="notes" style="padding:8px 4px 10px 24px">${V.fix.map(x => `<li>${esc(short(x.i))} — hiện nay trễ COT ${Math.round(x.late)}': người ${esc(x.from)} → ${esc(x.to)} (${sg(x.v)} tr)</li>`).join("")}</ul>`) : "");

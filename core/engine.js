@@ -807,7 +807,11 @@ function Core(D, REF) {
     const vehDecide = (g, L) => { const h = L.routes[key(g)], A = h && h.A ? h.A : Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), e0 = h && h.sim ? null : routeEval(g, A);
       const c0 = routeCost(g).c + xOf(L, g); g.forEach(i => VFREE.add(i));
       const c1 = routeCost(g).c, e = routeEval(g, A), lt0 = h && h.sim ? h.sim.late : e0 ? e0.late : 0;
-      if (!(c1 < c0 - 0.05e6) || (e && e.late > tolOf(g) + 0.5)) { g.forEach(i => VFREE.delete(i)); return false; } return true; };
+      if (!(c1 < c0 - 0.05e6) || (e && e.late > tolOf(g) + 0.5) || !dayOk(g, A)) { g.forEach(i => VFREE.delete(i)); return false; } return true; };
+    /* đổi cỡ xe không được làm trễ COT thêm ở BẤT KỲ ngày nào (phát lại từng ngày thật, cùng lượt và cùng người): trễ sau ≤ max(trễ trước, mức cho phép) */
+    const dayOk = (g, A) => { const o = DAYF; try { for (const d of LHD) { if (!g.some(i => (S[i].v[d] || 0) > 0)) continue; DAYF = d;
+          const b = simRoute(g, A, null, d); if (!b || b.late <= tolOf(g) + 0.5) continue; g.forEach(i => VFREE.delete(i)); const a = simRoute(g, A, null, d); g.forEach(i => VFREE.add(i));
+          if (b.late > Math.max(a ? a.late : -1e9, tolOf(g)) + 0.5) return false; } return true; } finally { DAYF = o; } };
     if (P.vehPlan > 0) { let any = false; T.forEach(g => { if (vehDecide(g, L1)) any = true; }); if (any) L1 = assign(T, tolOf);
       /* đổi cỡ xe ngay trên tuyến hiện nay có thể lợi hơn ghép tuyến: thử trả từng nhóm thay đổi về tuyến hiện nay (đã đổi cỡ xe), giữ nếu tổng tốt hơn */
       for (let it = 0; it < 6; it++) { const cur = totOf(T, L1); let done = false;
