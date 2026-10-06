@@ -361,14 +361,17 @@ function Core(D, REF) {
   /* SỨC CHỞ THỰC TẾ (để đo độ đầy): seller vốn chở > trần thì mức chở p95 của chính seller trên loại xe đó = trần (85%); còn lại = sức chở chuẩn */
   /* SỨC CHỞ THẬT ĐÃ XÁC NHẬN (P.capOv): hệ số = sức chở thật ÷ sức chở chuẩn của loại xe với hàng của seller; loại xe không có số → theo loại gần nhất (cùng tỷ lệ) */
   const CPS = {};
-  const capS = (i, k) => { const ov = P.capOv && P.capOv[nm(i)]; if (!ov || !k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key];
+  const capS = (i, k) => { if (!k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key];
     const v = VK(k), b = betaFit(i), std = u => cap(u, b, 1); if (!v) return CPS[key] = null;
+    /* số đơn/xe ở mức capOvAt %: Sup xác nhận (capOv) ưu tiên, còn lại học từ dữ liệu (learnCap) — luôn áp dụng */
+    const ov = Object.assign({}, ...Object.entries(learnCap(i)).map(([t, x]) => ({ [t]: x.ceil })), (P.capOv && P.capOv[nm(i)]) || {});
+    if (!Object.keys(ov).length) return CPS[key] = null;
     let r; if (ov[k] != null) r = ov[k] / (P.capOvAt / 100) / std(v);
-    else { const gs = Object.keys(ov).map(VK).filter(Boolean).sort((x, y) => Math.abs(std(x) - std(v)) - Math.abs(std(y) - std(v))); r = gs.length ? ov[gs[0].k] / (P.capOvAt / 100) / std(gs[0]) : 1; }
+    else { const gs = Object.keys(ov).map(VK).filter(Boolean).sort((x, y) => Math.abs(std(x) - std(v)) - Math.abs(std(y) - std(v))); r = Math.min(1, ov[gs[0].k] / (P.capOvAt / 100) / std(gs[0])); }   // loại xe chưa có số: theo tỷ lệ của loại gần nhất, không vượt chuẩn
     return CPS[key] = r; };
-  /* HỌC SỨC CHỞ TỪ DỮ LIỆU (chỉ gợi ý, cần Sup xác nhận rồi mới vào capOv): xét chuyến seller đi một mình; theo từng loại xe,
+  /* HỌC SỨC CHỞ TỪ DỮ LIỆU (luôn áp dụng; số Sup xác nhận trong capOv được ưu tiên): xét chuyến seller đi một mình; theo từng loại xe,
      ngày đông (¼ ngày nhiều đơn nhất) so với nửa ngày ít đơn: đơn tăng ≥ 1,8× mà phần lớn tăng bằng số chuyến (≥ 1,4×) → xe đã chạm trần;
-     trần = p75 đơn/chuyến ngày đông. Chỉ gợi ý khi trần < 90% mức model đang giả định (85% sức chở chuẩn) */
+     trần = p75 đơn/chuyến ngày đông, coi là mức capOvAt %. Chỉ dùng khi trần < 90% mức chuẩn (85% sức chở chuẩn) */
   const LRN = {};
   function learnCap(i) { if (i in LRN) return LRN[i]; const me = nm(i), day = {}, seen = new Set();
     for (const d of LHD) ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t || seen.has(c)) return; seen.add(c); const v = VK(TY[t[1]]); if (!v) return;
