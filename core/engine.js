@@ -68,7 +68,41 @@ function Core(D, REF) {
     vehFree: 0,        // (as-is & kế hoạch) 1 = chọn mọi loại xe — để 0, as-is phải theo loại xe thật
     polBy: 1,          // chọn cách chọn xe as-is: 0 = khớp tiền từng ngày, 1 = khớp số chuyến từng loại xe từng ngày
     newFillMax: 85,
-    capOvAt: 85,       // sức chở học từ dữ liệu (learnK) = mức chở thường làm, coi là capOvAt % sức chở thật
+    capOvAt: 85,
+    /* LUỒNG MỚI TỪ 1/10 (sheet "D2S Southseller", Ops): seller chia 1 chute, toàn bộ đơn về một SOC — áp cho cả hiện nay lẫn kế hoạch (mốc so sánh từ 1/10).
+       Hệ quả trong mô hình: không sort (chỉ quét, bàn giao, xếp xe), mỗi lượt một nhóm xe về một SOC. Đặt flow1cOn = 0 để xem theo luồng cũ (dữ liệu tháng 8–9) */
+    flow1cOn: 1,
+    flow1c: {
+      "South-Cum Kho Cocoon Juno": "BD A Mega SOC",
+      "South-Cum kho An Dat": "BD A Mega SOC",
+      "SouthSeller-TRUE CARE Official Store": "BD A Mega SOC",
+      "South Seller-Wesser Store": "BD A Mega SOC",
+      "South Seller-sociollavn_officialstore": "BD A Mega SOC",
+      "South Seller-Hannah-Seyo": "BD A Mega SOC",
+      "South Seller-HAPAS Official Store": "BD A Mega SOC",
+      "South Seller-cocobbnoithat": "BD A Mega SOC",
+      "South Seller-Bear Official Store VN": "BD A Mega SOC",
+      "South Seller-Cross kho 24": "BD A Mega SOC",
+      "SouthSeller-Cocoon Vietnam Chinh Hang": "BD A Mega SOC",
+      "SouthSeller-Khang Vu - Binh Duong": "BD A Mega SOC",
+      "SouthSeller-Gooby - Gian Hang Chinh Hang": "BD A Mega SOC",
+      "SouthSeller-DKSH TDM": "BD A Mega SOC",
+      "SouthSeller-B1B2 nhua Cho Lon": "BD A Mega SOC",
+      "South Seller-Cụm kho Merex": "BD A Mega SOC",
+      "SouthSeller-xiaomiflagshipstore-PBT": "BD A Mega SOC",
+      "SouthSeller-MASAN OFFICIAL": "BD A Mega SOC",
+      "SouthSeller-HAXING OVERSEAS-PBT": "BD A Mega SOC",
+      "SouthSeller-KHOGIATMAUDONBD-PBT": "BD A Mega SOC",
+      "SouthSeller-RichyMienNam": "BD A Mega SOC",
+      "SouthSeller-Phe La": "BD A Mega SOC",
+      "SouthSeller-L2NguCoc": "BD A Mega SOC",
+      "SouthSeller-Perysmith-EYSIN Store": "BD A Mega SOC",
+      "South Seller-Net Nuoc Giat": "BD A Mega SOC",
+      "SouthSeller-ECOBI OFFICIAL STORE-PBT": "BD A Mega SOC",
+      "South Seller-ECV-HOME LIVING STORE-PBT": "BD A Mega SOC",
+      "SouthSeller-HISEN-PBT": "BD A Mega SOC",
+      "SouthSeller-Cuahangquychung": "SW SOC"
+    },       // sức chở học từ dữ liệu (learnK) = mức chở thường làm, coi là capOvAt % sức chở thật
     readyReal: 1,      // giờ bàn giao hàng (hàng sẵn) ở kế hoạch = như kiểm định: giờ xe thật rời điểm (trung vị lượt) − chốt xe; thêm FTE riêng thì sớm hơn phần sort tiết kiệm được. 0 = tự tính từ người sort
     vehPlan: 0,        // ĐÒN BẨY kế hoạch (lựa chọn, mặc định tắt): mọi tuyến (kể cả giữ nguyên) được chọn cỡ xe rẻ nhất trong mọi loại; hiện trạng vẫn theo loại xe thật
   };
@@ -108,7 +142,8 @@ function Core(D, REF) {
   S.forEach(s => { if (s.soc && s.soc.length) return; const c = {};
     (s.tc || []).forEach(L => (L || []).forEach(t => { const T = TRP[t]; if (!T) return; T[5].forEach(p => { if (p[1] === 2) { const n = String(TRN[p[0]]).trim(); c[n] = (c[n] || 0) + 1; } }); }));
     s.soc = Object.entries(c).sort((a, b) => b[1] - a[1]).map(x => x[0]); });
-  const socOf = i => (S[i].soc || [])[0] || null;
+  const f1c = i => P.flow1cOn && P.flow1c ? P.flow1c[nm(i)] || null : null;   // SOC duy nhất theo luồng 1 chute (null = luồng cũ)
+  const socOf = i => f1c(i) || (S[i].soc || [])[0] || null;
   const kmSoc = i => socOf(i) ? kmN(S[i].n, socOf(i)) : null;
   /* thứ tự ghé: điểm xa SOC nhất trước, rồi điểm gần nhất kế tiếp */
   function routeOrder(g) { if (g.length < 2) return g.slice(); const d = i => kmSoc(i) ?? 0; let cur = g.slice().sort((a, b) => d(b) - d(a))[0];
@@ -207,6 +242,7 @@ function Core(D, REF) {
     const dwk = {}; for (const k in dk) if (dk[k].length >= 3) dwk[k] = Math.min(240, Math.max(0, med(dk[k])));
     /* vRun: số đơn thấp nhất trong ngày mà điểm từng có xe (ngày học) — ít hơn thì khả năng có xe giảm theo tỷ lệ */
     const ran = Dv.filter(d => ((s.tc && s.tc[d]) || []).length), vRun = ran.length ? Math.min(...ran.map(d => s.v[d])) : 0;
+    if (f1c(i)) { w.forEach(x => { x.lg = 1; x.gr = [{ key: f1c(i), e: 1, pg: 1 }]; }); return STC[i] = { w, dw: fd, dwk, vRun, nFit: Dv.length, legs: 1, spt: 1 }; }   // luồng 1 chute: một SOC
     return STC[i] = { w, dw: fd, dwk, vRun, nFit: Dv.length, legs: Math.max(1, Math.round(med(legs) || 1)), spt: Math.max(1, Math.round(med(spt) || 1)) }; }
   const nWaves = i => { const w = waves(i); return w ? w.w.length : 1; };
   /* lượt xe THẬT của điểm trong một ngày (theo COT): giờ tới sớm nhất, giờ rời muộn nhất, số xe, số đơn lên */
@@ -497,7 +533,7 @@ function Core(D, REF) {
   /* phần đơn của điểm về từng SOC (chuyến thật, ngày học): đơn lên ở điểm chia cho các SOC xe trả sau điểm theo đơn xuống ở mỗi SOC
      (SOC ghi xuống 0 → chia đều cho các SOC xe ghé sau điểm) */
   const SSH = {};
-  function socShare(i) { if (i in SSH) return SSH[i]; const o = {}, seen = new Set(); let U = 0;
+  function socShare(i) { if (i in SSH) return SSH[i]; if (f1c(i)) return SSH[i] = { [f1c(i)]: 1 }; const o = {}, seen = new Set(); let U = 0;
     for (const d of FD()) ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t || seen.has(c)) return; seen.add(c);
       t[5].forEach((p, k) => { if (p[1] !== 0 || String(TRN[p[0]]).trim() !== nm(i) || !(p[2] > 0)) return; const so = t[5].slice(k + 1).filter(q => q[1] === 2); if (!so.length) return;
         const dn = so.reduce((a, q) => a + (q[3] || 0), 0); so.forEach(q => { const n = String(TRN[q[0]]).trim(); o[n] = (o[n] || 0) + p[2] * (dn > 0 ? (q[3] || 0) / dn : 1 / so.length); }); U += p[2]; }); });
@@ -510,7 +546,7 @@ function Core(D, REF) {
     return SDY[i] = o; }
   /* số SOC điểm phải chia riêng: SOC nhận ≥ P.socMin % đơn (ít nhất 1); null = thiếu chuyến thật */
   const socN = i => { const o = socShare(i), n = Object.values(o).filter(x => x >= P.socMin / 100).length; return Object.keys(o).length ? Math.max(1, n) : null; };
-  function chSt(i) { const s = S[i], f = flowOf(s), sn = P.socSt ? socN(i) : null; if (f === "HCM") { const n = sn ?? Math.max(1, Math.round(s.nsMed || s.ns || 1)); return { ch: n, st: n }; }
+  function chSt(i) { if (f1c(i)) return { ch: 1, st: 1 }; const s = S[i], f = flowOf(s), sn = P.socSt ? socN(i) : null; if (f === "HCM") { const n = sn ?? Math.max(1, Math.round(s.nsMed || s.ns || 1)); return { ch: n, st: n }; }
     let [ch, st] = FLOW[f]; if (sn != null) st = sn; const y = HYS[nm(i)]; if (f === "NHY" && y && !y[0] && !y[1]) ch -= 1; return { ch, st }; }
   const stepF = (ideal, act, step, rate) => 1 - Math.round(Math.abs(ideal - act) / step) * rate / 100;
   const volPk = i => pct(active(i).map(d => S[i].v[d]), P.peakP);

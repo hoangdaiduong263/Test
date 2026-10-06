@@ -96,6 +96,7 @@
         <span>Cả vùng hiện nay: xe chở trung bình <b class="mono">${pc(O.now)}</b>, <b class="mono">${pc(O.low)}</b> số chuyến chở chưa tới nửa xe.</span>
         ${OC.nNew ? `<span>Riêng các tuyến được ghép: ${OC.nCut} tuyến hiện nay chở trung bình <b class="mono">${pc(OC.now)}</b> → ${OC.nNew} tuyến mới chở <b class="mono pos">${pc(OC.plan)}</b>.</span>` : ""}</div>
         <div class="occ"><b>Cài đặt kế hoạch</b></div>
+        ${(() => { const L = C.S.map((s, i) => i).filter(i => C.S[i].R === r.R && P.flow1cOn && P.flow1c && P.flow1c[C.nm(i)]); return L.length ? `<p class="muted">Từ 1/10, ${L.length} seller của vùng chia 1 chute và giao toàn bộ đơn về một SOC (theo sheet Ops "D2S Southseller"). Cả hiện nay lẫn kế hoạch đều tính theo luồng mới này: seller không còn sort, SOC sort lại. Chi phí SOC sort lại như nhau ở hai bên nên không làm thay đổi số tiết kiệm.</p>` : ""; })()}
         <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở thật <span class="muted">(học từ chuyến thật của từng seller × cỡ xe; ${P.capOvAt}% = mức thường làm)</span></label>
         <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label>
         ${capList(r.R)}</div>`; }
