@@ -92,30 +92,23 @@
       <div class="bridge"><h3>Tiết kiệm đến từ đâu (bấm để tới mục)</h3><table><tbody>${parts.map(x => row(x[0], x[1], x[2])).join("")}${Math.abs(resid) >= 0.05e6 ? row("", "Làm tròn / khác", resid) : ""}
         <tr class="tot"><td>Tổng</td><td class="r mono ${t >= 0 ? "pos" : "neg"}">${sg(t)}</td></tr></tbody></table>
         ${V.fv ? `<p class="muted">Không tính vào tiết kiệm: thêm người ở ${V.fix.length} điểm đang trễ COT ngay từ hiện nay, ${sg(V.fv)} tr (<a href="#sec-fix">xem</a>).</p>` : ""}</div>
-      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở: chuẩn của loại xe; seller vốn chở đầy hơn thì mức chở p95 của chính seller = ${P.newFillMax}%)</span></span>
+      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở thật của từng seller × cỡ xe, học từ chuyến thật; mức chở thường làm = ${P.capOvAt}%)</span></span>
         <span>Cả vùng hiện nay: xe chở trung bình <b class="mono">${pc(O.now)}</b>, <b class="mono">${pc(O.low)}</b> số chuyến chở chưa tới nửa xe.</span>
         ${OC.nNew ? `<span>Riêng các tuyến được ghép: ${OC.nCut} tuyến hiện nay chở trung bình <b class="mono">${pc(OC.now)}</b> → ${OC.nNew} tuyến mới chở <b class="mono pos">${pc(OC.plan)}</b>.</span>` : ""}</div>
         <div class="occ"><b>Cài đặt kế hoạch</b></div>
-        <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở chuẩn</label>
+        <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở thật <span class="muted">(học từ chuyến thật của từng seller × cỡ xe; ${P.capOvAt}% = mức thường làm)</span></label>
         <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label>
-        <p class="muted">Seller hiện nay đã chở trung bình trên ${P.newFillMax}%: trần = mức chở p95 thật của chính seller trên loại xe đó.</p>
-        ${ownList(r.R)}
         ${capList(r.R)}</div>`; }
-  /* seller × loại xe có tải p95 > ownCapMax: nghi lỗi data, chỉ dùng khi đã xác nhận */
-  /* sức chở thật: đã xác nhận (P.capOv) và gợi ý học từ dữ liệu (chờ Sup xác nhận) */
-  /* sức chở thật theo seller: Sup xác nhận (P.capOv) và học từ dữ liệu — cả hai luôn áp dụng */
-  function capList(R) { const conf = [], lrn = [];
-    C.S.forEach((s, i) => { if (s.R !== R) return; const ov = P.capOv && P.capOv[C.nm(i)];
-      if (ov) conf.push(`${esc(short(i))}: ${Object.entries(ov).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
-      Object.entries(C.learnCap(i)).forEach(([k, x]) => { if (!(ov && ov[k] != null)) lrn.push(`${esc(short(i))} ${k} ~${x.ceil} <span class="muted">(chuẩn ${x.std})</span>`); }); });
-    if (!conf.length && !lrn.length) return "";
-    return `<div class="occ"><span><b>Sức chở thật theo seller</b> <span class="muted">(đơn/xe ở mức ${P.capOvAt}%, đang áp dụng)</span></span>
-      ${conf.length ? `<span>Sup xác nhận: ${conf.join(" ; ")}</span>` : ""}
-      ${lrn.length ? `<span>Học từ dữ liệu <span class="muted">(ngày đông đơn tăng chủ yếu bằng số chuyến → xe chạm trần)</span>: ${lrn.join(" ; ")}</span>` : ""}</div>`; }
-  function ownList(R) { const L = []; C.S.forEach((s, i) => { if (s.R !== R) return; Object.entries(C.ownCap(i)).forEach(([k, x]) => { if (x.p95 * 100 > P.ownCapMax) L.push({ i, n: C.nm(i), k, x }); }); });
-    if (!L.length) return "";
-    return `<div class="occ"><span class="muted">Chờ xác nhận — chở trên ${P.ownCapMax}% sức chở chuẩn, nghi lỗi data, chưa dùng tới khi tick:</span>
-      ${L.map(z => `<label class="sw"><input type="checkbox" data-ownok="${esc(z.n)}"${C.OWNOK.has(z.n) ? " checked" : ""}> ${esc(short(z.i))} · ${z.k} · p95 ${Math.round(z.x.p95 * 100)}% · ${z.x.n} chuyến · hàng to ${Math.round(z.x.beta * 100)}%</label>`).join("")}</div>`; }
+  /* SỨC CHỞ HỌC TỪ DỮ LIỆU: mọi seller × loại xe, luôn áp dụng; nguồn từng số; kiểm định trên xe chung */
+  function capList(R) { const K = C.learnK(), ks = ["VAN", "1T25", "1T9", "5T", "8T"], f = x => Math.round(x).toLocaleString("vi-VN");
+    const rows = C.S.map((s, i) => i).filter(i => C.S[i].R === R).sort((x, y) => C.nm(x).localeCompare(C.nm(y)));
+    const nb = rows.reduce((a, i) => a + Object.values(K.bad[i] || {}).reduce((b, x) => b + x, 0), 0);
+    return `<details class="occ"><summary><b>Sức chở từng seller × cỡ xe — học từ chuyến thật</b> <span class="muted">(đơn/xe ở mức chở thường làm = ${P.capOvAt}%; không dùng sức chở chuẩn)</span></summary>
+      <p class="muted">Tỷ lệ sức chở giữa cỡ xe học được: ${ks.map(k => `${k} ${K.RHO[k].toFixed(2)}`).join(" · ")} (1T9 = 1). Đường chung (${K.nSat} seller × cỡ xe đã chạm trần): 1T9 chở ~${f(K.a)} đơn hàng nhỏ hoặc ~${f(K.b)} đơn hàng to.
+        Kiểm định trên ${f(K.chk.n)} xe chung nhiều seller: độ đầy dự báo trung vị ${Math.round(K.chk.p50 * 100)}%, p90 ${Math.round(K.chk.p90 * 100)}% (≈100% là khớp). ${nb ? `Tự loại ${nb} chuyến bất thường (nghi lỗi data) của vùng.` : ""}</p>
+      <table class="cap"><tr><th>Seller</th>${ks.map(k => `<th>${k}</th>`).join("")}</tr>${rows.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const src = K.src(i, k);
+        return `<td title="${esc(src)}" class="${/chạm trần/.test(src) ? "pos" : /đã thấy|xe chung/.test(src) ? "" : "muted"}">${f(K.cap(i, k))}</td>`; }).join("")}</tr>`).join("")}</table>
+      <p class="muted">Xanh: xe đã chạm trần (chạy song song) · đen: đã thấy chở được (chưa chạm trần — chỉ tính số đã chứng minh) hoặc học từ xe chung · nhạt: quy từ cỡ xe khác, hoặc đường chung khi seller chưa có chuyến. Rê chuột để xem nguồn.</p></details>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -256,12 +249,12 @@
       <h3>Từng điểm</h3><p class="muted">Kế hoạch giữ nguyên điều kiện chute/SOC của từng điểm: đơn đi mỗi SOC bao nhiêu %, bao nhiêu % ngày có xe tới SOC đó — chỉ đổi điểm nào đi chung xe với điểm nào. "Ngày đông" là các SOC có xe trong ngày mô phỏng (SOC chỉ có xe vài ngày thì ngày đông không có).</p>
       <div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Chute</th><th>Hiện nay · % đơn · % ngày có xe</th><th>Kế hoạch · % đơn · % ngày có xe</th><th>Ngày đông (mô phỏng)</th><th>Hiện nay vs kế hoạch</th></tr></thead><tbody>${ord.map(row).join("")}</tbody></table></div></div>`; }
 
-  /* SELLER XE CHỞ ÍT: độ đầy chuyến thật < 50% sức chở chuẩn, kèm tuyến kế hoạch của điểm đầy bao nhiêu */
+  /* SELLER XE CHỞ ÍT: độ đầy chuyến thật < 50% sức chở thật (học từ dữ liệu), kèm tuyến kế hoạch của điểm đầy bao nhiêu */
   function lowOcc(r) { const L = r.nodes.map(i => ({ i, o: C.occPoint(i) })).filter(x => x.o && x.o.occ < 0.5).sort((a, b) => a.o.occ - b.o.occ);
     const row = x => { const g = r.T.find(h => h.includes(x.i)), op = g ? C.occ(g, true) : null, ch = g && g.length > 1 ? `ghép: ${esc(g.filter(j => j !== x.i).map(short).join(" + "))}` : "đi riêng";
       return `<tr><td>${esc(short(x.i))}</td><td class="r mono">${pc(x.o.occ)}</td><td class="r mono">${pc(x.o.low)}</td><td class="r mono">${x.o.perDay.toFixed(1)}</td><td>${Object.entries(x.o.ty).sort((a, b) => b[1] - a[1]).map(e => e[0]).join(", ")}</td><td class="r mono ${op > x.o.occ ? "pos" : ""}">${pc(op)}</td><td class="muted">${ch}</td></tr>`; };
     $("lowocc").innerHTML = `<summary>Seller xe chở ít · độ đầy dưới 50% <span class="${L.length ? "warn" : "pos"}">${L.length} điểm</span></summary><div class="mb">
-      <p class="muted">Độ đầy = đơn lên xe ÷ sức chở chuẩn của loại xe (chuyến thật, cả các điểm đi chung xe). Cột kế hoạch là độ đầy tuyến kế hoạch của điểm đó.</p>
+      <p class="muted">Độ đầy = đơn lên xe ÷ sức chở thật học được của seller trên loại xe đó (chuyến thật, cả các điểm đi chung xe). Cột kế hoạch là độ đầy tuyến kế hoạch của điểm đó.</p>
       ${L.length ? `<div class="scroll"><table><thead><tr><th>Điểm</th><th class="r">Độ đầy hiện nay</th><th class="r">Chuyến &lt; nửa xe</th><th class="r">Chuyến/ngày</th><th>Loại xe</th><th class="r">Kế hoạch</th><th>Kế hoạch đi cùng</th></tr></thead><tbody>${L.map(row).join("")}</tbody></table></div>` : `<p class="muted">Không có.</p>`}</div>`; }
 
   /* phần phụ: tuyến đã thử & bị loại, FM Hub */
@@ -272,7 +265,7 @@
       <h3>FM Hub cover ≥ 2 điểm</h3>${H.length ? `<ul class="notes">${H.map(h => `<li><b>${esc(h.h)}</b> · ${h.pts.length} điểm${h.teams.length ? ` · nhóm ${h.teams.map(t => t.id).join(", ")}` : ""}${h.solo.length ? ` · <span class="muted">vẫn FTE riêng: ${h.solo.map(x => `${esc(short(x.i))} (${esc(Object.entries(x.why).sort((a, b) => b[1] - a[1]).map(e => WHY[e[0]] || e[0]).join(" / ") || (C.HCOV[C.nm(x.i)] != null ? "số người chỉnh tay" : "không còn điểm cùng hub"))})`).join(", ")}</span>` : ""}</li>`).join("")}</ul>` : `<p class="muted">Không có.</p>`}</div>`; }
 
   /* tham số: [nhóm, khóa, nhãn, đơn vị, hệ số hiển thị] */
-  const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "newFillMax", "Tuyến mới chở tối đa (0 = theo tải cao nhất thường gặp của xe thật)", "% sức chở chuẩn", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
+  const PF = [["Xe", "fill", "Lấp đầy xe tối đa", "%", 1], ["Xe", "newFillMax", "Kế hoạch chở tối đa", "% sức chở thật", 1], ["Xe", "maxStops", "Số điểm tối đa một tuyến", "điểm", 1], ["Xe", "maxKm", "Hai điểm cách nhau tối đa", "km", 1],
     ["Xe", "cotGap", "Giờ xe lượt đầu lệch tối đa", "phút", 1], ["Xe", "minGain", "Mỗi bước phải lợi ít nhất", "tr/48 ngày", 1e6], ["Xe", "minPct", "Thay đổi phải lợi ít nhất", "% tiền xe hiện nay", 1], ["Xe", "cityKm", "Xa SOC hơn thì giá theo km", "km", 1], ["Xe", "dropSur", "Xe trả nhiều SOC: + mỗi SOC", "%", 1], ["Xe", "vehMin", "As-is: chỉ dùng loại xe chiếm ≥", "% chuyến", 1], ["Xe", "vehPlan", "Kế hoạch được đổi cỡ xe (1 = mọi loại, 0 = giữ loại xe hiện nay)", "", 1], ["Xe", "newPen", "Tuyến mới đắt hơn model (thận trọng)", "%", 1], ["Xe", "socGrp", "Tiền xe: chia đơn theo nhóm SOC đích (1 = bật)", "", 1], ["Xe", "socSim", "Mô phỏng giờ: xe riêng theo nhóm SOC (1 = bật)", "", 1], ["Xe", "socP", "Nhóm SOC có xe riêng khi có mặt ≥", "% ngày", 1], ["Xe", "split", "Lượt trễ: chia điểm cho các xe (1 = bật)", "", 1], ["Xe", "splitExtra", "Chia điểm: thêm tối đa", "xe/lượt", 1],
     ["Người", "lateTol", "Cho trễ COT tối đa", "phút", 1], ["Xe", "closeMin", "Chốt xe sau khi hàng cuối sẵn", "phút", 1], ["Xe", "early", "Xe đi sớm, dồn đơn chưa xong sang COT sau (1 = bật, 0 = chờ đủ đơn)", "", 1], ["Xe", "rollMax", "Mỗi lượt-điểm dồn tối đa", "% đơn", 1], ["Người", "maxExtra", "Tuyến trễ: thêm FTE riêng tối đa mỗi điểm", "người", 1], ["Người", "peakP", "Ngày đông = phân vị", "%", 1], ["Người", "fteH", "Một người làm", "giờ/ngày", 1],
     ["Năng suất (theo đặc điểm seller)", "prodBase", "Sort lý tưởng (1 chute, 10% hàng to)", "đơn/người/ngày", 1], ["Năng suất (theo đặc điểm seller)", "socSt", "Số SOC phải chia theo chuyến thật (1) / theo bảng luồng (0)", "", 1], ["Năng suất (theo đặc điểm seller)", "socMin", "SOC tính là phải chia khi nhận ≥", "% đơn", 1], ["Năng suất (theo đặc điểm seller)", "prodHand", "Không sort (quét, bàn giao)", "đơn/người/ngày", 1],
@@ -355,8 +348,6 @@
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
-    if (e.target.dataset.ownok) { e.target.checked ? C.OWNOK.add(e.target.dataset.ownok) : C.OWNOK.delete(e.target.dataset.ownok);
-      LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
     LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); });
   try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
