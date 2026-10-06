@@ -773,8 +773,9 @@ function Core(D, REF) {
       if (!done) break; }
     /* TUYẾN "LÀM RIÊNG" ÂM trong nhóm (thường do phải thêm người để kịp COT, hoặc điểm bị bỏ lại một mình): thử tách từng điểm ra đi riêng,
        hoặc nhập tuyến vào tuyến mới đang chở bạn đi chung cũ của nó — giữ cách nào làm tổng xe + người cả vùng tốt hơn */
-    const soloV = (g, L) => { const S0 = new Set(g); let c = 0; T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)); c += routeCost(b).c * (1 - (rest.length ? costU(rest) / Math.max(1, costU(b)) : 0)); });
-      return c - routeCost(g).c - xOf(L, g) + g.reduce((a, i) => a + (L0.cost[i] || 0) - (L.cost[i] || 0), 0); };
+    /* giá trị của một tuyến mới = phần tiền xe các tuyến hiện nay chia theo tỷ lệ đơn tuyến mới nhận − tiền xe tuyến mới − xe thêm − người thêm của các điểm.
+       Cộng các tuyến mới trong nhóm = đúng giá trị cả nhóm (cùng cách tính với Planner) */
+    const soloV = (g, L) => attrV(T0, g, L0, L, xOf);
     for (let it = 0; it < 4; it++) { const k0s = new Set(T0.map(key)), cur = totOf(T, L1), neg = T.filter(g => !k0s.has(key(g)) && soloV(g, L1) < -P.minGain); if (!neg.length) break; let best = null;
       neg.forEach(g => { const alts = [];
         if (g.length > 1) g.forEach(i => alts.push(T.filter(h => h !== g).concat([g.filter(j => j !== i), [i]])));
@@ -858,6 +859,13 @@ function Core(D, REF) {
   /* LÀM RIÊNG một tuyến mới: chỉ kéo các điểm của nó ra khỏi tuyến hiện nay, phần còn lại của mỗi tuyến hiện nay giữ nguyên đi chung.
      Lợi tiền xe = Σ tuyến hiện nay − (Σ phần còn lại + tuyến mới + xe thêm). Âm = chỉ có lợi khi làm cùng các tuyến khác trong nhóm */
   function standalone(r, g) { return withPlan(() => standalone0(r, g)); }
+  const volT = i => LHD.reduce((a, d) => a + (S[i].v[d] || 0), 0);
+  function attrV(T0, g, L0, L, xf) { return withPlan(() => attrV0(T0, g, L0, L, xf)); }
+  function attrV0(T0, g, L0, L, xf) { const S0 = new Set(g); let c = 0;
+    T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const tb = b.reduce((a, i) => a + volT(i), 0) || 1; c += routeCost(b).c * b.filter(i => S0.has(i)).reduce((a, i) => a + volT(i), 0) / tb; });
+    return c - routeCost(g).c - xf(L, g) + g.reduce((a, i) => a + (L0.cost[i] || 0) - (L.cost[i] || 0), 0); }
+  /* giá trị từng tuyến mới trong kết quả r (cùng cách tính với soloV) */
+  const routeValue = (r, g) => attrV(r.T0, g, r.L0, r.L1, (L, h) => r.xCost(h));
   function standalone0(r, g) { const S0 = new Set(g); let c = 0; r.T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)), cb = routeCost(b).c;
       /* phần còn lại so với tuyến hiện nay cùng một cách tính (chưa hiệu chỉnh theo tuyến), rồi quy về tiền thật của tuyến hiện nay */
       const u = rest.length ? costU(rest) / Math.max(1, costU(b)) : 0; c += cb * (1 - u); });
@@ -884,7 +892,7 @@ function Core(D, REF) {
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, OVR, CPS].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, ownCap, OWNOK, overNow, scOf, capS, learnCap, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { routeValue, routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, ownCap, OWNOK, overNow, scOf, capS, learnCap, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
