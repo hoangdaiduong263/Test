@@ -108,7 +108,7 @@
         Kiểm định trên ${f(K.chk.n)} xe chung nhiều seller: độ đầy dự báo trung vị ${Math.round(K.chk.p50 * 100)}%, p90 ${Math.round(K.chk.p90 * 100)}% (≈100% là khớp). ${nb ? `Tự loại ${nb} chuyến bất thường (nghi lỗi data) của vùng.` : ""}</p>
       <table class="cap"><tr><th>Seller</th>${ks.map(k => `<th>${k}</th>`).join("")}</tr>${rows.map(i => `<tr><td>${esc(short(i))}</td>${ks.map(k => { const src = K.src(i, k);
         return `<td title="${esc(src)}" class="${/chạm trần/.test(src) ? "pos" : /đã thấy|xe chung/.test(src) ? "" : "muted"}">${f(K.cap(i, k))}</td>`; }).join("")}</tr>`).join("")}</table>
-      <p class="muted">Xanh: xe đã chạm trần (chạy song song) · đen: đã thấy chở được (chưa chạm trần — chỉ tính số đã chứng minh) hoặc học từ xe chung · nhạt: quy từ cỡ xe khác, hoặc đường chung khi seller chưa có chuyến. Rê chuột để xem nguồn.</p></details>`; }
+      <p class="muted">Độ tin — xanh = cao: xe đã chạm trần (chạy song song) · đen = vừa: đã thấy chở được (chưa chạm trần — chỉ tính số đã chứng minh) hoặc học từ xe chung · nhạt = thấp: quy từ cỡ xe khác, hoặc đường chung khi seller chưa có chuyến — tạm dùng, tuyến kế hoạch dựa vào số này được gắn cờ. Rê chuột để xem nguồn.</p></details>`; }
 
   /* RỦI RO: tính khi mở tuyến (vài chục lần mô phỏng) */
   const RISK = new Map();
@@ -192,7 +192,10 @@
       const lh = Math.max(...x.g.map(i => (r.lhLate || {})[i] ?? -1e9));
       return !R ? `<span class="muted">thiếu data giờ</span>` : late > 0.5 ? (late <= Math.max(0, lh) + 0.5 ? `<span class="warn">trễ COT ${Math.round(late)}' do xe linehaul tới muộn — hiện nay cũng trễ, thêm người không cứu được</span>` : `<span class="neg">không kịp COT ${Math.round(late)}'</span>`) : R.av.ok >= 120 ? `<span class="pos">rất an toàn</span>`
         : R.av.ok >= 30 ? `<span>seller trễ ≤ ${R.av.ok}' vẫn kịp</span>` : `<span class="warn">mong manh: seller trễ ${R.av.ok ? `quá ${R.av.ok}'` : "là"} trễ COT</span>`; };
-    const item = (x, val, sub, cls) => { const id = "r:" + x.k, open = ST.open.has(id); n++;
+    /* sức chở độ tin thấp: cỡ xe kế hoạch mà seller chưa đo trên cỡ đó (quy đổi) — tạm chấp nhận, cần Sup xác nhận */
+    const lowTxt = g => { const L = C.lowCap(g); if (!L.length) return ""; const by = {}; L.forEach(z => { (by[z.k] = by[z.k] || []).push(short(z.i)); });
+      return `<span class="warn" title="${esc(L.map(z => short(z.i) + " " + z.k + ": " + Math.round(C.learnK().cap(z.i, z.k)) + " đơn/xe (" + z.src + ")").join("; "))}">sức chở độ tin thấp ở ${Math.round([...new Set(L.map(z => z.k))].reduce((a, k) => a + L.find(z => z.k === k).sh, 0) * 100)}% số xe: ${Object.entries(by).map(([k, a]) => `${k} (${esc(a.join(", "))})`).join(" · ")} — cần Sup xác nhận</span>`; };
+    const item = (x, val, sub, cls) => { const id = "r:" + x.k, open = ST.open.has(id); n++; const lw = lowTxt(x.g); sub = [sub, lw].filter(Boolean).join(" · ");
       return `<article class="it ${cls || ""}${open ? " open" : ""}"><div class="row" data-tg="${id}" tabindex="0" role="button" aria-expanded="${open}">
         <span class="no mono">${n}</span><div class="main"><div class="nm">${names(x.g)}</div><div class="meta">${stTxt(x)}${sub ? ` · ${sub}` : ""}</div></div>
         ${val}<button type="button" class="play" data-rl="${esc(x.k)}" aria-label="Chạy live tuyến ${n}" title="Chạy live">▶</button></div>${open ? body(x) : ""}</article>`; };
@@ -204,7 +207,7 @@
       : `<div class="grp"><div class="gh"><span>${P0.routes.length} tuyến mới thay cho ${P0.p.cut.length} tuyến hiện nay — các tuyến đổi điểm cho nhau nên phải làm cả nhóm</span><span class="mono ${P0.net >= 0 ? "pos" : "neg"}">cả nhóm ${sg(P0.net)}</span></div>${side(P0)}${P0.vehV ? `<div class="gside muted">gồm ${sg(P0.vehV)} tr nhờ đổi cỡ xe</div>` : ""}
         ${P0.routes.map(x => item(x, vv(x.solo, "phần của tuyến"), "", "in")).join("")}</div>`).join("");
     const html = (nR ? sec("sec-pk", "① Ghép tuyến", `${nR} tuyến mới thay cho ${nCut} tuyến hiện nay · bấm từng tuyến để xem xe theo lượt, rủi ro, giả định`, pkv, pkHtml) : "")
-      + (V.veh.length ? sec("sec-veh", "② Đổi cỡ xe ở tuyến giữ nguyên", `điểm và lượt giữ nguyên, chỉ đổi cỡ xe · bấm để xem lượt nào đi xe gì`, V.vv, V.veh.map(x => item(x, vv(x.v), `<span class="muted">xe đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))}</span>`)).join("")) : "")
+      + (V.veh.length ? sec("sec-veh", "② Đổi cỡ xe ở tuyến giữ nguyên", `điểm và lượt giữ nguyên, chỉ đổi cỡ xe · bấm để xem lượt nào đi xe gì${(() => { const lo = V.veh.filter(x => C.lowCap(x.g).length), v = lo.reduce((a, x) => a + x.v, 0); return lo.length ? ` · <span class="warn">${lo.length} tuyến (${sg(v)} tr) dựa trên sức chở độ tin thấp</span>` : ""; })()}`, V.vv, V.veh.map(x => item(x, vv(x.v), `<span class="muted">xe đầy ${pc(C.occ(x.g, false))} → ${pc(C.occ(x.g, true))}</span>`)).join("")) : "")
       + (V.keep.length ? sec("sec-keep", "Tuyến giữ nguyên có đổi", "thêm xe để kịp COT hoặc đổi người (không thuộc nhóm người chung)", V.kv, V.keep.map(x => item(x, vv(x.v), "")).join("")) : "")
       + (V.fix.length ? sec("sec-fix", "Không tính vào tiết kiệm", "thêm người ở điểm đang trễ COT ngay từ hiện nay (chi phí sửa trễ đang có, không do kế hoạch)", V.fv,
         `<ul class="notes" style="padding:8px 4px 10px 24px">${V.fix.map(x => `<li>${esc(short(x.i))} — hiện nay trễ COT ${Math.round(x.late)}': người ${esc(x.from)} → ${esc(x.to)} (${sg(x.v)} tr)</li>`).join("")}</ul>`) : "");
