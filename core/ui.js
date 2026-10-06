@@ -101,8 +101,19 @@
         <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở chuẩn</label>
         <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label>
         <p class="muted">Seller hiện nay đã chở trung bình trên ${P.newFillMax}%: trần = mức chở p95 thật của chính seller trên loại xe đó.</p>
-        ${ownList(r.R)}</div>`; }
+        ${ownList(r.R)}
+        ${capList(r.R)}</div>`; }
   /* seller × loại xe có tải p95 > ownCapMax: nghi lỗi data, chỉ dùng khi đã xác nhận */
+  /* sức chở thật: đã xác nhận (P.capOv) và gợi ý học từ dữ liệu (chờ Sup xác nhận) */
+  function capList(R) { const conf = [], sug = [];
+    C.S.forEach((s, i) => { if (s.R !== R) return; const n = C.nm(i), ov = P.capOv && P.capOv[n];
+      if (ov) conf.push(`${esc(short(i))}: ${Object.entries(ov).map(([k, v]) => `${k} ${v}`).join(" · ")} đơn`);
+      Object.entries(C.learnCap(i)).forEach(([k, x]) => { if (!(ov && ov[k] != null)) sug.push({ i, n, k, x }); }); });
+    if (!conf.length && !sug.length) return "";
+    return `<div class="occ"><span><b>Sức chở thật theo seller</b> <span class="muted">(số đơn một xe chở được ở mức ${P.capOvAt}%)</span></span>
+      ${conf.length ? `<span>Đã xác nhận: ${conf.join(" ; ")}</span>` : ""}
+      ${sug.length ? `<span class="muted">Gợi ý từ dữ liệu — ngày đông đơn tăng nhưng chủ yếu tăng số chuyến, xe chạm trần sớm hơn chuẩn; cần Sup xác nhận rồi mới áp:</span>
+      ${sug.map(z => `<label class="sw"><input type="checkbox" data-capok="${esc(z.n)}|${z.k}|${z.x.ceil}"> ${esc(short(z.i))} · ${z.k} · ~${z.x.ceil} đơn/xe (model đang giả định ${z.x.std}) · ${z.x.trips} chuyến</label>`).join("")}` : ""}</div>`; }
   function ownList(R) { const L = []; C.S.forEach((s, i) => { if (s.R !== R) return; Object.entries(C.ownCap(i)).forEach(([k, x]) => { if (x.p95 * 100 > P.ownCapMax) L.push({ i, n: C.nm(i), k, x }); }); });
     if (!L.length) return "";
     return `<div class="occ"><span class="muted">Chờ xác nhận — chở trên ${P.ownCapMax}% sức chở chuẩn, nghi lỗi data, chưa dùng tới khi tick:</span>
@@ -346,6 +357,8 @@
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
+    if (e.target.dataset.capok) { const [n, k, v] = e.target.dataset.capok.split("|"); P.capOv = P.capOv || {}; P.capOv[n] = Object.assign({}, P.capOv[n], { [k]: +v });
+      LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     if (e.target.dataset.ownok) { e.target.checked ? C.OWNOK.add(e.target.dataset.ownok) : C.OWNOK.delete(e.target.dataset.ownok);
       LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}

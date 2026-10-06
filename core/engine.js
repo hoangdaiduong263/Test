@@ -68,6 +68,8 @@ function Core(D, REF) {
     vehFree: 0,        // (as-is & kế hoạch) 1 = chọn mọi loại xe — để 0, as-is phải theo loại xe thật
     polBy: 1,          // chọn cách chọn xe as-is: 0 = khớp tiền từng ngày, 1 = khớp số chuyến từng loại xe từng ngày
     newFillMax: 85,
+    capOv: { "HCMSeller-Top Gia HCM": { VAN: 100, "1T9": 300, "5T": 700, "8T": 1200 } },   // SỨC CHỞ THẬT theo seller (phỏng vấn Sup): số đơn của seller một xe chở được ở mức capOvAt % — thay sức chở chuẩn cho seller đó
+    capOvAt: 85,
     ownCapN: 5,        // cần ít nhất bấy nhiêu chuyến của seller trên loại xe đó mới học
     ownCapMax: 200,    // tải p95 vượt % sức chở chuẩn này thì nghi lỗi data: chỉ dùng khi đã xác nhận (OWNOK)    // tuyến mới: chở tối đa % sức chở chuẩn (0 = theo tải cao nhất thường gặp p95 của chuyến thật, có thể > 100%)
     readyReal: 1,      // giờ bàn giao hàng (hàng sẵn) ở kế hoạch = như kiểm định: giờ xe thật rời điểm (trung vị lượt) − chốt xe; thêm FTE riêng thì sớm hơn phần sort tiết kiệm được. 0 = tự tính từ người sort
@@ -357,10 +359,36 @@ function Core(D, REF) {
   /* seller hiện nay đã chở trung bình > newFillMax: trần kế hoạch = p95 tải thật của chính seller trên loại xe đó (luôn áp dụng); còn lại trần = newFillMax */
   const OVR = {}, overNow = i => i in OVR ? OVR[i] : (OVR[i] = P.newFillMax > 0 && (occ([i], false, true) || 0) > P.newFillMax / 100);
   /* SỨC CHỞ THỰC TẾ (để đo độ đầy): seller vốn chở > trần thì mức chở p95 của chính seller trên loại xe đó = trần (85%); còn lại = sức chở chuẩn */
-  const scOf = (i, k) => { if (!overNow(i)) return 1; const x = ownCap(i)[k], m = P.newFillMax / 100; return x && x.p95 > m ? x.p95 / m : 1; };
+  /* SỨC CHỞ THẬT ĐÃ XÁC NHẬN (P.capOv): hệ số = sức chở thật ÷ sức chở chuẩn của loại xe với hàng của seller; loại xe không có số → theo loại gần nhất (cùng tỷ lệ) */
+  const CPS = {};
+  const capS = (i, k) => { const ov = P.capOv && P.capOv[nm(i)]; if (!ov || !k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key];
+    const v = VK(k), b = betaFit(i), std = u => cap(u, b, 1); if (!v) return CPS[key] = null;
+    let r; if (ov[k] != null) r = ov[k] / (P.capOvAt / 100) / std(v);
+    else { const gs = Object.keys(ov).map(VK).filter(Boolean).sort((x, y) => Math.abs(std(x) - std(v)) - Math.abs(std(y) - std(v))); r = gs.length ? ov[gs[0].k] / (P.capOvAt / 100) / std(gs[0]) : 1; }
+    return CPS[key] = r; };
+  /* HỌC SỨC CHỞ TỪ DỮ LIỆU (chỉ gợi ý, cần Sup xác nhận rồi mới vào capOv): xét chuyến seller đi một mình; theo từng loại xe,
+     ngày đông (¼ ngày nhiều đơn nhất) so với nửa ngày ít đơn: đơn tăng ≥ 1,8× mà phần lớn tăng bằng số chuyến (≥ 1,4×) → xe đã chạm trần;
+     trần = p75 đơn/chuyến ngày đông. Chỉ gợi ý khi trần < 90% mức model đang giả định (85% sức chở chuẩn) */
+  const LRN = {};
+  function learnCap(i) { if (i in LRN) return LRN[i]; const me = nm(i), day = {}, seen = new Set();
+    for (const d of LHD) ((S[i].tc && S[i].tc[d]) || []).forEach(c => { const t = TRP[c]; if (!t || seen.has(c)) return; seen.add(c); const v = VK(TY[t[1]]); if (!v) return;
+      let u = 0, oth = 0; t[5].forEach(p => { if (p[1] !== 0) return; if (String(TRN[p[0]]).trim() === me) u += p[2] || 0; else oth += p[2] || 0; }); if (u <= 0 || oth > 0) return;
+      const o = ((day[v.k] = day[v.k] || {})[d] = day[v.k][d] || { n: 0, u: 0, L: [] }); o.n++; o.u += u; o.L.push(u); });
+    const out = {}; Object.entries(day).forEach(([k, dd]) => { const ds = Object.values(dd).sort((a, b) => a.u - b.u); const nT = ds.reduce((a, x) => a + x.n, 0); if (ds.length < 15 || nT < 20) return;
+      const lo = ds.slice(0, Math.ceil(ds.length / 2)), hi = ds.slice(Math.floor(ds.length * 0.75)), avg = (A, f) => A.reduce((a, x) => a + f(x), 0) / A.length;
+      const volUp = avg(hi, x => x.u) / avg(lo, x => x.u), tripUp = avg(hi, x => x.n) / avg(lo, x => x.n), hiL = hi.flatMap(x => x.L);
+      if (!(volUp >= 1.8 && tripUp >= 1.4 && hiL.length >= 10)) return;
+      const ceil = Math.round(pct(hiL, 75)), v = VK(k), std = cap(v, betaFit(i), 1) * P.newFillMax / 100;
+      if (ceil < 0.9 * std) out[k] = { ceil, std: Math.round(std), trips: nT, volUp, tripUp }; });
+    return LRN[i] = out; }
+  /* hệ số sức chở thật trung bình trên các chuyến hiện nay (để đổi độ đầy đã chỉnh sang thang sức chở thật) */
+  const sAsis = i => { let n = 0, w = 0; for (const d of LHD) { const tr = S[i].tr && S[i].tr[d]; if (!Array.isArray(tr)) continue; tr.forEach((x, j) => { const v = VK(TY[j]); if (x > 0 && v) { n += x; w += x * capS(i, v.k); } }); } return n ? w / n : 1; };
+  const scOf = (i, k) => { const c = capS(i, k); if (c != null) return c; if (!overNow(i)) return 1; const x = ownCap(i)[k], m = P.newFillMax / 100; return x && x.p95 > m ? x.p95 / m : 1; };
   const ownOk = (i, k) => { const x = ownCap(i)[k]; return !x || (x.p95 * 100 > P.ownCapMax && !OWNOK.has(nm(i))) ? 0 : x.p95; };
   /* trần chở kế hoạch của điểm i trong tuyến gg: min(mức chở đã chỉnh, tải vật lý p95, newFillMax × phần xe của D2S) — mọi seller của tuyến hiện nay đã chở > newFillMax thì phần cuối = max(như trên, tải thật p95 của seller trên loại xe đó) */
-  const limOf = (i, gg, k) => { const a = (P.newFillMax > 0 ? P.newFillMax / 100 : 99) * (gg ? netOf(i, gg) : 1); return Math.min(fillOf(i), fillCap(i), k && (gg && gg.length ? gg.every(overNow) : overNow(i)) ? Math.max(a, ownOk(i, k)) : a); };
+  const limOf = (i, gg, k) => { const a = (P.newFillMax > 0 ? P.newFillMax / 100 : 99) * (gg ? netOf(i, gg) : 1);
+    if (k && capS(i, k) != null) return Math.min(fillOf(i) / sAsis(i), a) * capS(i, k);   // seller có sức chở thật: trần theo sức chở thật của loại xe, không đầy hơn hiện nay
+    return Math.min(fillOf(i), fillCap(i), k && (gg && gg.length ? gg.every(overNow) : overNow(i)) ? Math.max(a, ownOk(i, k)) : a); };
   const byType = f => Object.fromEntries(VEH.map(v => [v.k, f(v.k)]));
   function grpFill(g, d, gg, force) { if (isBase(g) && !force) return fillOf(g[0]);
     return byType(k => { let U = 0, W = 0; g.forEach(i => { const u = (S[i].v[d] - (S[i].b[d] || 0)) / 2000 + (S[i].b[d] || 0) / 700; U += u; W += u / limOf(i, gg, k); }); return U > 0 && W > 0 ? U / W : P.fill / 100; }); }
@@ -405,7 +433,7 @@ function Core(D, REF) {
     const gq = {}; Object.values(K).forEach(o => { for (const k in o.G) gq[k] = (gq[k] || 0) + o.G[k].q; });
     return { gq, c: c * sur * net * tf * cf, t: t * net * tf, net, mix, N, mt: Object.keys(K).length, legs, tf, cf }; }
   const RC = {};
-  function routeCost(g) { const k = key(g) + (PLAN ? "|p" + P.vehPlan + "|" + P.newFillMax + "|" + [...OWNOK].sort().join(",") : "") + (vfree(g) ? "|f" : ""); if (k in RC) return RC[k]; let c = 0, t = 0; const mix = {}, nd = new Set();
+  function routeCost(g) { const k = key(g) + (PLAN ? "|p" + P.vehPlan + "|" + P.newFillMax + "|" + [...OWNOK].sort().join(",") + "|" + JSON.stringify(P.capOv || {}) : "") + (vfree(g) ? "|f" : ""); if (k in RC) return RC[k]; let c = 0, t = 0; const mix = {}, nd = new Set();
     for (const d of LHD) { const x = routeDay(g, d); if (!x) continue; c += x.c; t += x.t; nd.add(d); Object.entries(x.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n; }); }
     Object.keys(mix).forEach(v => { mix[v] /= Math.max(1, nd.size); }); return RC[k] = { c, t: t / Math.max(1, nd.size), mix, days: nd.size }; }
   /* hai điểm được phép đi chung xe: chung SOC, chạy trùng đủ ngày, không quá xa, giờ xe lượt đầu không lệch quá — hoặc đã đi chung chuyến thật */
@@ -852,8 +880,8 @@ function Core(D, REF) {
     r.T.filter(g => g.some(i => t.pts.includes(i))).forEach(g => { const h = r.hc(g); if (!h || !h.A) return; const A2 = Object.assign({}, h.A); g.forEach(i => { if (A2[i] && A2[i].team === t) A2[i] = { m: "H", team: t2 }; });
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
-  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, OVR].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
-  return { routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, ownCap, OWNOK, overNow, scOf, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, OVR, CPS].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; }
+  return { routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, ownCap, OWNOK, overNow, scOf, capS, learnCap, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
