@@ -136,6 +136,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
         <div class="row"><label for="ll" data-t="llL"></label><input type="text" id="ll" inputmode="decimal" placeholder="10.83, 106.92" style="width:170px"></div>
         <div class="row"><label for="hub" data-t="hubL"></label><select id="hub"></select></div>
         <div class="row"><label for="sup" data-t="supL"></label><select id="sup"></select></div>
+        <p class="meta" id="hsNote" aria-live="polite"></p>
         <div class="socs" id="socs"></div>
         <p class="hint" id="sochint"></p>
         <div id="waves" class="grid0" style="display:grid;gap:6px"></div>
@@ -206,6 +207,7 @@ const TX={
  ttH:[["#","Điểm","Đơn/xe","Hàng sẵn","Xe tới","Chất","Xe rời","Hạn rời","Dư"],["#","Stop","Orders/truck","Ready","Arrives","Load","Departs","Leave by","Slack"]], ttSoc:["Tới SOC chính","At main SOC"], ttMe:["Seller mới","New seller"],
  o7s:(R,oe)=>[`Các tuyến D2S ${R} theo kế hoạch Core Planner (đi riêng hoặc đi chung nhiều điểm) có điểm cách ≤ 30 km, chung SOC và chung lượt COT. Tuyến đang đi chung thì seller mới vào chung cả tuyến, không tách điểm ra. Est. lợi = tiền xe seller mới đi riêng + tiền xe tuyến đang chạy − tiền xe khi chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép tuyến có seller giữ chuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`D2S routes in ${R} per the Core Planner plan (alone or shared by several stops) with a stop within 30 km, sharing a SOC and a COT wave. A shared route is joined as a whole; its stops are not split. Est. gain = new seller alone + the route as it runs today − running together (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge with routes holding hub-kept or OE run-alone sellers.`:"")],
  rtShare:n=>[`Đi chung ${n} điểm`,`Shared, ${n} stops`], rtSolo:["Đi riêng","Runs alone"], rtPlan:["tuyến theo kế hoạch Core, khác tuyến đang chạy","route per Core plan, differs from today"],
+ hubAny:["— Hub của Sup này —","— this Sup\u2019s hubs —"], supAny:["— Sup của Hub này —","— this hub\u2019s Sup —"], hsHub:n=>[`Hub này có ${n} Sup phụ trách (theo điểm D2S đang chạy).`,`${n} Sup cover this hub (from running D2S points).`], hsSup:n=>[`Sup này phụ trách ${n} Hub có điểm D2S.`,`This Sup covers ${n} hubs with D2S points.`],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT, lịch chạy và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe tuyến đó đang trả.","Tick Share to plan shared trucks: the truck plan, cost, COT times, timetable and recommendation above are recomputed. New seller's truck cost = shared cost − what that route pays today."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
@@ -289,14 +291,26 @@ function drawForm(){
   $("chs").innerHTML=T("dt").map((d,t)=>`<label for="ch${t}">${T("ch")} ${d}<input type="number" id="ch${t}" min="1" max="8" step="1" value="${X.ch[t]}"></label>`).join("");
   $("maxK").innerHTML=NS_KS.map(k=>`<option${k===X.maxK?" selected":""}>${k}</option>`).join("");
   $("bays").value=X.bays;
-  $("ll").value=X.ll;const PT=REF.reg[X.R].pts,uq=a=>[...new Set(a.filter(Boolean))].sort((x,y)=>x.localeCompare(y));
-  $("hub").innerHTML=`<option value="">${T("unk")}</option>`+uq(PT.map(q=>q.hub)).map(h=>`<option value="${esc(h)}"${h===X.hub?" selected":""}>${esc(h)}</option>`).join("");
-  $("sup").innerHTML=`<option value="">${T("unk")}</option>`+uq(PT.map(q=>q.sup)).map(h=>`<option value="${esc(h)}"${h===X.sup?" selected":""}>${esc(h)}</option>`).join("");
+  $("ll").value=X.ll;
+  fillHS();
   $("tail").value=X.tail;$("dwFix").value=X.dwFix;$("dwRate").value=X.dwRate;$("dwFix").placeholder=nf(REF.dw.fix,1);$("dwRate").placeholder=nf(REF.dw.rate*100,1);
   $("capOv").value=X.capOv;$("osCap").value=X.osCap;$("slackMin").value=X.slackMin;$("delay").value=X.delay;$("area").value=X.area;$("dens").value=X.dens;
   $("lab").innerHTML=[["fte",T("labF")],["hub",T("labH")],["pps",T("labP")]].map(([k,l])=>`<option value="${k}"${X.lab===k?" selected":""}>${l}</option>`).join("");
   $("cotlist").textContent=TX.cotL(X.R,G.cots.map(c=>(c.a>-1e8?hm(c.a)+"–":"→ ")+hm(c.b)+" ⇒ "+hm(c.p)).join(" · "))[L];
 }
+/* FM Hub ↔ Sup ràng buộc nhau theo các điểm D2S đang chạy của vùng: chọn Hub → chỉ còn Sup phụ trách Hub đó; chọn Sup → chỉ còn các Hub Sup đó phụ trách */
+function hsPairs(){return REF.reg[X.R].pts.filter(q=>q.hub&&q.sup);}
+function fillHS(){const PR=hsPairs(),uq=a=>[...new Set(a.filter(Boolean))].sort((x,y)=>x.localeCompare(y));
+  const hubs=uq(PR.filter(q=>!X.sup||q.sup===X.sup).map(q=>q.hub)),sups=uq(PR.filter(q=>!X.hub||q.hub===X.hub).map(q=>q.sup));
+  const opt=(v,lab)=>`<option value="${esc(v)}"${v===lab?" selected":""}>${esc(v)}</option>`;
+  $("hub").innerHTML=`<option value="">${X.sup?T("hubAny"):T("unk")}</option>`+hubs.map(h=>opt(h,X.hub)).join("");
+  $("sup").innerHTML=`<option value="">${X.hub?T("supAny"):T("unk")}</option>`+sups.map(h=>opt(h,X.sup)).join("");
+  $("hsNote").textContent=X.hub&&X.sup?"":X.hub?TX.hsHub(sups.length)[L]:X.sup?TX.hsSup(hubs.length)[L]:"";}
+/* đổi Hub: Sup không phụ trách Hub đó thì bỏ (Hub chỉ có một Sup thì tự điền); đổi Sup: Hub không thuộc Sup đó thì bỏ */
+function linkHS(id){const PR=hsPairs();
+  if(id==="hub"&&X.hub){const ss=[...new Set(PR.filter(q=>q.hub===X.hub).map(q=>q.sup))];if(!ss.includes(X.sup))X.sup=ss.length===1?ss[0]:"";}
+  if(id==="sup"&&X.sup){const hs=new Set(PR.filter(q=>q.sup===X.sup).map(q=>q.hub));if(X.hub&&!hs.has(X.hub))X.hub="";}
+  fillHS();}
 function read(){
   const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);o.fw=$("sf"+j).checked;});
   X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
@@ -378,7 +392,7 @@ function render(){
 $("f").addEventListener("submit",e=>e.preventDefault());
 $("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
-$("f").addEventListener("input",e=>{if(e.target.id==="R")return;read();render();});
+$("f").addEventListener("input",e=>{if(e.target.id==="R")return;read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
 $("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];fillRegion(false);drawForm();render();});
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
 drawForm();render();
