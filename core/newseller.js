@@ -37,7 +37,7 @@ function nsRef(C, REF) {
     fm: { rS: 669, rM: 2.2, hS: 632.2157, hM: 1.4 } };
 }
 
-/* x = { R, socs: [{ s, sh (% đơn), km }], ado: [BAU, Mini CP, CP], days: [..], beta (0–1), sh: [phần đơn mỗi lượt], maxK, bays, ch, st, like (tên seller | null) } */
+/* x = { R, socs: [{ s, sh (% đơn), km, fw }], win: [[từ, đến] mỗi lượt], open (giờ người bắt đầu), ado: [BAU, Mini CP, CP], days: [..], beta (0–1), sh: [phần đơn mỗi lượt], maxK, bays, ch, st, like (tên seller | null) } */
 function nsPlan(ref, x) {
   const G = ref.reg[x.R], P = ref.P, beta = Math.min(1, Math.max(0, x.beta)), kmI = km => Math.min(60, Math.max(0, Math.round((+km || 0) / 5)));
   /* SOC đích của seller: % đơn và km tới từng SOC */
@@ -66,6 +66,8 @@ function nsPlan(ref, x) {
   const prod = Math.max(1, P.prodBase * stepF(1, ch, 1, P.prodChute) * stepF(10, bp, 10, P.prodBulky)), w = sv / prod + (1 - sv) / P.prodHand;
   const sort = sm ? (bg ? "big" : "small") : "none";
   const fmU = (1 - beta) * (ref.fm.rS + ref.fm.hS) + beta * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM);
+  /* khung bàn giao của seller theo lượt: x.win[k] = [từ, đến] (phút từ 0h); thiếu thì theo khung COT của vùng, không trước giờ người bắt đầu làm (x.open) */
+  const open = x.open ?? P.open, cots = G.cots.map((c, k) => { const w = (x.win || [])[k]; return { p: c.p, a0: c.a, b0: c.b, a: w ? w[0] : Math.max(c.a, open), b: w ? w[1] : c.b }; });
   const bays = Math.max(1, x.bays | 0), sh = G.cots.map((_, k) => Math.max(0, +(x.sh[k] || 0))), shT = sh.reduce((a, b) => a + b, 0) || 1;
   /* 3b. SOC đích: chia các SOC thành nhóm, mỗi nhóm một đội xe đi lần lượt các SOC trong nhóm (xe trả nhiều SOC, cộng tiền km đi thêm giữa các SOC);
      thử mọi cách chia, giữ cách rẻ nhất — SOC ít đơn đi ké xe của SOC khác thay vì một xe gần rỗng */
@@ -76,11 +78,11 @@ function nsPlan(ref, x) {
       const c = legs.reduce((a, l) => a + l.c, 0), t = legs.reduce((a, l) => a + l.t, 0); if (!bb || c < bb.c - 1 || (Math.abs(c - bb.c) <= 1 && t < bb.t)) bb = { c, t, legs }; } return bb ? bb.legs : []; };
   /* 4. một loại ngày: xe từng lượt, người, giờ xe rời so với hạn COT */
   const day = X => {
-    const W = G.cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q), mix = {};
+    const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q), mix = {};
       legs.forEach(l => { for (const k2 in l.mix) mix[k2] = (mix[k2] || 0) + l.mix[k2]; });
       const t = legs.reduce((a, l) => a + l.t, 0), q = legs.reduce((a, l) => a + l.q, 0);
       return { k, c, Q, mix, t, legs, cost: legs.reduce((a, l) => a + l.c, 0), fill: q ? Q / q : 0 }; }).filter(v => v.Q > 0.5);
-    const sim = hc => { let free = P.open, worst = 1e9; const r = W.map(v => { const begin = Math.max(free, v.c.a < P.open ? P.open : v.c.a), work = v.Q * w * P.fteH * 60 / hc;
+    const sim = hc => { let free = open, worst = 1e9; const r = W.map(v => { const begin = Math.max(free, open, v.c.a), work = v.Q * w * P.fteH * 60 / hc;
         const done = Math.max(v.c.b, begin + work), qT = v.t ? v.Q / v.t : 0, dw = ref.dw.fix + ref.dw.rate * qT, batch = Math.ceil(v.t / bays);
         const dep = done + P.closeMin + (batch - 1) * dw, slack = v.c.p - dep; free = done; worst = Math.min(worst, slack); return { done, dep, slack, batch, dw }; }); return { r, worst }; };
     const hc0 = Math.max(1, Math.ceil(X * w - 1e-9)); let hc = hc0, s = sim(hc);
@@ -97,6 +99,6 @@ function nsPlan(ref, x) {
   const grid = []; for (let a = 20; a <= 3000; a += 20) grid.push(a); for (let a = 3050; a <= 20000; a += 50) grid.push(a);
   const ok = grid.map(a => netAt(a) >= 0); let thr = null;
   for (let j = 0; j < grid.length && thr == null; j++) { if (!ok[j]) continue; let all = true; for (let k = j; k < grid.length && grid[k] <= 2 * grid[j]; k++) if (!ok[k]) { all = false; break; } if (all) thr = grid[j]; }
-  return { cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: { w, prod: Math.round(prod), sort, ch, st }, fmU, days, month, thr, cots: G.cots };
+  return { cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: { w, prod: Math.round(prod), sort, ch, st }, fmU, days, month, thr, cots, open };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS };
