@@ -71,7 +71,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .meta{font-size:11.5px;color:var(--ink2);margin-top:3px;font-family:var(--f-num)}
 .chip{display:inline-block;font:600 11.5px var(--f-ui);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .ok{background:var(--good-soft);color:var(--good)} .mid{background:var(--warn-soft);color:var(--warn)} .late{background:var(--bad-soft);color:var(--bad)}
-.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.two{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 @media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
 .bars{display:grid;gap:10px}
 .bar{display:grid;grid-template-columns:72px minmax(0,1fr) 92px;gap:8px;align-items:center;font-size:12.5px}
@@ -88,6 +88,23 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .socs .sr.h span:not(:first-child){text-align:right}
 .socs .sr input[type=checkbox]{justify-self:center;width:16px;height:16px;accent-color:var(--navy)}
 .legs{display:grid;gap:2px;margin-top:4px}
+.vdp{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px 24px;border-width:2px}
+@media (max-width:760px){.vdp{grid-template-columns:minmax(0,1fr)}}
+.vdp.go{border-color:var(--good)} .vdp.cond{border-color:var(--warn)} .vdp.no{border-color:var(--bad)}
+.vd-h{display:grid;gap:6px;align-content:start}
+.vd-h .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.vd-h .t{font-size:24px;font-weight:700;line-height:1.2}
+.vdp.go .vd-h .t{color:var(--good)} .vdp.cond .vd-h .t{color:var(--warn)} .vdp.no .vd-h .t{color:var(--bad)}
+.vd-h p{margin:0;color:var(--ink2);font-size:13px}
+.chk{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13px}
+.chk li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;align-items:baseline}
+.chk b{font:600 11px var(--f-ui);border-radius:999px;padding:2px 0;text-align:center}
+.chk .y{background:var(--good-soft);color:var(--good)} .chk .n{background:var(--bad-soft);color:var(--bad)} .chk .w{background:var(--warn-soft);color:var(--warn)}
+.ask{grid-column:1/-1;border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
+.ask h4{margin:0;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--navy)}
+.ask ul{margin:0;padding-left:18px;font-size:13px;color:var(--ink2);display:grid;gap:2px}
+.mix .sub{margin:0}
+input::placeholder{color:var(--ink2);opacity:.7}
 .wv{display:grid;grid-template-columns:48px minmax(0,1fr) minmax(0,1fr) 52px;gap:6px;align-items:center}
 .wv-h{font-size:11px;color:var(--ink2)} .wv-h span:last-child{text-align:right}
 input.tm{font-family:var(--f-num);width:100%;text-align:center}
@@ -119,6 +136,8 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
         <div class="socs" id="socs"></div>
         <p class="hint" id="sochint"></p>
         <div id="waves" class="grid0" style="display:grid;gap:6px"></div>
+        <div class="row"><label for="tail" data-t="tailL"></label><input type="number" id="tail" min="0" max="100" step="5"></div>
+        <div class="trio" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label for="dwFix"><span data-t="dwFixL"></span><input type="number" id="dwFix" min="0" step="1"></label><label for="dwRate"><span data-t="dwRateL"></span><input type="number" id="dwRate" min="0" step="0.5"></label></div>
       </div>
       <div class="grp">
         <h3><b data-t="g2"></b></h3>
@@ -129,21 +148,29 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       <div class="grp">
         <h3><b data-t="g3"></b></h3>
         <div class="row"><label for="like" data-t="like"></label><select id="like"></select></div>
+        <div class="row"><label for="capOv" data-t="capOvL"></label><input type="number" id="capOv" min="0" step="50"></div>
         <p class="hint" id="howtxt"></p>
       </div>
       <div class="grp">
         <h3><b data-t="g4"></b></h3>
         <div class="row"><label for="ch" data-t="ch"></label><input type="number" id="ch" min="1" max="6" step="1"></div>
+        <div class="row"><label for="lab" data-t="labL"></label><select id="lab"></select></div>
+        <div class="row"><label for="osCap" data-t="osCapL"></label><input type="number" id="osCap" min="0" step="1"></div>
+        <div class="row"><label for="slackMin" data-t="slackL"></label><input type="number" id="slackMin" min="0" step="5"></div>
+        <div class="row"><label for="delay" data-t="delayL"></label><input type="number" id="delay" min="0" step="5"></div>
         <p class="hint" id="cotlist"></p>
       </div>
       <div class="grp">
         <h3><b data-t="g5"></b></h3>
         <div class="row"><label for="maxK" data-t="maxK"></label><select id="maxK"></select></div>
         <div class="row"><label for="bays" data-t="bays"></label><input type="number" id="bays" min="1" max="10" step="1"></div>
+        <div class="trio" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label for="area"><span data-t="areaL"></span><input type="number" id="area" min="0" step="10"></label><label for="dens"><span data-t="densL"></span><input type="number" id="dens" min="0" step="1"></label></div>
+        <p class="hint" data-t="blankHint"></p>
       </div>
     </form>
 
     <div class="out">
+      <section class="panel vdp" id="vd"></section>
       <div class="verdict" id="kpi"></div>
       <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div></section>
       <div class="two">
@@ -152,6 +179,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       </div>
       <section class="panel sec"><h2><i>4</i><span data-t="o4"></span></h2><p class="sub" id="o4s"></p><div class="bars" id="bars"></div>
         <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
+      <section class="panel sec mix"><h2><i>5</i><span data-t="o6"></span><span class="chip mid" data-t="soon"></span></h2><p class="sub" data-t="o6s"></p></section>
       <section class="panel sec"><h2><span data-t="o5"></span></h2><p class="sub" id="o5s"></p><div class="tw"><table id="cap" class="cap"></table></div>
         <div class="foot" id="foot"></div></section>
     </div>
@@ -166,7 +194,19 @@ const $=id=>document.getElementById(id), REF=NSREF;
 const TX={
  lede:["Điền hồ sơ seller sắp nhận. Core Planner trả về số xe và cỡ xe mỗi lượt, số người, giờ xe rời so với COT, và chi phí mỗi đơn so với FM pickup.","Enter the profile of a seller about to onboard. Core Planner returns trucks per wave, people, truck departure vs COT, and cost per order vs FM pickup."],
  sample:["Ví dụ","Sample"],
- g1:["Hành vi seller","Seller behaviour"], openL:["Người bắt đầu làm","Staff start"], hoFrom:["Bàn giao từ","Handover from"], hoTo:["đến","to"], hoEnd:["Bàn giao xong","Handover ends"], dlC:["Hạn COT","COT"], doneL:["Xong việc","Work done"],
+ g1:["Hành vi seller","Seller behaviour"],
+ tailL:["% đơn dồn vào 60′ cuối khung","% orders in last 60′ of window"], dwFixL:["Xe đứng: phút cố định","Truck dwell: fixed min"], dwRateL:["phút / 100 đơn","min / 100 orders"],
+ capOvL:["Seller báo: đơn / xe 1T9","Seller says: orders / 1T9"], labL:["Người tại điểm","Staff on site"], labF:["FTE riêng · 520k/ngày","Own FTE · 520k/day"], labH:["Nhóm FM Hub · 350k/ngày","FM Hub team · 350k/day"], labP:["Rider PPS · 700 đ/đơn","Rider PPS · 700 VND/order"],
+ osCapL:["Số người tối đa cấp được","Max staff available"], slackL:["Dư COT tối thiểu (phút)","Min COT slack (min)"], delayL:["Thử seller giao trễ (phút)","Test seller delay (min)"],
+ areaL:["Chỗ tập kết (m²)","Staging area (m²)"], densL:["Mật độ (đơn/m²)","Density (orders/m²)"], blankHint:["Ô để trống = dùng số Core Planner đã học hoặc chưa tính. Điền số thật khi có.","Blank = use what Core Planner learned, or not modelled. Fill real values when known."],
+ vdL:["Kết luận cho Ops","Recommendation for Ops"], vdGo:["Nên chạy D2S","Run D2S"], vdCond:["Chạy được, có điều kiện","Run D2S with conditions"], vdNo:["Chưa nên chạy D2S","Do not run D2S yet"],
+ ckProfit:["Lời so với FM pickup cả tháng","Cheaper than FM pickup over the month"], ckThr:["ADO BAU trên mức hoà vốn","BAU ADO above break-even"], ckCot:["Kịp COT mọi loại ngày, đủ mức dư yêu cầu","Meets COT on every day type, with required slack"],
+ ckPpl:["Đủ người trong số cấp được","Enough staff within the cap"], ckDelay:d=>[`Seller giao trễ ${d}′ vẫn kịp COT (ngày đông)`,`Still meets COT if seller is ${d}′ late (peak day)`],
+ askH:["Cần xác nhận trước khi chạy","Confirm before go-live"], askTail:["Giờ bàn giao thật: đang giả định đơn về đều trong khung","Real handover times: orders assumed to arrive evenly"],
+ askDw:["Thời gian chất xe: đang dùng trung vị toàn mạng","Loading time: using the network median"], askCap:["Đơn/xe: đang mượn seller giống, chưa có số seller báo","Orders per truck: borrowed from similar sellers, none reported"],
+ askArea:["Chỗ tập kết và mật độ: chưa nhập, chưa tính","Staging area and density: not entered, not modelled"], askPpl:["Năng suất người: 2.000 đơn/người/ngày là giả định","Staff productivity: 2,000 orders/person/day is assumed"],
+ o6:["Model mix","Model mix"], soon:["sắp có","coming"], o6s:["Đầu ra dự kiến: chọn D2S, FM pickup hay kết hợp theo loại ngày cho từng seller. Chưa tính trong bản này.","Planned output: choose D2S, FM pickup or a hybrid by day type for each seller. Not computed in this version."],
+ laneLate:d=>[`Seller trễ ${d}′`,`Seller ${d}′ late`], shortL:["thiếu","short"], xsL:["thêm vì chỗ tập kết","added for staging"], learned:["học được","learned"], openL:["Người bắt đầu làm","Staff start"], hoFrom:["Bàn giao từ","Handover from"], hoTo:["đến","to"], hoEnd:["Bàn giao xong","Handover ends"], dlC:["Hạn COT","COT"], doneL:["Xong việc","Work done"],
  hoHint:["Khung seller bàn giao đơn cho từng lượt (mặc định theo khung COT của vùng) và phần đơn của lượt. Đơn tới đều trong khung; xe chỉ rời sau khi bàn giao xong và làm xong.","When the seller hands over orders for each wave (default: the region's COT windows) and the wave's share. Orders arrive evenly; trucks leave only after handover ends and work is done."],
  cotL:(R,t)=>[`Khung COT chuẩn ${R} (bàn giao → hạn xe rời): ${t}`,`${R} standard COT (handover → truck deadline): ${t}`], socNow:["luồng hiện nay","current flow"],
  socHd:["SOC đích","Destination SOC"], fwH:["Qua SOC","Via SOC"], fwT:["không có xe tới, túi đi kèm xe về SOC chính để chuyển tiếp","no truck; bags ride to the main SOC and are forwarded"], fwd:["chuyển tiếp","forwards"], socPct:["% đơn","% orders"],
@@ -209,7 +249,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
 
 /* hồ sơ ví dụ */
-const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:""};
+const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
   if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null)X.ch=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);}
@@ -233,6 +273,9 @@ function drawForm(){
   $("ch").value=X.ch;
   $("maxK").innerHTML=NS_KS.map(k=>`<option${k===X.maxK?" selected":""}>${k}</option>`).join("");
   $("bays").value=X.bays;
+  $("tail").value=X.tail;$("dwFix").value=X.dwFix;$("dwRate").value=X.dwRate;$("dwFix").placeholder=nf(REF.dw.fix,1);$("dwRate").placeholder=nf(REF.dw.rate*100,1);
+  $("capOv").value=X.capOv;$("osCap").value=X.osCap;$("slackMin").value=X.slackMin;$("delay").value=X.delay;$("area").value=X.area;$("dens").value=X.dens;
+  $("lab").innerHTML=[["fte",T("labF")],["hub",T("labH")],["pps",T("labP")]].map(([k,l])=>`<option value="${k}"${X.lab===k?" selected":""}>${l}</option>`).join("");
   $("cotlist").textContent=TX.cotL(X.R,G.cots.map(c=>(c.a>-1e8?hm(c.a)+"–":"→ ")+hm(c.b)+" ⇒ "+hm(c.p)).join(" · "))[L];
 }
 function read(){
@@ -243,11 +286,21 @@ function read(){
   X.ado=[0,1,2].map(t=>Math.max(0,+$("ado"+t).value||0));X.days=[0,1,2].map(t=>Math.max(0,+$("day"+t).value||0));
   X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.ch=Math.max(1,Math.round(+$("ch").value||1));
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
+  const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
+  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;
 }
 function render(){
-  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null});
+  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens});
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
   $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
+  /* phiếu kết luận cho Ops */
+  { const ck=(ok,txt)=>`<li><b class="${ok?"y":"n"}">${ok?(L?"Pass":"Đạt"):(L?"Fail":"Chưa")}</b><span>${txt}</span></li>`;
+    const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");if(!p.ok.thr)why.push((L?"below break-even ":"dưới hoà vốn ")+(p.thr==null?"–":nf(p.thr)));if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.verdict==="cond")why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
+    const ask=[];if(!X.tail)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));
+    $("vd").className="panel vdp "+p.verdict;
+    $("vd").innerHTML=`<div class="vd-h"><span class="l">${T("vdL")}</span><span class="t">${T(p.verdict==="go"?"vdGo":p.verdict==="cond"?"vdCond":"vdNo")}</span><p>${why.length?esc(why.join(" · ")):(L?"All checks pass on the inputs below.":"Mọi điều kiện đạt với hồ sơ đang nhập.")}</p></div>
+      <ul class="chk">${ck(p.ok.profit,T("ckProfit"))}${ck(p.ok.thr,T("ckThr"))}${ck(p.ok.cot,T("ckCot"))}${ck(p.ok.people,T("ckPpl"))}${p.dly?ck(p.ok.delay,TX.ckDelay(p.dly)[L]):""}</ul>
+      ${ask.length?`<div class="ask"><h4>${T("askH")}</h4><ul>${ask.map(a=>`<li>${esc(a)}</li>`).join("")}</ul></div>`:""}`; }
   /* dải kết luận */
   const cpo=b.X?b.cost/b.X:0,thr=p.thr;
   $("kpi").innerHTML=`
@@ -260,18 +313,19 @@ function render(){
   $("truck").innerHTML=`<thead><tr><th>${T("wave")}</th>${D.map(d=>`<th>${dt[d.t]} · ${nf(d.X)}</th>`).join("")}</tr></thead><tbody>${waves.map(k=>{const c=p.cots[k];
     return `<tr><td class="cot">${hm(c.p)}<small>${c.a>-1e8?hm(c.a)+"–":"→ "}${hm(c.b)}</small></td>${D.map(d=>{const w=d.W.find(x=>x.k===k);if(!w)return "<td>–</td>";
       return `<td><div class="mix">${Object.entries(w.mix).sort((a,b)=>NS_KS.indexOf(b[0])-NS_KS.indexOf(a[0])).map(([t,n])=>`<span class="truck">${n}×${t}</span>`).join("")}</div>
-        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%</div>${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
+        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%${w.xs?` · +${w.xs} ${T("xsL")}`:""}</div>${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
   /* người */
   const sortT={none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[p.work.sort];
   $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
     <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
-    <tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/d.hc)}</td>`).join("")}</tr></tbody>`;
+    ${p.lab==="pps"?"":`<tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/Math.max(1,d.hc))}</td>`).join("")}</tr>`}
+    <tr><td>${L?"Cost / day":"Tiền / ngày"}</td>${D.map(d=>`<td class="n">${nf(d.lab/1e3)}k${d.short?`<div class="meta" style="color:var(--bad)">${T("shortL")} ${d.short}</div>`:""}</td>`).join("")}</tr></tbody>`;
   $("ppl").insertAdjacentHTML("afterend","");
-  $("ppl").closest("section").querySelector(".sub").textContent=T("o2s")+" "+(L?"Work mode: ":"Cách làm: ")+sortT+" · "+nf(p.work.ch)+" chute · "+nf(1/p.work.w)+" "+T("prod")+".";
+  $("ppl").closest("section").querySelector(".sub").textContent=T("o2s")+" "+({fte:T("labF"),hub:T("labH"),pps:T("labP")}[p.lab])+" · "+(L?"Work mode: ":"Cách làm: ")+sortT+" · "+nf(p.work.ch)+" chute · "+nf(1/p.work.w)+" "+T("prod")+".";
   /* COT: ngày đông nhất */
   const pk=D.reduce((a,d)=>d.X>a.X?d:a,D[0]||b);
   const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
-  $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th>${T("slack")} · ${dt[pk.t]}</th></tr></thead><tbody>${(pk.W||[]).map(w=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.c.b)}</td><td class="n">${hm(w.done)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td>${chip(w.slack)}</td></tr>`).join("")}</tbody>`;
+  $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th>${T("slack")} · ${dt[pk.t]}</th>${p.late?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(pk.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.c.b)}</td><td class="n">${hm(w.done)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td>${chip(w.slack)}</td>${p.late&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}</td>`:p.late?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
   /* chi phí / đơn */
   $("o4s").textContent=TX.o4s(nf(p.fmU))[L];
   const mx=Math.max(p.fmU*1.25,...D.map(d=>d.cost/d.X));
@@ -280,7 +334,7 @@ function render(){
   const how=p.how.k==="like"?TX.howLike(short(p.how.name))[L]:p.how.k==="reg"?TX.howReg(p.how.n)[L]:p.how.k==="all"?TX.howAll(p.how.n)[L]:TX.howNear(p.how.n)[L];
   $("howtxt").textContent=how;$("o5s").textContent=T("o5s")+" "+how;
   const used=new Set();D.forEach(d=>d.W.forEach(w=>Object.keys(w.mix).forEach(k=>used.add(k))));
-  $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
+  $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}${c.q0!==c.q?`<div class="meta">${T("learned")} ${nf(c.q0)}</div>`:""}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
   $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
 }
 $("f").addEventListener("submit",e=>e.preventDefault());
