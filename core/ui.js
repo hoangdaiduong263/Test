@@ -9,7 +9,8 @@
   const mins = m => (m > 0 ? "+" : "") + Math.round(m) + "'";
   const short = i => C.nm(i).replace(/^(HN|HCM|DNCH|North|South)\s*(SPC|Seller)?\s*[-_]\s*/i, "").trim();
   const ORDER = ["HN", "HCM", "North", "South", "DNCH"];
-  const REGS = ORDER.filter(R => C.nodes(R).length);
+  const ONLY = typeof window !== "undefined" && window.D2S_ONLY || null;   // bản trình bày cho một vùng (build --only): chỉ hiện vùng đó, mở sẵn đổi cỡ xe
+  const REGS = ORDER.filter(R => C.nodes(R).length && (!ONLY || R === ONLY));
   const ST = { R: null, res: {}, open: new Set() };
   try { const s = localStorage.getItem("d2s-core-R"); if (REGS.includes(s)) ST.R = s; } catch (e) {}
   ST.R = ST.R || REGS[0];
@@ -359,9 +360,9 @@
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
   document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill2", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
-    if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
+    if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { if (!ONLY) localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
     LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); });
-  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill2"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
+  try { if (ONLY) P.vehPlan = 1; else if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill2"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();
