@@ -58,18 +58,26 @@ function nsRef(C, REF) {
 function nsPlan(ref, x) {
   const G = ref.reg[x.R], P = ref.P, beta = Math.min(1, Math.max(0, x.beta)), kmI = km => Math.min(60, Math.max(0, Math.round((+km || 0) / 5)));
   /* SOC đích của seller: % đơn và km tới từng SOC */
-  /* SOC đánh dấu fw: không có xe tới, túi đi kèm xe về SOC chính (SOC nhiều đơn nhất có xe) để SOC đó chuyển tiếp nguyên túi — tiền chuyển tiếp giữa SOC không tính vào D2S */
-  const all = (x.socs || []).filter(o => o.sh > 0), shS = all.reduce((a, o) => a + o.sh, 0) || 1, dir = all.filter(o => !o.fw), main = dir.slice().sort((a, b) => b.sh - a.sh)[0] || all[0];
-  /* GÁN CHUTE (theo loại ngày): o.cu[t] = SOC có chute riêng ngày loại t. SOC không có chute → túi chung trong chute SOC chính, đi xe SOC chính, SOC chính chia lại.
-     SOC chính luôn có chute. Không gán (o.cu thiếu): x.ch[t] SOC nhiều đơn nhất có chute */
-  const rank = all.slice().sort((a, b) => b.sh - a.sh), chN = t => Array.isArray(x.ch) ? x.ch[t] ?? x.ch[0] : x.ch;
-  const own = (o, t) => o === main || (Array.isArray(o.cu) ? !!o.cu[t] : rank.indexOf(o) < Math.max(1, +chN(t) || all.length));
-  /* đội xe mỗi loại ngày: SOC có chute và không đánh dấu Qua SOC thì có xe riêng; còn lại đi kèm xe SOC chính (fwd = túi riêng chuyển tiếp, rsm = túi chung SOC chính chia lại) */
-  const socsT = [0, 1, 2].map(t => { if (!main) return []; const fold = all.filter(o => o !== main && (o.fw || !own(o, t)));
-    return all.filter(o => o === main || (!o.fw && own(o, t))).map(o => o === main ? Object.assign({}, o, { sh: o.sh + fold.reduce((a, y) => a + y.sh, 0), fwd: fold.filter(y => own(y, t)).map(y => y.s), rsm: fold.filter(y => !own(y, t)).map(y => y.s) }) : o); });
+  /* SOC chính = SOC nhiều đơn nhất. Tiền chuyển hàng giữa SOC (transit, chia lại xong chuyển) không tính vào D2S */
+  const all = (x.socs || []).filter(o => o.sh > 0), shS = all.reduce((a, o) => a + o.sh, 0) || 1, main = all.slice().sort((a, b) => b.sh - a.sh)[0];
+  /* CHUTE và TO (theo loại ngày): x.chutes[t] = [{ socs: [SOC được sort vào chute], to: SOC đích của TO }]; 1 chute = 1 TO, 1 TO đi đúng 1 SOC.
+     Chute chỉ chứa SOC khác SOC đích → SOC đích chuyển tiếp nguyên túi (transit, không chia lại); chute trộn nhiều SOC → SOC đích chia lại các SOC khác nó.
+     Mỗi SOC đích một đội xe (các chute cùng đích đi chung xe). SOC chưa nằm trong chute nào → vào chute đi SOC chính.
+     Thiếu x.chutes[t]: x.ch[t] SOC nhiều đơn nhất có chute riêng, còn lại trộn vào chute SOC chính */
+  const rank = all.slice().sort((a, b) => b.sh - a.sh), chN = t => Array.isArray(x.ch) ? x.ch[t] ?? x.ch[0] : x.ch, byS = Object.fromEntries(all.map(o => [o.s, o]));
+  const chutesT = [0, 1, 2].map(t => { if (!main) return [];
+    let L = Array.isArray(x.chutes) && Array.isArray(x.chutes[t]) ? x.chutes[t].map(c => ({ socs: (c.socs || []).filter(n => byS[n]), to: byS[c.to] ? c.to : null })).filter(c => c.socs.length) : null;
+    if (!L) { const n = Math.max(1, +chN(t) || all.length); L = rank.slice(0, n).map(o => ({ socs: [o.s], to: o.s })); if (!L.some(c => c.to === main.s)) L[0] = { socs: [main.s], to: main.s }; }
+    L.forEach(c => { if (!c.to) c.to = c.socs.includes(main.s) ? main.s : c.socs.map(n => byS[n]).sort((a, b) => b.sh - a.sh)[0].s; });
+    const seen = new Set(); L = L.map(c => ({ to: c.to, socs: c.socs.filter(n => !seen.has(n) && seen.add(n)) })).filter(c => c.socs.length);
+    const miss = all.filter(o => !seen.has(o.s)).map(o => o.s); if (miss.length) { let m = L.find(c => c.to === main.s); if (!m) L.push(m = { to: main.s, socs: [] }); m.socs.push(...miss); }
+    return L.map(c => Object.assign(c, { mixed: c.socs.length > 1 })); });
+  /* đội xe mỗi loại ngày: mỗi SOC đích một đội xe; fwd = SOC đích chuyển tiếp nguyên túi, rsm = SOC đích chia lại */
+  const socsT = chutesT.map(L => [...new Set(L.map(c => c.to))].map(d => { const cs = L.filter(c => c.to === d), mem = cs.flatMap(c => c.socs);
+    return Object.assign({}, byS[d], { sh: mem.reduce((a, n) => a + byS[n].sh, 0), fwd: cs.filter(c => !c.mixed).flatMap(c => c.socs).filter(n => n !== d), rsm: cs.filter(c => c.mixed).flatMap(c => c.socs).filter(n => n !== d) }); }));
   const socs = socsT[0];
   /* phần đơn SOC chính phải chia lại mỗi loại ngày = đơn các SOC không có chute */
-  const rsSh = [0, 1, 2].map(t => all.filter(o => !own(o, t)).reduce((a, o) => a + o.sh, 0) / shS);
+  const rsSh = socsT.map(L => L.reduce((a, l) => a + l.rsm.reduce((b, n) => b + byS[n].sh, 0), 0) / shS);
   const km0 = socs.length ? socs.reduce((a, o) => a + o.sh * o.km, 0) / shS : 0;
   /* 1. sức chở theo cỡ xe: trung vị các seller giống (cùng vùng, % hàng to ±10 điểm), hoặc đúng một seller chọn tay; cỡ lớn không chở ít hơn cỡ nhỏ */
   let pool, how;
@@ -93,7 +101,7 @@ function nsPlan(ref, x) {
   const st = Math.max(1, all.filter(o => o.sh / shS >= 0.05).length), stepF = (i, a, s, r) => 1 - Math.round(Math.abs(i - a) / s) * r / 100;
   const workOf = c => { const ch = Math.max(1, c | 0 || 1), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st) > 1 ? 1 : 0, sv = (1 - beta) * sm + beta * bg, bp = sv > 0 ? beta * bg / sv * 100 : 0;
     const prod = Math.max(1, P.prodBase * stepF(1, ch, 1, P.prodChute) * stepF(10, bp, 10, P.prodBulky)); return { ch, st, prod: Math.round(prod), w: sv / prod + (1 - sv) / P.prodHand, sort: sm ? (bg ? "big" : "small") : "none" }; };
-  const chs = [0, 1, 2].map(t => all.filter(o => own(o, t)).length || 1), works = chs.map(workOf);
+  const chs = chutesT.map(L => L.length || 1), works = chs.map(workOf);
   const fmU = (1 - beta) * (ref.fm.rS + ref.fm.hS) + beta * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM);
   /* khung bàn giao của seller theo lượt: x.win[k] = [từ, đến] (phút từ 0h); thiếu thì theo khung COT của vùng, không trước giờ người bắt đầu làm (x.open) */
   const open = x.open ?? P.open, cots = G.cots.map((c, k) => { const w = (x.win || [])[k]; return { p: c.p, a0: c.a, b0: c.b, a: w ? w[0] : Math.max(c.a, open), b: w ? w[1] : c.b }; });
@@ -207,6 +215,6 @@ function nsPlan(ref, x) {
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
   const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
   const verdict = chk.profit && chk.thr && chk.cot && chk.people ? (chk.delay ? "go" : "cond") : "no";
-  return { chute: all.map(o => ({ s: o.s, main: o === main, fw: !!o.fw, cu: [0, 1, 2].map(t => own(o, t)) })), rsSh, cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), mrg, picked: partners.map(q => q.n) };
+  return { chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS };

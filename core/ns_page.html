@@ -39,6 +39,10 @@ header p{margin:4px 0 0;color:var(--ink2);max-width:68ch}
 .row label{color:var(--ink2);font-size:13px}
 .trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .trio label{font-size:11px;color:var(--ink2);display:grid;gap:2px}
+.cub{display:grid;gap:8px}.cutab{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.cutab button{font:inherit;font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--card,#fff);color:var(--ink2);cursor:pointer}.cutab button[aria-pressed=true]{background:var(--navy);color:#fff;border-color:var(--navy)}.cutab label{font-size:12px;color:var(--ink2);display:flex;gap:4px;align-items:center;margin-left:auto}
+.chu{border:1px dashed var(--line);border-radius:10px;padding:8px;display:grid;gap:6px;background:var(--card,#fff)}.chu.ov{border-color:var(--navy);background:var(--good-soft)}.chu .hd{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600}.chu .hd button{font:inherit;border:0;background:none;color:var(--ink2);cursor:pointer;font-size:14px;line-height:1;padding:0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;min-height:26px}.chip2{font-size:12px;padding:3px 8px;border-radius:999px;background:var(--bg2,#E6ECF5);border:1px solid var(--line);cursor:grab;user-select:none}.chip2.sel{outline:2px solid var(--navy)}.chips .ph{font-size:11.5px;color:var(--ink2)}
+.chu select{font:inherit;font-size:12px;width:100%}.chu .eff{font-size:11.5px;color:var(--ink2)}.chu .eff b{font-weight:600;color:var(--ink)}.cuadd{font:inherit;font-size:12px;padding:5px;border:1px dashed var(--line);border-radius:10px;background:none;color:var(--ink2);cursor:pointer}
 .cu{width:100%;border-collapse:collapse;font-size:12px}.cu th{font-size:11px;font-weight:600;color:var(--ink2);text-align:center;padding:2px 4px}.cu th:first-child,.cu td:first-child{text-align:left}.cu td{padding:3px 4px;text-align:center;border-top:1px solid var(--line)}.cu .meta{font-size:10.5px}
 input,select{font:500 13px var(--f-ui);color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
 input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
@@ -83,7 +87,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
 .cap td{padding:5px 8px}
 .socs{display:grid;gap:4px}
-.socs .sr{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px 44px;gap:6px;align-items:center;font-size:12.5px}
+.socs .sr{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px;gap:6px;align-items:center;font-size:12.5px}
 .socs .sr.h{font-size:11px;color:var(--ink2)}
 .socs .sr span{min-width:0;overflow-wrap:anywhere}
 .socs .sr.h span:not(:first-child){text-align:right}
@@ -158,7 +162,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       </div>
       <div class="grp">
         <h3><b data-t="g4"></b></h3>
-        <p class="lab2" style="font-size:12px;font-weight:600;margin:0 0 4px"><span data-t="cuL"></span></p><table class="cu" id="chs"></table><p class="hint" id="cuNote"></p>
+        <p class="lab2" style="font-size:12px;font-weight:600;margin:0 0 4px"><span data-t="cuL"></span></p><div class="cub" id="chs"></div><p class="hint" data-t="cuHint"></p>
         <div class="row"><label for="lab" data-t="labL"></label><select id="lab"></select></div>
         <div class="row"><label for="osCap" data-t="osCapL"></label><input type="number" id="osCap" min="0" step="1"></div>
         <div class="row"><label for="slackMin" data-t="slackL"></label><input type="number" id="slackMin" min="0" step="5"></div>
@@ -209,8 +213,9 @@ const TX={
  o7s:(R,oe)=>[`Các tuyến D2S ${R} theo kế hoạch Core Planner (đi riêng hoặc đi chung nhiều điểm) có điểm cách ≤ 30 km, chung SOC và chung lượt COT. Tuyến đang đi chung thì seller mới vào chung cả tuyến, không tách điểm ra. Est. lợi = tiền xe seller mới đi riêng + tiền xe tuyến đang chạy − tiền xe khi chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép tuyến có seller giữ chuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`D2S routes in ${R} per the Core Planner plan (alone or shared by several stops) with a stop within 30 km, sharing a SOC and a COT wave. A shared route is joined as a whole; its stops are not split. Est. gain = new seller alone + the route as it runs today − running together (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge with routes holding hub-kept or OE run-alone sellers.`:"")],
  rtShare:n=>[`Đi chung ${n} điểm`,`Shared, ${n} stops`], rtSolo:["Đi riêng","Runs alone"], rtPlan:["tuyến theo kế hoạch Core, khác tuyến đang chạy","route per Core plan, differs from today"],
  hubAny:["— Hub của Sup này —","— this Sup\u2019s hubs —"], supAny:["— Sup của Hub này —","— this hub\u2019s Sup —"], hsHub:n=>[`Hub này có ${n} Sup phụ trách (theo điểm D2S đang chạy).`,`${n} Sup cover this hub (from running D2S points).`], hsSup:n=>[`Sup này phụ trách ${n} Hub có điểm D2S.`,`This Sup covers ${n} hubs with D2S points.`],
- cuL:["Gán chute → SOC (tick = SOC có chute riêng)","Chute → SOC (tick = SOC has its own chute)"], cuOwn:["có chute riêng","own chute"], cuMain:["SOC chính · luôn có chute","main SOC · always has a chute"], cuAll:["Mỗi SOC một chute, mỗi SOC một đội xe.","One chute and one fleet per SOC."],
- cuNote:(m,s,r)=>[`Không chute riêng (${s}): túi chung trong chute ${m}, đi xe ${m}, ${m} chia lại (tính tiền người chia lại). Tiền chuyển hàng giữa SOC không tính vào D2S.`,`No own chute (${s}): mixed bags in the ${m} chute, ride the ${m} truck, re-sorted at ${m} (re-sort labour costed). SOC-to-SOC transfer is not charged to D2S.`],
+ cuL:["Chute & TO (1 chute = 1 TO, mỗi TO đi 1 SOC)","Chutes & TOs (1 chute = 1 TO, each TO goes to 1 SOC)"], cuDayL:["Loại ngày","Day type"], cuSame:["Giống nhau mọi loại ngày","Same for all day types"], cuTo:["TO đi SOC","TO goes to"], cuDrop:["Kéo SOC vào đây","Drag a SOC here"], cuAdd:["Thêm chute","Add chute"], cuDel:["Bỏ chute","Remove chute"],
+ cuDirect:[d=>`Đi thẳng ${d}`,d=>`Direct to ${d}`], cuTransit:(d,o)=>[`${d} chuyển tiếp (transit) ${o}`,`${d} transits ${o}`], cuResort:(d,o)=>[`${d} chia lại ${o} (tính tiền người chia lại)`,`${d} re-sorts ${o} (re-sort labour costed)`],
+ cuHint:["Kéo SOC sang chute khác, hoặc chạm SOC rồi chạm chute. Tiền chuyển hàng giữa SOC không tính vào D2S.","Drag a SOC to another chute, or tap a SOC then tap a chute. SOC-to-SOC transfer is not charged to D2S."],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT, lịch chạy và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe tuyến đó đang trả.","Tick Share to plan shared trucks: the truck plan, cost, COT times, timetable and recommendation above are recomputed. New seller's truck cost = shared cost − what that route pays today."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
@@ -230,7 +235,7 @@ const TX={
  laneLate:d=>[`Seller trễ ${d}′`,`Seller ${d}′ late`], shortL:["thiếu","short"], xsL:["thêm vì chỗ tập kết","added for staging"], learned:["học được","learned"], openL:["Người bắt đầu làm","Staff start"], hoFrom:["Bàn giao từ","Handover from"], hoTo:["đến","to"], hoEnd:["Bàn giao xong","Handover ends"], dlC:["Hạn COT","COT"], doneL:["Xong việc","Work done"],
  hoHint:["Khung seller bàn giao đơn cho từng lượt (mặc định theo khung COT của vùng) và phần đơn của lượt. Đơn tới đều trong khung; xe chỉ rời sau khi bàn giao xong và làm xong.","When the seller hands over orders for each wave (default: the region's COT windows) and the wave's share. Orders arrive evenly; trucks leave only after handover ends and work is done."],
  cotL:(R,t)=>[`Khung COT chuẩn ${R} (bàn giao → hạn xe rời): ${t}`,`${R} standard COT (handover → truck deadline): ${t}`], socNow:["luồng hiện nay","current flow"],
- socHd:["SOC đích","Destination SOC"], fwH:["Qua SOC","Via SOC"], fwT:["không có xe tới, túi đi kèm xe về SOC chính để chuyển tiếp","no truck; bags ride to the main SOC and are forwarded"], fwd:["chuyển tiếp","forwards"], rsmL:["túi chung, chia lại cho","mixed bags, re-sorted for"], socPct:["% đơn","% orders"],
+ socHd:["SOC đích","Destination SOC"], fwH:["Qua SOC","Via SOC"], fwT:["không có xe tới, túi đi kèm xe về SOC chính để chuyển tiếp","no truck; bags ride to the main SOC and are forwarded"], fwd:["chuyển tiếp","forwards"], rsmL:["chia lại","re-sorts"], socPct:["% đơn","% orders"],
  socHint:(R,G,st)=>[`Mặc định: phần đơn theo SOC của một seller ${R} đi nhiều SOC (trung vị ${G.socMulti.multi}/${G.socMulti.all} seller đi từ 2 SOC trở lên, chuyến thật T8–9). Mỗi SOC có xe riêng, giá theo km tới SOC đó. Đánh dấu "Qua SOC" nếu SOC đó không có xe tới mà SOC chính chuyển tiếp nguyên túi. SOC nhận ≥ 5% đơn là một SOC phải chia riêng (đang ${st}).`+(R==="South"?" Luồng South từ 1/10 gom 1 chute về BD A Mega SOC: đặt BD A = 100% để xem.":""),`Default: SOC split of a typical multi-SOC ${R} seller (median of ${G.socMulti.multi}/${G.socMulti.all} sellers going to 2+ SOCs, real trips Aug–Sep). Each SOC gets its own trucks, priced by km to that SOC. Tick "Via SOC" if no truck goes there and the main SOC forwards the bags. A SOC with ≥ 5% of orders counts as a separate sort (now ${st}).`+(R==="South"?" South's flow from 1 Oct sends everything on 1 chute to BD A Mega SOC: set BD A = 100% to see it.":"")], reg:["Vùng","Region"], soc:["SOC nhận hàng","Destination SOC"], km:["Km tới SOC","Km to SOC"],
  wv:["Phần đơn lượt","Share, wave"],
  g2:["Hồ sơ đơn","Order profile"], ado:["ADO","ADO"], dpm:["Ngày/tháng","Days / month"], beta:["% hàng to","% bulky"],
@@ -270,10 +275,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
 
 /* hồ sơ ví dụ */
-const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
+const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],chutes:null,cuDay:0,cuSame:true,cuSel:null,tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
-  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];X.socs.slice().sort((a,b)=>b.sh-a.sh).forEach((o,r)=>{o.cu=[r<c,r<c,r<c];});}}
+  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}if(!keep||!X.chutes){const d=cuDefault();X.chutes=[0,1,2].map(()=>d.map(c=>({socs:c.socs.slice(),to:c.to})));X.cuDay=0;X.cuSel=null;}}
 fillRegion(false);
 
 function drawForm(){
@@ -282,7 +287,7 @@ function drawForm(){
   $("lvi").setAttribute("aria-pressed",String(!L));$("len").setAttribute("aria-pressed",String(!!L));
   $("R").innerHTML=Object.keys(REF.reg).map(r=>`<option${r===X.R?" selected":""}>${r}</option>`).join("");
   const G=REF.reg[X.R];
-  $("socs").innerHTML=`<div class="sr h"><span>${T("socHd")}</span><span>${T("socPct")}</span><span>km</span><span title="${esc(T("fwT"))}">${T("fwH")}</span></div>`+X.socs.map((o,j)=>`<div class="sr"><span>${esc(o.s)}</span><input type="number" id="ss${j}" aria-label="${esc(o.s)} ${T("socPct")}" min="0" max="100" step="1" value="${o.sh}"><input type="number" id="sk${j}" aria-label="${esc(o.s)} km" min="0" max="300" step="1" value="${o.km}"><input type="checkbox" id="sf${j}" aria-label="${esc(o.s)} ${esc(T("fwT"))}"${o.fw?" checked":""}></div>`).join("");
+  $("socs").innerHTML=`<div class="sr h"><span>${T("socHd")}</span><span>${T("socPct")}</span><span>km</span></div>`+X.socs.map((o,j)=>`<div class="sr"><span>${esc(o.s)}</span><input type="number" id="ss${j}" aria-label="${esc(o.s)} ${T("socPct")}" min="0" max="100" step="1" value="${o.sh}"><input type="number" id="sk${j}" aria-label="${esc(o.s)} km" min="0" max="300" step="1" value="${o.km}"></div>`).join("");
   $("waves").innerHTML=`<div class="row"><label for="open">${T("openL")}</label><input type="text" class="tm" id="open" inputmode="numeric" maxlength="5" placeholder="hh:mm" value="${hm(X.open)}"></div>
     <div class="wv wv-h"><span>${T("wave")}</span><span>${T("hoFrom")}</span><span>${T("hoTo")}</span><span>${T("socPct")}</span></div>`+G.cots.map((c,k)=>`<div class="wv"><span class="cot">${hm(c.p)}</span><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wa${k}" aria-label="${T("hoFrom")} ${hm(c.p)}" value="${hm(X.win[k][0])}"><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wb${k}" aria-label="${T("hoTo")} ${hm(c.p)}" value="${hm(X.win[k][1])}"><input type="number" id="sh${k}" aria-label="${T("socPct")} ${hm(c.p)}" min="0" max="100" step="1" value="${X.sh[k]}"></div>`).join("")+`<p class="hint">${T("hoHint")}</p>`;
   const dt=T("dt");
@@ -313,22 +318,35 @@ function linkHS(id){const PR=hsPairs();
   if(id==="hub"&&X.hub){const ss=[...new Set(PR.filter(q=>q.hub===X.hub).map(q=>q.sup))];if(!ss.includes(X.sup))X.sup=ss.length===1?ss[0]:"";}
   if(id==="sup"&&X.sup){const hs=new Set(PR.filter(q=>q.sup===X.sup).map(q=>q.hub));if(X.hub&&!hs.has(X.hub))X.hub="";}
   fillHS();}
+/* CHUTE & TO: kéo SOC vào chute (sort cho SOC nào), chọn TO của chute đi SOC nào. Chạm SOC rồi chạm chute để chuyển (điện thoại) */
+function mainSoc(){return X.socs.slice().sort((a,b)=>b.sh-a.sh)[0].s;}
+function sn(x){return x.replace(/ (Mega )?SOC$/,"");}
+function cuNorm(L){const names=X.socs.map(o=>o.s),seen=new Set();L.forEach(c=>{c.socs=c.socs.filter(n=>names.includes(n)&&!seen.has(n)&&seen.add(n));if(!names.includes(c.to))c.to=c.socs[0]||mainSoc();});
+  const miss=names.filter(n=>!seen.has(n));if(miss.length){let m=L.find(c=>c.to===mainSoc());if(!m)L.push(m={socs:[],to:mainSoc()});m.socs.push(...miss);}return L;}
+function cuDefault(){const c=X.ch?X.ch[0]:X.socs.length,r=X.socs.slice().sort((a,b)=>b.sh-a.sh),L=r.slice(0,Math.max(1,c)).map(o=>({socs:[o.s],to:o.s}));return cuNorm(L);}
+function cuEdit(f){const t=X.cuDay;f(X.chutes[t]);cuNorm(X.chutes[t]);if(X.cuSame)X.chutes=[0,1,2].map(()=>X.chutes[t].map(c=>({socs:c.socs.slice(),to:c.to})));render();}
+function drawChutes(){const dtn=T("dt"),CL=X.chutes[X.cuDay],shOf=n=>(X.socs.find(o=>o.s===n)||{}).sh||0;
+  const eff=c=>{const o=c.socs.filter(n=>n!==c.to);if(!c.socs.length)return "";if(!o.length)return T("cuDirect")(sn(c.to));return c.socs.length===1?TX.cuTransit(sn(c.to),o.map(sn).join(", "))[L]:TX.cuResort(sn(c.to),o.map(sn).join(", "))[L];};
+  $("chs").innerHTML=`<div class="cutab" role="group" aria-label="${T("cuDayL")}">${dtn.map((d,t)=>`<button type="button" data-cud="${t}" aria-pressed="${X.cuDay===t}">${esc(d)} · ${X.chutes[t].filter(c=>c.socs.length).length} chute</button>`).join("")}<label><input type="checkbox" id="cuSame"${X.cuSame?" checked":""}>${T("cuSame")}</label></div>`
+   +CL.map((c,i)=>`<div class="chu" data-chu="${i}"><div class="hd"><span>Chute ${i+1}</span>${c.socs.length?"":`<button type="button" data-cudel="${i}" aria-label="${T("cuDel")} ${i+1}">×</button>`}</div>
+     <div class="chips">${c.socs.length?c.socs.map(n=>`<span class="chip2${X.cuSel===n?" sel":""}" draggable="true" tabindex="0" role="button" data-soc="${esc(n)}" title="${esc(n)}">${esc(sn(n))} · ${nf(shOf(n))}%</span>`).join(""):`<span class="ph">${T("cuDrop")}</span>`}</div>
+     <label class="eff" style="display:grid;gap:2px">${T("cuTo")}<select data-cuto="${i}">${X.socs.map(o=>`<option value="${esc(o.s)}"${o.s===c.to?" selected":""}>${esc(o.s)}</option>`).join("")}</select></label>
+     <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`;}
 function read(){
-  const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);o.fw=$("sf"+j).checked;});
+  const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);});
   X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
   const tm=v=>{const m=/^(\d{1,2}):?(\d\d)$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?+m[1]*60+ +m[2]:null;};
   X.open=tm($("open").value)??X.open;X.win=G.cots.map((c,k)=>{const a=tm($("wa"+k).value),b=tm($("wb"+k).value),o=X.win[k];return [a??o[0],Math.max(a??o[0],b??o[1])];});
   X.ado=[0,1,2].map(t=>Math.max(0,+$("ado"+t).value||0));X.days=[0,1,2].map(t=>Math.max(0,+$("day"+t).value||0));
-  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.socs.forEach((o,j)=>{if($("cu"+j+"_0"))o.cu=[0,1,2].map(t=>$("cu"+j+"_"+t).checked);});
+  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
   X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 function render(){
-  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
+  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,chutes:X.chutes,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
   /* gán chute: SOC × loại ngày; SOC chính luôn có chute; SOC không chute → túi chung trong chute SOC chính, đi xe SOC chính, SOC chính chia lại */
-  { const dtn=T("dt"),C=p.chute;$("chs").innerHTML=`<thead><tr><th>SOC</th>${dtn.map((d,t)=>`<th>${esc(d)}<div class="meta">${p.works[t].ch} chute</div></th>`).join("")}</tr></thead><tbody>${C.map(c=>{const j=X.socs.findIndex(o=>o.s===c.s);return `<tr><td>${esc(c.s)}${c.main?`<div class="meta">${T("cuMain")}</div>`:""}</td>${[0,1,2].map(t=>`<td><input type="checkbox" id="cu${j}_${t}" aria-label="${esc(c.s)} · ${esc(dtn[t])}: ${T("cuOwn")}"${c.cu[t]?" checked":""}${c.main?" disabled":""}></td>`).join("")}</tr>`;}).join("")}</tbody>`;
-    const mx=[0,1,2].map(t=>C.filter(c=>!c.cu[t]).map(c=>c.s));$("cuNote").textContent=mx.some(a=>a.length)?TX.cuNote(C.find(c=>c.main).s,[0,1,2].filter(t=>mx[t].length).map(t=>dtn[t]+": "+mx[t].join(", ")).join(" · "),p.rsSh)[L]:T("cuAll"); }
+  drawChutes();
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
   $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
   /* phiếu kết luận cho Ops */
@@ -394,11 +412,23 @@ function render(){
   $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}${c.q0!==c.q?`<div class="meta">${T("learned")} ${nf(c.q0)}</div>`:""}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
   $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
 }
+$("chs").addEventListener("click",e=>{const d=e.target.closest("[data-cud]");if(d){X.cuDay=+d.dataset.cud;render();return;}
+  if(e.target.closest("[data-cuadd]")){cuEdit(L=>L.push({socs:[],to:mainSoc()}));return;}
+  const dl=e.target.closest("[data-cudel]");if(dl){cuEdit(L=>L.splice(+dl.dataset.cudel,1));return;}
+  const ch=e.target.closest("[data-soc]");if(ch){X.cuSel=X.cuSel===ch.dataset.soc?null:ch.dataset.soc;render();return;}
+  const cu=e.target.closest("[data-chu]");if(cu&&X.cuSel&&!e.target.closest("select,label")){const n=X.cuSel;X.cuSel=null;cuEdit(L=>{L.forEach(c=>{c.socs=c.socs.filter(q=>q!==n);});L[+cu.dataset.chu].socs.push(n);});}});
+$("chs").addEventListener("change",e=>{e.stopPropagation();if(e.target.id==="cuSame"){X.cuSame=e.target.checked;if(X.cuSame)cuEdit(()=>{});else render();return;}
+  const s=e.target.dataset.cuto;if(s!=null){const v=e.target.value;cuEdit(L=>{L[+s].to=v;});}});
+$("chs").addEventListener("input",e=>e.stopPropagation());
+$("chs").addEventListener("dragstart",e=>{const c=e.target.closest("[data-soc]");if(!c)return;e.dataTransfer.setData("text/plain",c.dataset.soc);e.dataTransfer.effectAllowed="move";});
+$("chs").addEventListener("dragover",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();c.classList.add("ov");});
+$("chs").addEventListener("dragleave",e=>{const c=e.target.closest("[data-chu]");if(c&&!c.contains(e.relatedTarget))c.classList.remove("ov");});
+$("chs").addEventListener("drop",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();const n=e.dataTransfer.getData("text/plain");if(!n)return;cuEdit(L=>{L.forEach(q=>{q.socs=q.socs.filter(x=>x!==n);});L[+c.dataset.chu].socs.push(n);});});
 $("f").addEventListener("submit",e=>e.preventDefault());
 $("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R")return;read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
-$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];fillRegion(false);drawForm();render();});
+$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;fillRegion(false);drawForm();render();});
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
 drawForm();render();
 })();
