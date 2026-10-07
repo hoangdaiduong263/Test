@@ -39,6 +39,7 @@ header p{margin:4px 0 0;color:var(--ink2);max-width:68ch}
 .row label{color:var(--ink2);font-size:13px}
 .trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .trio label{font-size:11px;color:var(--ink2);display:grid;gap:2px}
+.cu{width:100%;border-collapse:collapse;font-size:12px}.cu th{font-size:11px;font-weight:600;color:var(--ink2);text-align:center;padding:2px 4px}.cu th:first-child,.cu td:first-child{text-align:left}.cu td{padding:3px 4px;text-align:center;border-top:1px solid var(--line)}.cu .meta{font-size:10.5px}
 input,select{font:500 13px var(--f-ui);color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
 input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .row input[type=number]{width:96px}
@@ -157,7 +158,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       </div>
       <div class="grp">
         <h3><b data-t="g4"></b></h3>
-        <div class="trio" id="chs"></div>
+        <p class="lab2" style="font-size:12px;font-weight:600;margin:0 0 4px"><span data-t="cuL"></span></p><table class="cu" id="chs"></table><p class="hint" id="cuNote"></p>
         <div class="row"><label for="lab" data-t="labL"></label><select id="lab"></select></div>
         <div class="row"><label for="osCap" data-t="osCapL"></label><input type="number" id="osCap" min="0" step="1"></div>
         <div class="row"><label for="slackMin" data-t="slackL"></label><input type="number" id="slackMin" min="0" step="5"></div>
@@ -208,6 +209,8 @@ const TX={
  o7s:(R,oe)=>[`Các tuyến D2S ${R} theo kế hoạch Core Planner (đi riêng hoặc đi chung nhiều điểm) có điểm cách ≤ 30 km, chung SOC và chung lượt COT. Tuyến đang đi chung thì seller mới vào chung cả tuyến, không tách điểm ra. Est. lợi = tiền xe seller mới đi riêng + tiền xe tuyến đang chạy − tiền xe khi chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép tuyến có seller giữ chuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`D2S routes in ${R} per the Core Planner plan (alone or shared by several stops) with a stop within 30 km, sharing a SOC and a COT wave. A shared route is joined as a whole; its stops are not split. Est. gain = new seller alone + the route as it runs today − running together (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge with routes holding hub-kept or OE run-alone sellers.`:"")],
  rtShare:n=>[`Đi chung ${n} điểm`,`Shared, ${n} stops`], rtSolo:["Đi riêng","Runs alone"], rtPlan:["tuyến theo kế hoạch Core, khác tuyến đang chạy","route per Core plan, differs from today"],
  hubAny:["— Hub của Sup này —","— this Sup\u2019s hubs —"], supAny:["— Sup của Hub này —","— this hub\u2019s Sup —"], hsHub:n=>[`Hub này có ${n} Sup phụ trách (theo điểm D2S đang chạy).`,`${n} Sup cover this hub (from running D2S points).`], hsSup:n=>[`Sup này phụ trách ${n} Hub có điểm D2S.`,`This Sup covers ${n} hubs with D2S points.`],
+ cuL:["Gán chute → SOC (tick = SOC có chute riêng)","Chute → SOC (tick = SOC has its own chute)"], cuOwn:["có chute riêng","own chute"], cuMain:["SOC chính · luôn có chute","main SOC · always has a chute"], cuAll:["Mỗi SOC một chute, mỗi SOC một đội xe.","One chute and one fleet per SOC."],
+ cuNote:(m,s,r)=>[`Không chute riêng (${s}): túi chung trong chute ${m}, đi xe ${m}, ${m} chia lại (tính tiền người chia lại). Tiền chuyển hàng giữa SOC không tính vào D2S.`,`No own chute (${s}): mixed bags in the ${m} chute, ride the ${m} truck, re-sorted at ${m} (re-sort labour costed). SOC-to-SOC transfer is not charged to D2S.`],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT, lịch chạy và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe tuyến đó đang trả.","Tick Share to plan shared trucks: the truck plan, cost, COT times, timetable and recommendation above are recomputed. New seller's truck cost = shared cost − what that route pays today."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
@@ -227,7 +230,7 @@ const TX={
  laneLate:d=>[`Seller trễ ${d}′`,`Seller ${d}′ late`], shortL:["thiếu","short"], xsL:["thêm vì chỗ tập kết","added for staging"], learned:["học được","learned"], openL:["Người bắt đầu làm","Staff start"], hoFrom:["Bàn giao từ","Handover from"], hoTo:["đến","to"], hoEnd:["Bàn giao xong","Handover ends"], dlC:["Hạn COT","COT"], doneL:["Xong việc","Work done"],
  hoHint:["Khung seller bàn giao đơn cho từng lượt (mặc định theo khung COT của vùng) và phần đơn của lượt. Đơn tới đều trong khung; xe chỉ rời sau khi bàn giao xong và làm xong.","When the seller hands over orders for each wave (default: the region's COT windows) and the wave's share. Orders arrive evenly; trucks leave only after handover ends and work is done."],
  cotL:(R,t)=>[`Khung COT chuẩn ${R} (bàn giao → hạn xe rời): ${t}`,`${R} standard COT (handover → truck deadline): ${t}`], socNow:["luồng hiện nay","current flow"],
- socHd:["SOC đích","Destination SOC"], fwH:["Qua SOC","Via SOC"], fwT:["không có xe tới, túi đi kèm xe về SOC chính để chuyển tiếp","no truck; bags ride to the main SOC and are forwarded"], fwd:["chuyển tiếp","forwards"], socPct:["% đơn","% orders"],
+ socHd:["SOC đích","Destination SOC"], fwH:["Qua SOC","Via SOC"], fwT:["không có xe tới, túi đi kèm xe về SOC chính để chuyển tiếp","no truck; bags ride to the main SOC and are forwarded"], fwd:["chuyển tiếp","forwards"], rsmL:["túi chung, chia lại cho","mixed bags, re-sorted for"], socPct:["% đơn","% orders"],
  socHint:(R,G,st)=>[`Mặc định: phần đơn theo SOC của một seller ${R} đi nhiều SOC (trung vị ${G.socMulti.multi}/${G.socMulti.all} seller đi từ 2 SOC trở lên, chuyến thật T8–9). Mỗi SOC có xe riêng, giá theo km tới SOC đó. Đánh dấu "Qua SOC" nếu SOC đó không có xe tới mà SOC chính chuyển tiếp nguyên túi. SOC nhận ≥ 5% đơn là một SOC phải chia riêng (đang ${st}).`+(R==="South"?" Luồng South từ 1/10 gom 1 chute về BD A Mega SOC: đặt BD A = 100% để xem.":""),`Default: SOC split of a typical multi-SOC ${R} seller (median of ${G.socMulti.multi}/${G.socMulti.all} sellers going to 2+ SOCs, real trips Aug–Sep). Each SOC gets its own trucks, priced by km to that SOC. Tick "Via SOC" if no truck goes there and the main SOC forwards the bags. A SOC with ≥ 5% of orders counts as a separate sort (now ${st}).`+(R==="South"?" South's flow from 1 Oct sends everything on 1 chute to BD A Mega SOC: set BD A = 100% to see it.":"")], reg:["Vùng","Region"], soc:["SOC nhận hàng","Destination SOC"], km:["Km tới SOC","Km to SOC"],
  wv:["Phần đơn lượt","Share, wave"],
  g2:["Hồ sơ đơn","Order profile"], ado:["ADO","ADO"], dpm:["Ngày/tháng","Days / month"], beta:["% hàng to","% bulky"],
@@ -270,7 +273,7 @@ const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,
 const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
-  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}}
+  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];X.socs.slice().sort((a,b)=>b.sh-a.sh).forEach((o,r)=>{o.cu=[r<c,r<c,r<c];});}}
 fillRegion(false);
 
 function drawForm(){
@@ -288,7 +291,6 @@ function drawForm(){
   $("beta").value=X.beta;
   const peers=REF.sel.filter(s=>s.R===X.R).sort((a,b)=>a.b-b.b);
   $("like").innerHTML=`<option value="">${T("auto")}</option>`+peers.map(s=>`<option value="${esc(s.n)}"${s.n===X.like?" selected":""}>${esc(short(s.n))} · ${Math.round(s.b*100)}%</option>`).join("");
-  $("chs").innerHTML=T("dt").map((d,t)=>`<label for="ch${t}">${T("ch")} ${d}<input type="number" id="ch${t}" min="1" max="8" step="1" value="${X.ch[t]}"></label>`).join("");
   $("maxK").innerHTML=NS_KS.map(k=>`<option${k===X.maxK?" selected":""}>${k}</option>`).join("");
   $("bays").value=X.bays;
   $("ll").value=X.ll;
@@ -317,13 +319,16 @@ function read(){
   const tm=v=>{const m=/^(\d{1,2}):?(\d\d)$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?+m[1]*60+ +m[2]:null;};
   X.open=tm($("open").value)??X.open;X.win=G.cots.map((c,k)=>{const a=tm($("wa"+k).value),b=tm($("wb"+k).value),o=X.win[k];return [a??o[0],Math.max(a??o[0],b??o[1])];});
   X.ado=[0,1,2].map(t=>Math.max(0,+$("ado"+t).value||0));X.days=[0,1,2].map(t=>Math.max(0,+$("day"+t).value||0));
-  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.ch=[0,1,2].map(t=>Math.max(1,Math.round(+$("ch"+t).value||1)));
+  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.socs.forEach((o,j)=>{if($("cu"+j+"_0"))o.cu=[0,1,2].map(t=>$("cu"+j+"_"+t).checked);});
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
   X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 function render(){
   const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
+  /* gán chute: SOC × loại ngày; SOC chính luôn có chute; SOC không chute → túi chung trong chute SOC chính, đi xe SOC chính, SOC chính chia lại */
+  { const dtn=T("dt"),C=p.chute;$("chs").innerHTML=`<thead><tr><th>SOC</th>${dtn.map((d,t)=>`<th>${esc(d)}<div class="meta">${p.works[t].ch} chute</div></th>`).join("")}</tr></thead><tbody>${C.map(c=>{const j=X.socs.findIndex(o=>o.s===c.s);return `<tr><td>${esc(c.s)}${c.main?`<div class="meta">${T("cuMain")}</div>`:""}</td>${[0,1,2].map(t=>`<td><input type="checkbox" id="cu${j}_${t}" aria-label="${esc(c.s)} · ${esc(dtn[t])}: ${T("cuOwn")}"${c.cu[t]?" checked":""}${c.main?" disabled":""}></td>`).join("")}</tr>`;}).join("")}</tbody>`;
+    const mx=[0,1,2].map(t=>C.filter(c=>!c.cu[t]).map(c=>c.s));$("cuNote").textContent=mx.some(a=>a.length)?TX.cuNote(C.find(c=>c.main).s,[0,1,2].filter(t=>mx[t].length).map(t=>dtn[t]+": "+mx[t].join(", ")).join(" · "),p.rsSh)[L]:T("cuAll"); }
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
   $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
   /* phiếu kết luận cho Ops */
@@ -348,11 +353,11 @@ function render(){
   $("truck").innerHTML=`<thead><tr><th>${T("wave")}</th>${D.map(d=>`<th>${dt[d.t]} · ${nf(d.X)}</th>`).join("")}</tr></thead><tbody>${waves.map(k=>{const c=p.cots[k];
     return `<tr><td class="cot">${hm(c.p)}<small>${c.a>-1e8?hm(c.a)+"–":"→ "}${hm(c.b)}</small></td>${D.map(d=>{const w=d.W.find(x=>x.k===k);if(!w)return "<td>–</td>";
       return `<td><div class="mix">${Object.entries(w.mix).sort((a,b)=>NS_KS.indexOf(b[0])-NS_KS.indexOf(a[0])).map(([t,n])=>`<span class="truck">${n}×${t}</span>`).join("")}</div>
-        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%${w.xs?` · +${w.xs} ${T("xsL")}`:""}</div>${w.shared&&w.shared.length?`<div class="meta" style="color:var(--good)">${L?"shared with":"chung xe với"} ${w.shared.map(n=>esc(short(n))).join(", ")}</div>`:""}${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}${l.shared?` + ${l.shared.map(o=>nf(o.q)+" "+esc(short(o.n))).join(" + ")}`:""}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
+        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%${w.xs?` · +${w.xs} ${T("xsL")}`:""}</div>${w.shared&&w.shared.length?`<div class="meta" style="color:var(--good)">${L?"shared with":"chung xe với"} ${w.shared.map(n=>esc(short(n))).join(", ")}</div>`:""}${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length||l.rsm.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}${l.rsm.length?` (${T("rsmL")} ${l.rsm.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}${l.shared?` + ${l.shared.map(o=>nf(o.q)+" "+esc(short(o.n))).join(" + ")}`:""}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
   /* người */
   const sortT={none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[p.work.sort];
   $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
-    <tr><td>Chute</td>${D.map(d=>`<td class="n">${d.work.ch}${d.work.ch<d.work.st?`<div class="meta">${L?"main SOC re-sorts":"SOC chính chia lại"}</div>`:""}</td>`).join("")}</tr>
+    <tr><td>Chute</td>${D.map(d=>`<td class="n">${d.work.ch}${p.rsSh[d.t]>0?`<div class="meta">${L?"main SOC re-sorts":"SOC chính chia lại"} ${nf(p.rsSh[d.t]*100)}%</div>`:""}</td>`).join("")}</tr>
     <tr><td>${L?"Sorting":"Sort"}</td>${D.map(d=>`<td class="n" style="font-size:12px">${{none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[d.work.sort].split(":")[0]}<div class="meta">${nf(d.work.prod)} ${L?"/person/day":"/người/ngày"}</div></td>`).join("")}</tr>
     ${D.some(d=>d.rs>0)?`<tr><td>${L?"Main SOC re-sorts":"SOC chính chia lại"}</td>${D.map(d=>`<td class="n">${d.rs>0?`${nf(d.rs)} ${T("ord")}<div class="meta">${nf(d.soc/1e3)}k</div>`:"–"}</td>`).join("")}</tr>`:""}
     <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
