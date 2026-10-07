@@ -215,7 +215,8 @@ const TX={
  hubAny:["— Hub của Sup này —","— this Sup\u2019s hubs —"], supAny:["— Sup của Hub này —","— this hub\u2019s Sup —"], hsHub:n=>[`Hub này có ${n} Sup phụ trách (theo điểm D2S đang chạy).`,`${n} Sup cover this hub (from running D2S points).`], hsSup:n=>[`Sup này phụ trách ${n} Hub có điểm D2S.`,`This Sup covers ${n} hubs with D2S points.`],
  cuL:["Chute & TO (1 chute = 1 TO, mỗi TO đi 1 SOC)","Chutes & TOs (1 chute = 1 TO, each TO goes to 1 SOC)"], cuDayL:["Loại ngày","Day type"], cuSame:["Giống nhau mọi loại ngày","Same for all day types"], cuTo:["TO đi SOC","TO goes to"], cuDrop:["Kéo SOC vào đây","Drag a SOC here"], cuAdd:["Thêm chute","Add chute"], cuDel:["Bỏ chute","Remove chute"],
  cuDirect:[d=>`Đi thẳng ${d}`,d=>`Direct to ${d}`], cuTransit:(d,o)=>[`${d} chuyển tiếp (transit) ${o}`,`${d} transits ${o}`], cuResort:(d,o)=>[`${d} chia lại ${o} (tính tiền người chia lại)`,`${d} re-sorts ${o} (re-sort labour costed)`],
- cuHint:["Kéo SOC sang chute khác, hoặc chạm SOC rồi chạm chute. Tiền chuyển hàng giữa SOC không tính vào D2S.","Drag a SOC to another chute, or tap a SOC then tap a chute. SOC-to-SOC transfer is not charged to D2S."],
+ cuHint:["Kéo SOC sang chute khác, hoặc chạm SOC rồi chạm chute. Bớt chute: bấm × — SOC trong chute đó dồn sang chute cùng TO, không có thì sang chute đi SOC chính. Tiền chuyển hàng giữa SOC không tính vào D2S.","Drag a SOC to another chute, or tap a SOC then tap a chute. Remove a chute with × — its SOCs move to a chute with the same TO, else to the main-SOC chute. SOC-to-SOC transfer is not charged to D2S."],
+ cuMoved:(o,d)=>[`Đã bớt 1 chute: ${o} dồn sang chute đi ${d}.`,`Removed 1 chute: ${o} moved to the chute going to ${d}.`],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT, lịch chạy và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe tuyến đó đang trả.","Tick Share to plan shared trucks: the truck plan, cost, COT times, timetable and recommendation above are recomputed. New seller's truck cost = shared cost − what that route pays today."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
@@ -324,14 +325,14 @@ function sn(x){return x.replace(/ (Mega )?SOC$/,"");}
 function cuNorm(L){const names=X.socs.map(o=>o.s),seen=new Set();L.forEach(c=>{c.socs=c.socs.filter(n=>names.includes(n)&&!seen.has(n)&&seen.add(n));if(!names.includes(c.to))c.to=c.socs[0]||mainSoc();});
   const miss=names.filter(n=>!seen.has(n));if(miss.length){let m=L.find(c=>c.to===mainSoc());if(!m)L.push(m={socs:[],to:mainSoc()});m.socs.push(...miss);}return L;}
 function cuDefault(){const c=X.ch?X.ch[0]:X.socs.length,r=X.socs.slice().sort((a,b)=>b.sh-a.sh),L=r.slice(0,Math.max(1,c)).map(o=>({socs:[o.s],to:o.s}));return cuNorm(L);}
-function cuEdit(f){const t=X.cuDay;f(X.chutes[t]);cuNorm(X.chutes[t]);if(X.cuSame)X.chutes=[0,1,2].map(()=>X.chutes[t].map(c=>({socs:c.socs.slice(),to:c.to})));render();}
+function cuEdit(f){const t=X.cuDay;X.cuMsg="";f(X.chutes[t]);cuNorm(X.chutes[t]);if(X.cuSame)X.chutes=[0,1,2].map(()=>X.chutes[t].map(c=>({socs:c.socs.slice(),to:c.to})));render();}
 function drawChutes(){const dtn=T("dt"),CL=X.chutes[X.cuDay],shOf=n=>(X.socs.find(o=>o.s===n)||{}).sh||0;
   const eff=c=>{const o=c.socs.filter(n=>n!==c.to);if(!c.socs.length)return "";if(!o.length)return T("cuDirect")(sn(c.to));return c.socs.length===1?TX.cuTransit(sn(c.to),o.map(sn).join(", "))[L]:TX.cuResort(sn(c.to),o.map(sn).join(", "))[L];};
   $("chs").innerHTML=`<div class="cutab" role="group" aria-label="${T("cuDayL")}">${dtn.map((d,t)=>`<button type="button" data-cud="${t}" aria-pressed="${X.cuDay===t}">${esc(d)} · ${X.chutes[t].filter(c=>c.socs.length).length} chute</button>`).join("")}<label><input type="checkbox" id="cuSame"${X.cuSame?" checked":""}>${T("cuSame")}</label></div>`
-   +CL.map((c,i)=>`<div class="chu" data-chu="${i}"><div class="hd"><span>Chute ${i+1}</span>${c.socs.length?"":`<button type="button" data-cudel="${i}" aria-label="${T("cuDel")} ${i+1}">×</button>`}</div>
+   +CL.map((c,i)=>`<div class="chu" data-chu="${i}"><div class="hd"><span>Chute ${i+1}</span>${CL.length>1?`<button type="button" data-cudel="${i}" aria-label="${T("cuDel")} ${i+1}" title="${T("cuDel")}">×</button>`:""}</div>
      <div class="chips">${c.socs.length?c.socs.map(n=>`<span class="chip2${X.cuSel===n?" sel":""}" draggable="true" tabindex="0" role="button" data-soc="${esc(n)}" title="${esc(n)}">${esc(sn(n))} · ${nf(shOf(n))}%</span>`).join(""):`<span class="ph">${T("cuDrop")}</span>`}</div>
      <label class="eff" style="display:grid;gap:2px">${T("cuTo")}<select data-cuto="${i}">${X.socs.map(o=>`<option value="${esc(o.s)}"${o.s===c.to?" selected":""}>${esc(o.s)}</option>`).join("")}</select></label>
-     <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`;}
+     <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`+(X.cuMsg?`<p class="hint" role="status" style="margin:0;color:var(--ink)">${esc(X.cuMsg)}</p>`:"");}
 function read(){
   const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);});
   X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
@@ -414,7 +415,9 @@ function render(){
 }
 $("chs").addEventListener("click",e=>{const d=e.target.closest("[data-cud]");if(d){X.cuDay=+d.dataset.cud;render();return;}
   if(e.target.closest("[data-cuadd]")){cuEdit(L=>L.push({socs:[],to:mainSoc()}));return;}
-  const dl=e.target.closest("[data-cudel]");if(dl){cuEdit(L=>L.splice(+dl.dataset.cudel,1));return;}
+  const dl=e.target.closest("[data-cudel]");if(dl){const i=+dl.dataset.cudel;cuEdit(CL=>{const c=CL.splice(i,1)[0];if(!c||!c.socs.length||!CL.length)return;
+    /* bớt chute: SOC của chute đó dồn sang chute cùng TO; không có thì sang chute đi SOC chính; không có nữa thì chute đầu */
+    const t=CL.find(q=>q.to===c.to)||CL.find(q=>q.to===mainSoc())||CL[0];t.socs.push(...c.socs);X.cuMsg=TX.cuMoved(c.socs.map(sn).join(", "),sn(t.to))[L];});return;}
   const ch=e.target.closest("[data-soc]");if(ch){X.cuSel=X.cuSel===ch.dataset.soc?null:ch.dataset.soc;render();return;}
   const cu=e.target.closest("[data-chu]");if(cu&&X.cuSel&&!e.target.closest("select,label")){const n=X.cuSel;X.cuSel=null;cuEdit(L=>{L.forEach(c=>{c.socs=c.socs.filter(q=>q!==n);});L[+cu.dataset.chu].socs.push(n);});}});
 $("chs").addEventListener("change",e=>{e.stopPropagation();if(e.target.id==="cuSame"){X.cuSame=e.target.checked;if(X.cuSame)cuEdit(()=>{});else render();return;}
