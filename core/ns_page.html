@@ -202,6 +202,7 @@ const TX={
  llL:["Toạ độ (lat, long)","Location (lat, long)"], hubL:["FM Hub cover","Covering FM Hub"], supL:["Sup phụ trách","Supervisor"], unk:["chưa rõ","unknown"],
  o7:["Ghép xe với điểm D2S đang chạy","Share trucks with running D2S points"],
  o7s:(R,oe)=>[`Các điểm D2S ${R} cách ≤ 30 km, chung SOC và chung lượt COT. Est. lợi = tiền xe hai bên chạy riêng − chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép seller giữ tuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`Running D2S points in ${R} within 30 km, sharing a SOC and a COT wave. Est. gain = truck cost of both running alone − sharing (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge for hub-kept or OE run-alone sellers.`:"")],
+ mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe các điểm đó đang chạy riêng.","Tick Share to plan shared trucks: the truck plan, cost, COT times and recommendation above are recomputed. New seller's truck cost = shared cost − what those points pay running alone."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
  mOe:{solo:["luật OE: chạy riêng","OE rule: runs alone"],hub:["luật OE: giữ tuyến ghé hub","OE rule: hub route kept"],sup:["luật OE: khác Sup","OE rule: other Sup"]},
@@ -260,7 +261,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
 
 /* hồ sơ ví dụ */
-const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
+const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
   if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}}
@@ -304,13 +305,14 @@ function read(){
   X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 function render(){
-  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup});
+  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
   $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
   /* phiếu kết luận cho Ops */
   { const ck=(ok,txt)=>`<li><b class="${ok?"y":"n"}">${ok?(L?"Pass":"Đạt"):(L?"Fail":"Chưa")}</b><span>${txt}</span></li>`;
     const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");if(!p.ok.thr)why.push(L?"a day type loses money at the entered ADO":"có loại ngày lỗ ở ADO đang nhập");if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.verdict==="cond")why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
-    const bm=(p.mrg.list||[]).find(o=>o.st==="go");if(bm)why.push((L?"can share trucks with ":"có thể ghép xe với ")+short(bm.n)+" (Est. +"+mn(bm.save)+(L?"/month)":"/tháng)"));
+    if(p.picked.length)why.push((L?"planned with shared trucks: ":"đang tính chạy chung xe với ")+p.picked.map(short).join(", "));
+    const bm=(p.mrg.list||[]).find(o=>o.st==="go"&&!p.picked.includes(o.n));if(bm&&!p.picked.length)why.push((L?"can share trucks with ":"có thể ghép xe với ")+short(bm.n)+" (Est. +"+mn(bm.save)+(L?"/month)":"/tháng)"));
     const ask=[];if(!X.tail)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));
     $("vd").className="panel vdp "+p.verdict;
     $("vd").innerHTML=`<div class="vd-h"><span class="l">${T("vdL")}</span><span class="t">${T(p.verdict==="go"?"vdGo":p.verdict==="cond"?"vdCond":"vdNo")}</span><p>${why.length?esc(why.join(" · ")):(L?"All checks pass on the inputs below.":"Mọi điều kiện đạt với hồ sơ đang nhập.")}</p></div>
@@ -328,7 +330,7 @@ function render(){
   $("truck").innerHTML=`<thead><tr><th>${T("wave")}</th>${D.map(d=>`<th>${dt[d.t]} · ${nf(d.X)}</th>`).join("")}</tr></thead><tbody>${waves.map(k=>{const c=p.cots[k];
     return `<tr><td class="cot">${hm(c.p)}<small>${c.a>-1e8?hm(c.a)+"–":"→ "}${hm(c.b)}</small></td>${D.map(d=>{const w=d.W.find(x=>x.k===k);if(!w)return "<td>–</td>";
       return `<td><div class="mix">${Object.entries(w.mix).sort((a,b)=>NS_KS.indexOf(b[0])-NS_KS.indexOf(a[0])).map(([t,n])=>`<span class="truck">${n}×${t}</span>`).join("")}</div>
-        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%${w.xs?` · +${w.xs} ${T("xsL")}`:""}</div>${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
+        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%${w.xs?` · +${w.xs} ${T("xsL")}`:""}</div>${w.shared&&w.shared.length?`<div class="meta" style="color:var(--good)">${L?"shared with":"chung xe với"} ${w.shared.map(n=>esc(short(n))).join(", ")}</div>`:""}${w.legs.length>1||w.legs.some(l=>l.s.length>1||l.fwd.length)?`<div class="legs meta">${w.legs.map(l=>`<span>${l.s.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(" → ")}${l.fwd.length?` (${T("fwd")} ${l.fwd.map(x=>esc(x.replace(/ (Mega )?SOC$/,""))).join(", ")})`:""}: ${Object.entries(l.mix).map(([t,n])=>n+"×"+t).join(" + ")} · ${nf(l.Q)}${l.shared?` + ${l.shared.map(o=>nf(o.q)+" "+esc(short(o.n))).join(" + ")}`:""}</span>`).join("")}</div>`:""}</td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
   /* người */
   const sortT={none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[p.work.sort];
   $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
@@ -345,12 +347,12 @@ function render(){
   const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
   $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th>${T("slack")} · ${dt[pk.t]}</th>${p.late?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(pk.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.c.b)}</td><td class="n">${hm(w.done)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td>${chip(w.slack)}</td>${p.late&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}</td>`:p.late?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
   /* ghép với điểm đang chạy */
-  { const G=REF.reg[X.R],M=p.mrg;$("o7s").textContent=TX.o7s(X.R,G.oe)[L];
+  { const G=REF.reg[X.R],M=p.mrg;$("o7s").textContent=TX.o7s(X.R,G.oe)[L]+" "+T("mHow");
     if(M.need){$("mrg").innerHTML=`<tbody><tr><td>${T("mNeed")}</td></tr></tbody>`;}
     else if(!M.list.length){$("mrg").innerHTML=`<tbody><tr><td>${T("mNone")}</td></tr></tbody>`;}
     else{const H=T("mH"),cls={go:"ok",check:"mid",late:"late",oe:"late",nogain:"mid",na:"mid"};
       const hb=h=>(h||"").replace(/ Hub$/,"").replace(/^\d+-\w+ /,"");
-      $("mrg").innerHTML=`<thead><tr>${H.map((h,j)=>`<th${j===2?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${M.list.slice(0,8).map(o=>`<tr><td><b style="font-weight:600">${esc(short(o.n))}</b><div class="meta">${nf(o.km,1)} km · ${nf(o.ado)} ${T("ord")}/${L?"day":"ngày"} · ${o.waves.length?o.waves.map(hm).join(", "):"–"}</div></td><td>${esc(o.sup||"–")} <span class="chip ${o.supOk?"ok":"mid"}">${o.supOk?(L?"same":"cùng"):(L?"other":"khác")}</span><div class="meta">${esc(hb(o.hub)||"–")} · ${o.hubOk?(L?"same hub, can share staff":"cùng Hub, dùng chung người được"):(L?"other hub":"khác Hub")}</div></td><td class="n">${o.save>0?mn(o.save):"–"}</td><td>${o.slack==null?"–":(o.slack<0?`<span class="chip late">${T("lateT")} ${nf(-o.slack)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(o.slack)}′</span>`)}</td><td><span class="chip ${cls[o.st]}">${TX.mSt[o.st][L]}</span>${o.oeNo?`<div class="meta">${TX.mOe[o.oeNo][L]}</div>`:""}</td></tr>`).join("")}</tbody>`;} }
+      $("mrg").innerHTML=`<thead><tr><th>${L?"Share":"Ghép"}</th>${H.map((h,j)=>`<th${j===2?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${M.list.slice(0,8).map((o,j)=>`<tr${X.pick.includes(o.n)?' style="background:var(--good-soft)"':""}><td><input type="checkbox" id="pk${j}" data-pick="${esc(o.n)}" aria-label="${L?"Share trucks with":"Ghép xe với"} ${esc(short(o.n))}"${X.pick.includes(o.n)?" checked":""}${["oe","na"].includes(o.st)?" disabled":""}></td><td><b style="font-weight:600">${esc(short(o.n))}</b><div class="meta">${nf(o.km,1)} km · ${nf(o.ado)} ${T("ord")}/${L?"day":"ngày"} · ${o.waves.length?o.waves.map(hm).join(", "):"–"}</div></td><td>${esc(o.sup||"–")} <span class="chip ${o.supOk?"ok":"mid"}">${o.supOk?(L?"same":"cùng"):(L?"other":"khác")}</span><div class="meta">${esc(hb(o.hub)||"–")} · ${o.hubOk?(L?"same hub, can share staff":"cùng Hub, dùng chung người được"):(L?"other hub":"khác Hub")}</div></td><td class="n">${o.save>0?mn(o.save):"–"}</td><td>${o.slack==null?"–":(o.slack<0?`<span class="chip late">${T("lateT")} ${nf(-o.slack)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(o.slack)}′</span>`)}</td><td><span class="chip ${cls[o.st]}">${TX.mSt[o.st][L]}</span>${o.oeNo?`<div class="meta">${TX.mOe[o.oeNo][L]}</div>`:""}</td></tr>`).join("")}</tbody>`;} }
   /* chi phí / đơn */
   $("o4s").textContent=TX.o4s(nf(p.fmU))[L];
   const mx=Math.max(p.fmU*1.25,...D.map(d=>d.cost/d.X));
@@ -363,8 +365,9 @@ function render(){
   $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
 }
 $("f").addEventListener("submit",e=>e.preventDefault());
+$("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R")return;read();render();});
-$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";fillRegion(false);drawForm();render();});
+$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];fillRegion(false);drawForm();render();});
 document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
 drawForm();render();
 })();
