@@ -85,7 +85,7 @@ function nsPlan(ref, x) {
   const tail = Math.min(1, Math.max(0, (+x.tail || 0) / 100)), slackMin = Math.max(0, +x.slackMin || 0), osCap = +x.osCap > 0 ? Math.round(+x.osCap) : null;
   const stage = +x.area > 0 && +x.dens > 0 ? +x.area * +x.dens : null;   // số đơn tập kết được cùng lúc
   /* 4. một loại ngày: xe từng lượt, người, giờ xe rời so với hạn COT */
-  const day = (X, dly, t) => { dly = dly || 0; const wk = works[t || 0], w = wk.w;
+  const day = (X, dly, t) => { dly = dly || 0; if (!(X > 0)) return { X: 0, W: [], hc: 0, hc0: 0, short: 0, truck: 0, lab: 0, rs: 0, soc: 0, cost: 0, fm: 0, net: 0, trucks: 0, xs: 0, worst: 1e9 }; const wk = works[t || 0], w = wk.w;
     /* SOC chia lại: chia ít chute hơn số SOC phải chia thì phần (SOC − chute) ÷ SOC số đơn được SOC chính sort lại,
        năng suất như sort đủ chute tại điểm, 520k/người/ngày (như Seller Planner: soc.same, soc.pay) */
     const rs = wk.ch < st ? X * (st - wk.ch) / st : 0, socC = rs > 0 ? rs / workOf(st).prod * P.ftePay : 0;
@@ -103,7 +103,8 @@ function nsPlan(ref, x) {
         const qT = v.t ? v.Q / v.t : 0, dw = dwFix + dwRate * qT + (lab === "pps" ? qT / (P.ppsSpd / 60) : 0), batch = Math.ceil(v.t / bays);
         const dep = done + P.closeMin + (batch - 1) * dw, slack = v.c.p - dep; free = done; worst = Math.min(worst, slack); return { done, dep, slack, batch, dw }; }); return { r, worst }; };
     const hc0 = lab === "pps" ? 0 : Math.max(1, Math.ceil(X * w - 1e-9)); let hc = hc0, s = sim(Math.max(1, hc));
-    if (lab !== "pps") while (s.worst < slackMin && hc < hc0 + P.maxExtra && (osCap == null || hc < osCap)) { hc++; s = sim(hc); }
+    /* trễ (hoặc dư dưới mức yêu cầu) thì thêm từng người, chỉ giữ khi giờ xe rời thật sự sớm hơn (trễ do chỗ chất xe thì thêm người không giúp) */
+    if (lab !== "pps") while (s.worst < slackMin && hc < hc0 + P.maxExtra && (osCap == null || hc < osCap)) { const s2 = sim(hc + 1); if (s2.worst <= s.worst + 0.5) break; hc++; s = s2; }
     W.forEach((v, j) => Object.assign(v, s.r[j]));
     const truck = W.reduce((a, v) => a + v.cost, 0), labC = lab === "pps" ? X * P.ppsRate : hc * pay, fm = X * fmU;
     return { X, W, hc, hc0, short: osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0), xs: W.reduce((a, v) => a + v.xs, 0), worst: s.worst };
@@ -113,14 +114,16 @@ function nsPlan(ref, x) {
   const dly = Math.max(0, +x.delay || 0), pk = days.reduce((a, d) => d.X > a.X ? d : a, days[0]), late = dly && pk.X > 0 ? day(pk.X, dly, pk.t) : null;
   const sum = f => days.reduce((a, d) => a + d.n * f(d), 0), V = sum(d => d.X);
   const month = { orders: V, truck: sum(d => d.truck), lab: sum(d => d.lab), soc: sum(d => d.soc), fm: sum(d => d.fm) }; month.cost = month.truck + month.lab + month.soc; month.net = month.fm - month.cost;
-  /* 5. ngưỡng ADO hoà vốn (ngày BAU; Mini CP và CP giữ tỷ lệ so với BAU): mức thấp nhất mà từ đó tới gấp đôi đều lời */
-  const r0 = +x.ado[0] || 1, netAt = a => { let n = 0; x.ado.forEach((X, t) => { const d = day(a * (+X || 0) / r0, 0, t); n += (+x.days[t] || 0) * d.net; }); return n; };
+  /* 5. ngưỡng ADO hoà vốn, RIÊNG từng loại ngày: mức đơn thấp nhất mà một ngày loại đó rẻ hơn FM pickup.
+     Chỉ phụ thuộc hồ sơ của loại ngày đó, không phụ thuộc ADO đang nhập. Phía trên ngưỡng có thể có dải lỗ lại (nhảy bậc xe / người) → ghi riêng tới 2× ngưỡng */
   const grid = []; for (let a = 20; a <= 3000; a += 20) grid.push(a); for (let a = 3050; a <= 20000; a += 50) grid.push(a);
-  const ok = grid.map(a => netAt(a) >= 0); let thr = null;
-  for (let j = 0; j < grid.length && thr == null; j++) { if (!ok[j]) continue; let all = true; for (let k = j; k < grid.length && grid[k] <= 2 * grid[j]; k++) if (!ok[k]) { all = false; break; } if (all) thr = grid[j]; }
+  const thrOf = t => { const net = grid.map(a => day(a, 0, t).net), j0 = net.findIndex(v => v >= 0); if (j0 < 0) return { v: null, bands: [] };
+    const bands = []; let cur = null; for (let j = j0; j < grid.length && grid[j] <= 2 * grid[j0]; j++) { if (net[j] < 0) { if (!cur) bands.push(cur = [grid[j], grid[j]]); else cur[1] = grid[j]; } else cur = null; }
+    return { v: grid[j0], bands }; };
+  const thrR = [0, 1, 2].map(thrOf), thrs = thrR.map(o => o.v), thr = thrs[0];
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
-  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: thr != null && (+x.ado[0] || 0) >= thr, cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
+  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
   const verdict = chk.profit && chk.thr && chk.cot && chk.people ? (chk.delay ? "go" : "cond") : "no";
-  return { cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict };
+  return { cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS };

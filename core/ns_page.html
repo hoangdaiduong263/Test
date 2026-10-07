@@ -200,7 +200,7 @@ const TX={
  osCapL:["Số người tối đa cấp được","Max staff available"], slackL:["Dư COT tối thiểu (phút)","Min COT slack (min)"], delayL:["Thử seller giao trễ (phút)","Test seller delay (min)"],
  areaL:["Chỗ tập kết (m²)","Staging area (m²)"], densL:["Mật độ (đơn/m²)","Density (orders/m²)"], blankHint:["Ô để trống = dùng số Core Planner đã học hoặc chưa tính. Điền số thật khi có.","Blank = use what Core Planner learned, or not modelled. Fill real values when known."],
  vdL:["Kết luận cho Ops","Recommendation for Ops"], vdGo:["Nên chạy D2S","Run D2S"], vdCond:["Chạy được, có điều kiện","Run D2S with conditions"], vdNo:["Chưa nên chạy D2S","Do not run D2S yet"],
- ckProfit:["Lời so với FM pickup cả tháng","Cheaper than FM pickup over the month"], ckThr:["ADO BAU trên mức hoà vốn","BAU ADO above break-even"], ckCot:["Kịp COT mọi loại ngày, đủ mức dư yêu cầu","Meets COT on every day type, with required slack"],
+ ckProfit:["Lời so với FM pickup cả tháng","Cheaper than FM pickup over the month"], ckThr:["Mỗi loại ngày đều lời ở ADO đang nhập","Every day type is profitable at the entered ADO"], ckCot:["Kịp COT mọi loại ngày, đủ mức dư yêu cầu","Meets COT on every day type, with required slack"],
  ckPpl:["Đủ người trong số cấp được","Enough staff within the cap"], ckDelay:d=>[`Seller giao trễ ${d}′ vẫn kịp COT (ngày đông)`,`Still meets COT if seller is ${d}′ late (peak day)`],
  askH:["Cần xác nhận trước khi chạy","Confirm before go-live"], askTail:["Giờ bàn giao thật: đang giả định đơn về đều trong khung","Real handover times: orders assumed to arrive evenly"],
  askDw:["Thời gian chất xe: đang dùng trung vị toàn mạng","Loading time: using the network median"], askCap:["Đơn/xe: đang mượn seller giống, chưa có số seller báo","Orders per truck: borrowed from similar sellers, none reported"],
@@ -295,7 +295,7 @@ function render(){
   $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
   /* phiếu kết luận cho Ops */
   { const ck=(ok,txt)=>`<li><b class="${ok?"y":"n"}">${ok?(L?"Pass":"Đạt"):(L?"Fail":"Chưa")}</b><span>${txt}</span></li>`;
-    const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");if(!p.ok.thr)why.push((L?"below break-even ":"dưới hoà vốn ")+(p.thr==null?"–":nf(p.thr)));if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.verdict==="cond")why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
+    const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");if(!p.ok.thr)why.push(L?"a day type loses money at the entered ADO":"có loại ngày lỗ ở ADO đang nhập");if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.verdict==="cond")why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
     const ask=[];if(!X.tail)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));
     $("vd").className="panel vdp "+p.verdict;
     $("vd").innerHTML=`<div class="vd-h"><span class="l">${T("vdL")}</span><span class="t">${T(p.verdict==="go"?"vdGo":p.verdict==="cond"?"vdCond":"vdNo")}</span><p>${why.length?esc(why.join(" · ")):(L?"All checks pass on the inputs below.":"Mọi điều kiện đạt với hồ sơ đang nhập.")}</p></div>
@@ -306,7 +306,7 @@ function render(){
   $("kpi").innerHTML=`
    <div class="kpi hero"><span class="l">${T("kSave")}</span><span class="v ${p.month.net>=0?"pos":"neg"}">${p.month.net>=0?"":"−"}${mn(Math.abs(p.month.net))}</span><span class="s">${nf(p.month.orders)} ${T("ord")}${T("month")} · ${T("vsFM")}</span></div>
    <div class="kpi"><span class="l">${T("kCpo")}</span><span class="v">${nf(cpo)}</span><span class="s">${T("fmIs")} ${nf(p.fmU)} ${T("per")}</span></div>
-   <div class="kpi"><span class="l">${T("kThr")}</span><span class="v">${thr==null?"–":nf(thr)}</span><span class="s">${thr==null?T("noThr"):(X.ado[0]>=thr?T("aboveThr"):T("belowThr"))+" · BAU"}</span></div>
+   <div class="kpi"><span class="l">${T("kThr")}</span><span class="v">${thr==null?"–":nf(thr)}</span><span class="s">BAU · ${thr==null?T("noThr"):(X.ado[0]>=thr?T("aboveThr"):T("belowThr"))}${p.thrBands[0].length?`<br>${L?"loss again at":"lỗ lại ở"} ${p.thrBands[0].slice(0,2).map(b=>b[0]===b[1]?nf(b[0]):nf(b[0])+"–"+nf(b[1])).join(", ")}`:""}<br>Mini CP ${p.thrs[1]==null?"–":nf(p.thrs[1])} · CP ${p.thrs[2]==null?"–":nf(p.thrs[2])}</span></div>
    <div class="kpi"><span class="l">${T("kTr")}</span><span class="v">${D.map(d=>d.trucks).join(" / ")}</span><span class="s">${D.map(d=>dt[d.t]).join(" / ")}</span></div>`;
   /* xe */
   const waves=p.cots.map((c,k)=>k).filter(k=>D.some(d=>d.W.some(w=>w.k===k)));
