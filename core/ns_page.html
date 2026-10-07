@@ -1,0 +1,274 @@
+<title>D2S New Seller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: hồ sơ seller (cột trái, 5 nhóm đầu vào như box 3) → kế hoạch (cột phải: dải kết luận, xe × lượt, rủi ro COT, người, chi phí/đơn) */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#16213a; --ink2:#5b6478; --line:#e2e5ec; --soft:#eef1f6;
+  --accent:#ee4d2d; --accent-soft:#fdeee9; --navy:#142b52; --navy-soft:#e8edf6;
+  --good:#1f8a52; --good-soft:#e5f4ec; --warn:#b7791f; --warn-soft:#fbf1df; --bad:#c2362a; --bad-soft:#fbe7e5;
+  --f-ui:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10141c; --panel:#171c26; --ink:#e6e9f0; --ink2:#9aa3b5; --line:#2a3140; --soft:#1e2430;
+  --accent:#ff6a4a; --accent-soft:#3a1e18; --navy:#9db5e0; --navy-soft:#1d2738;
+  --good:#4cc488; --good-soft:#15291f; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141c; --panel:#171c26; --ink:#e6e9f0; --ink2:#9aa3b5; --line:#2a3140; --soft:#1e2430;
+  --accent:#ff6a4a; --accent-soft:#3a1e18; --navy:#9db5e0; --navy-soft:#1d2738;
+  --good:#4cc488; --good-soft:#15291f; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45;padding:0 16px;margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 40px;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--accent);padding-bottom:12px}
+header .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
+h1{margin:2px 0 0;font-size:24px;font-weight:700;text-wrap:balance}
+header p{margin:4px 0 0;color:var(--ink2);max-width:68ch}
+.lang{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lang button{border:0;background:var(--panel);color:var(--ink2);padding:6px 12px;font:600 12px var(--f-ui);cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--navy);color:var(--panel)}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+.inputs{display:grid;gap:14px}
+.grp{display:grid;gap:8px;padding-top:10px;border-top:1px solid var(--line)}
+.grp:first-of-type{border-top:0;padding-top:0}
+.grp h3{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);display:flex;justify-content:space-between;gap:8px}
+.grp h3 span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink2)}
+.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px}
+.row label{color:var(--ink2);font-size:13px}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.trio label{font-size:11px;color:var(--ink2);display:grid;gap:2px}
+input,select{font:500 13px var(--f-ui);color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
+input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
+.row input[type=number]{width:96px}
+select{max-width:200px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:11.5px;color:var(--ink2);margin:0}
+.out{display:grid;gap:16px;min-width:0}
+.verdict{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+@media (max-width:640px){.verdict{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--panel);padding:12px 14px;display:grid;gap:2px;align-content:start}
+.kpi .l{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+.kpi .v{font:600 22px var(--f-num);letter-spacing:-.02em}
+.kpi .s{font-size:12px;color:var(--ink2)}
+.kpi.hero{background:var(--navy-soft)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.sec h2{margin:0 0 2px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sec h2 i{font-style:normal;font:600 11px var(--f-num);color:var(--panel);background:var(--accent);border-radius:4px;padding:1px 6px}
+.sec .sub{margin:0 0 10px;color:var(--ink2);font-size:12.5px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink2);font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--f-num)}
+.cot{font:600 13px var(--f-num)} .cot small{display:block;font:400 11px var(--f-ui);color:var(--ink2)}
+.mix{display:flex;flex-wrap:wrap;gap:4px}
+.truck{font:600 12px var(--f-num);background:var(--navy-soft);color:var(--navy);border-radius:4px;padding:2px 6px;white-space:nowrap}
+.fillbar{height:5px;background:var(--soft);border-radius:3px;margin-top:6px;overflow:hidden;max-width:140px}
+.fillbar b{display:block;height:100%;background:var(--navy)}
+.meta{font-size:11.5px;color:var(--ink2);margin-top:3px;font-family:var(--f-num)}
+.chip{display:inline-block;font:600 11.5px var(--f-ui);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.ok{background:var(--good-soft);color:var(--good)} .mid{background:var(--warn-soft);color:var(--warn)} .late{background:var(--bad-soft);color:var(--bad)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:72px minmax(0,1fr) 92px;gap:8px;align-items:center;font-size:12.5px}
+.track{position:relative;height:22px;background:var(--soft);border-radius:4px;overflow:hidden;display:flex}
+.track .t{background:var(--navy)} .track .p{background:var(--accent)}
+.track .fm{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--ink2)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.cap td{padding:5px 8px}
+.off{opacity:.45}
+.conf{font-size:11.5px;color:var(--ink2)}
+.foot{font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
+.tag{font:600 10.5px var(--f-ui);letter-spacing:.06em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:2px 6px}
+@media (prefers-reduced-motion:no-preference){.fillbar b,.track div{transition:width .25s ease}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">D2S Core Planner</div>
+      <h1 id="h1">New Seller</h1>
+      <p id="lede"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" id="lvi" data-l="vi">VI</button><button type="button" id="len" data-l="en">EN</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <form class="panel inputs" id="f" autocomplete="off">
+      <div class="grp">
+        <h3><b data-t="g1"></b><span class="tag" id="sample"></span></h3>
+        <div class="row"><label for="R" data-t="reg"></label><select id="R"></select></div>
+        <div class="row"><label for="soc" data-t="soc"></label><select id="soc"></select></div>
+        <div class="row"><label for="km" data-t="km"></label><input type="number" id="km" min="0" max="300" step="1"></div>
+        <div id="waves" class="grid0" style="display:grid;gap:6px"></div>
+      </div>
+      <div class="grp">
+        <h3><b data-t="g2"></b></h3>
+        <div class="trio" id="ado"></div>
+        <div class="trio" id="days"></div>
+        <div class="row"><label for="beta" data-t="beta"></label><input type="number" id="beta" min="0" max="100" step="1"></div>
+      </div>
+      <div class="grp">
+        <h3><b data-t="g3"></b></h3>
+        <div class="row"><label for="like" data-t="like"></label><select id="like"></select></div>
+        <p class="hint" id="howtxt"></p>
+      </div>
+      <div class="grp">
+        <h3><b data-t="g4"></b></h3>
+        <div class="row"><label for="ch" data-t="ch"></label><input type="number" id="ch" min="1" max="6" step="1"></div>
+        <div class="row"><label for="st" data-t="st"></label><input type="number" id="st" min="1" max="6" step="1"></div>
+        <p class="hint" id="cotlist"></p>
+      </div>
+      <div class="grp">
+        <h3><b data-t="g5"></b></h3>
+        <div class="row"><label for="maxK" data-t="maxK"></label><select id="maxK"></select></div>
+        <div class="row"><label for="bays" data-t="bays"></label><input type="number" id="bays" min="1" max="10" step="1"></div>
+      </div>
+    </form>
+
+    <div class="out">
+      <div class="verdict" id="kpi"></div>
+      <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div></section>
+      <div class="two">
+        <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div></section>
+        <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="tw"><table id="cot"></table></div></section>
+      </div>
+      <section class="panel sec"><h2><i>4</i><span data-t="o4"></span></h2><p class="sub" id="o4s"></p><div class="bars" id="bars"></div>
+        <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
+      <section class="panel sec"><h2><span data-t="o5"></span></h2><p class="sub" id="o5s"></p><div class="tw"><table id="cap" class="cap"></table></div>
+        <div class="foot" id="foot"></div></section>
+    </div>
+  </div>
+</div>
+
+<script>
+const NSREF=/*NSREF*/;
+/*NSJS*/
+(function(){
+const $=id=>document.getElementById(id), REF=NSREF;
+const TX={
+ lede:["Điền hồ sơ seller sắp nhận. Core Planner trả về số xe và cỡ xe mỗi lượt, số người, giờ xe rời so với COT, và chi phí mỗi đơn so với FM pickup.","Enter the profile of a seller about to onboard. Core Planner returns trucks per wave, people, truck departure vs COT, and cost per order vs FM pickup."],
+ sample:["Ví dụ","Sample"],
+ g1:["Hành vi seller","Seller behaviour"], reg:["Vùng","Region"], soc:["SOC nhận hàng","Destination SOC"], km:["Km tới SOC","Km to SOC"],
+ wv:["Phần đơn lượt","Share, wave"],
+ g2:["Hồ sơ đơn","Order profile"], ado:["ADO","ADO"], dpm:["Ngày/tháng","Days / month"], beta:["% hàng to","% bulky"],
+ dt:[["BAU","Mini CP","CP"],["BAU","Mini CP","CP"]],
+ g3:["Kích thước đơn","Order size"], like:["Học từ","Learn from"], auto:["Seller giống (tự động)","Similar sellers (auto)"],
+ g4:["Giới hạn vận hành","Ops limits"], ch:["Số chute seller chia","Chutes at seller"], st:["Số SOC mỗi lượt","SOCs per wave"],
+ g5:["Mặt bằng","Site setup"], maxK:["Xe lớn nhất vào được","Max truck size"], bays:["Số xe chất cùng lúc","Loading bays"],
+ o1:["Kế hoạch xe","Truck plan"], o1s:["Cỡ và số xe mỗi lượt, độ đầy so với mức seller giống đã thực sự chở.","Size and count per wave; fill against what similar sellers really carried."],
+ o2:["Kế hoạch người","People plan"], o2s:["Người của Hub tại điểm, đủ khối việc và kịp COT.","Hub staff on site, sized for workload and COT."],
+ o3:["Rủi ro COT","COT risk"], o3s:["Giờ xe cuối rời điểm so với hạn COT, ngày đông nhất.","Last truck departure vs COT deadline, on the heaviest day."],
+ o4:["Chi phí mỗi đơn","Cost per order"], o5:["Sức chở dùng cho seller này","Capacity used for this seller"],
+ lgT:["Tiền xe / đơn","Truck / order"], lgP:["Tiền người / đơn","People / order"], lgF:["FM pickup / đơn","FM pickup / order"],
+ kSave:["Est. tiết kiệm / tháng","Est. saving / month"], kCpo:["D2S / đơn (BAU)","D2S cost / order (BAU)"], kThr:["ADO hoà vốn","Break-even ADO"], kTr:["Xe / ngày","Trucks / day"],
+ vsFM:["so với FM pickup","vs FM pickup"], fmIs:["FM pickup","FM pickup"], aboveThr:["trên ngưỡng","above break-even"], belowThr:["dưới ngưỡng","below break-even"], noThr:["không có mức hoà vốn ổn định","no stable break-even"],
+ wave:["Lượt (COT)","Wave (COT)"], ord:["đơn","orders"], fill:["đầy","fill"], ppl:["người","people"], peop:["Người","People"],
+ sortNone:["không sort: quét, bàn giao, xếp xe","no sorting: scan, hand over, load"], sortSmall:["sort hàng nhỏ","sort small parcels"], sortBig:["sort cả hàng to","sort all parcels"],
+ prod:["đơn/người/ngày","orders/person/day"], extra:["thêm để kịp COT","added to meet COT"],
+ dep:["Xe rời","Departs"], dl:["Hạn","Deadline"], slack:["Dư","Slack"], safe:["an toàn","safe"], tight:["sát","tight"], lateT:["trễ","late"],
+ batch:["chất","loads in"], batches:["đợt","rounds"],
+ cap:["Cỡ xe","Truck"], capq:["Đơn / xe","Orders / truck"], price:["Giá chuyến","Trip price"], used:["dùng","used"], notAllowed:["vượt mặt bằng","over site limit"],
+ per:["đ/đơn","VND/order"], month:["/tháng","/month"], tr:["tr","M"],
+ howReg:n=>[`Trung vị ${n} seller cùng vùng, % hàng to lệch ≤ 10 điểm. Cỡ xe lớn không chở ít hơn cỡ nhỏ.`,`Median of ${n} sellers in the region with % bulky within 10 pts. A bigger truck never carries less than a smaller one.`],
+ howAll:n=>[`Vùng này có dưới 3 seller giống, nên lấy trung vị ${n} seller toàn quốc có % hàng to lệch ≤ 10 điểm.`,`Fewer than 3 similar sellers in this region, so this uses the median of ${n} sellers nationwide with % bulky within 10 pts.`],
+ howNear:n=>[`Lấy ${n} seller có % hàng to gần nhất.`,`Uses the ${n} sellers closest in % bulky.`],
+ howLike:s=>[`Đúng sức chở đã học của ${s}.`,`Uses the learned capacity of ${s}.`],
+ o4s:(u)=>[`Tiền xe và tiền người chia cho số đơn mỗi loại ngày. Vạch đen là FM pickup ${u} đ/đơn ở tỷ lệ hàng to này.`,`Truck and people cost divided by orders for each day type. The black line is FM pickup at ${u} VND/order for this bulky mix.`],
+ o5s:["Sức chở mỗi cỡ xe (đơn/xe ở 100% mức đã thấy chở được) và giá chuyến theo vùng, km.","Orders per truck at 100% of what was actually carried, and trip price by region and km."],
+ foot:[["Số đơn học từ chuyến xe thật tháng 8–9 của mạng D2S hiện nay; giá xe theo bảng giá nhà xe của vùng.","Đơn giá FM pickup (rider + hub) theo giả định của Seller Planner. Chưa tính diện tích kho và ngày sale lớn (11.11, 12.12).","Est.: ước tính trước khi chạy thật, chưa kiểm chứng ngoài thực địa."],
+       ["Learned from real D2S trips, Aug–Sep; truck prices from the region's carrier rate card.","FM pickup unit cost (rider + hub) uses the Seller Planner assumption. Warehouse space and mega sale days (11.11, 12.12) are not modelled yet.","Est.: estimated before a live run, not yet field-validated."]],
+};
+let L=0; try{L=localStorage.getItem("d2s-ns-lang")==="en"?1:0;}catch(e){}
+const T=k=>{const v=TX[k];return Array.isArray(v)?v[L]:v;};
+const nf=(v,d=0)=>(+v).toLocaleString(L?"en-US":"vi-VN",{maximumFractionDigits:d,minimumFractionDigits:d});
+const hm=m=>{m=Math.round(m);const h=Math.floor(m/60),mm=((m%60)+60)%60;return String(((h%24)+24)%24).padStart(2,"0")+":"+String(mm).padStart(2,"0");};
+const mn=v=>nf(v/1e6,1)+" "+T("tr");
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
+
+/* hồ sơ ví dụ */
+const X={R:"South",soc:null,km:null,ado:[1500,2400,3750],days:[25,4,1],beta:35,sh:null,maxK:"5T",bays:2,ch:null,st:null,like:""};
+function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.soc||!G.soc.includes(X.soc))X.soc=G.soc[0];if(!keep||X.km==null)X.km=G.km[X.soc]??15;
+  if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));if(!keep||X.ch==null){X.ch=G.ch;X.st=G.st;}}
+fillRegion(false);
+
+function drawForm(){
+  document.querySelectorAll("[data-t]").forEach(el=>{el.textContent=T(el.dataset.t);});
+  $("lede").textContent=T("lede");$("sample").textContent=T("sample");
+  $("lvi").setAttribute("aria-pressed",String(!L));$("len").setAttribute("aria-pressed",String(!!L));
+  $("R").innerHTML=Object.keys(REF.reg).map(r=>`<option${r===X.R?" selected":""}>${r}</option>`).join("");
+  const G=REF.reg[X.R];
+  $("soc").innerHTML=G.soc.map(s=>`<option${s===X.soc?" selected":""}>${esc(s)}</option>`).join("");
+  $("km").value=X.km;
+  $("waves").innerHTML=`<div class="trio" style="grid-template-columns:repeat(${G.cots.length},minmax(0,1fr))">${G.cots.map((c,k)=>`<label for="sh${k}">${T("wv")} ${hm(c.p)}<input type="number" id="sh${k}" min="0" max="100" step="1" value="${X.sh[k]}"></label>`).join("")}</div>`;
+  const dt=T("dt");
+  $("ado").innerHTML=dt.map((d,t)=>`<label for="ado${t}">${T("ado")} ${d}<input type="number" id="ado${t}" min="0" step="50" value="${X.ado[t]}"></label>`).join("");
+  $("days").innerHTML=dt.map((d,t)=>`<label for="day${t}">${T("dpm")} ${d}<input type="number" id="day${t}" min="0" max="31" step="1" value="${X.days[t]}"></label>`).join("");
+  $("beta").value=X.beta;
+  const peers=REF.sel.filter(s=>s.R===X.R).sort((a,b)=>a.b-b.b);
+  $("like").innerHTML=`<option value="">${T("auto")}</option>`+peers.map(s=>`<option value="${esc(s.n)}"${s.n===X.like?" selected":""}>${esc(short(s.n))} · ${Math.round(s.b*100)}%</option>`).join("");
+  $("ch").value=X.ch;$("st").value=X.st;
+  $("maxK").innerHTML=NS_KS.map(k=>`<option${k===X.maxK?" selected":""}>${k}</option>`).join("");
+  $("bays").value=X.bays;
+  $("cotlist").textContent="COT "+X.R+": "+G.cots.map(c=>(c.a>-1e8?hm(c.a)+"–":"→ ")+hm(c.b)+" ⇒ "+hm(c.p)).join(" · ");
+}
+function read(){
+  const G=REF.reg[X.R];X.soc=$("soc").value;X.km=Math.max(0,+$("km").value||0);
+  X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
+  X.ado=[0,1,2].map(t=>Math.max(0,+$("ado"+t).value||0));X.days=[0,1,2].map(t=>Math.max(0,+$("day"+t).value||0));
+  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.ch=Math.max(1,Math.round(+$("ch").value||1));X.st=Math.max(1,Math.min(X.ch,Math.round(+$("st").value||1)));
+  X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
+}
+function render(){
+  const p=nsPlan(REF,{R:X.R,soc:X.soc,km:X.km,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,st:X.st,like:X.like||null});
+  const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
+  /* dải kết luận */
+  const cpo=b.X?b.cost/b.X:0,thr=p.thr;
+  $("kpi").innerHTML=`
+   <div class="kpi hero"><span class="l">${T("kSave")}</span><span class="v ${p.month.net>=0?"pos":"neg"}">${p.month.net>=0?"":"−"}${mn(Math.abs(p.month.net))}</span><span class="s">${nf(p.month.orders)} ${T("ord")}${T("month")} · ${T("vsFM")}</span></div>
+   <div class="kpi"><span class="l">${T("kCpo")}</span><span class="v">${nf(cpo)}</span><span class="s">${T("fmIs")} ${nf(p.fmU)} ${T("per")}</span></div>
+   <div class="kpi"><span class="l">${T("kThr")}</span><span class="v">${thr==null?"–":nf(thr)}</span><span class="s">${thr==null?T("noThr"):(X.ado[0]>=thr?T("aboveThr"):T("belowThr"))+" · BAU"}</span></div>
+   <div class="kpi"><span class="l">${T("kTr")}</span><span class="v">${D.map(d=>d.trucks).join(" / ")}</span><span class="s">${D.map(d=>dt[d.t]).join(" / ")}</span></div>`;
+  /* xe */
+  const waves=p.cots.map((c,k)=>k).filter(k=>D.some(d=>d.W.some(w=>w.k===k)));
+  $("truck").innerHTML=`<thead><tr><th>${T("wave")}</th>${D.map(d=>`<th>${dt[d.t]} · ${nf(d.X)}</th>`).join("")}</tr></thead><tbody>${waves.map(k=>{const c=p.cots[k];
+    return `<tr><td class="cot">${hm(c.p)}<small>${c.a>-1e8?hm(c.a)+"–":"→ "}${hm(c.b)}</small></td>${D.map(d=>{const w=d.W.find(x=>x.k===k);if(!w)return "<td>–</td>";
+      return `<td><div class="mix">${Object.entries(w.mix).sort((a,b)=>NS_KS.indexOf(b[0])-NS_KS.indexOf(a[0])).map(([t,n])=>`<span class="truck">${n}×${t}</span>`).join("")}</div>
+        <div class="fillbar"><b style="width:${Math.min(100,w.fill*100).toFixed(0)}%"></b></div><div class="meta">${nf(w.Q)} ${T("ord")} · ${T("fill")} ${nf(w.fill*100)}%</div></td>`;}).join("")}</tr>`;}).join("")}</tbody>`;
+  /* người */
+  const sortT={none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[p.work.sort];
+  $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
+    <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
+    <tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/d.hc)}</td>`).join("")}</tr></tbody>`;
+  $("ppl").insertAdjacentHTML("afterend","");
+  $("ppl").closest("section").querySelector(".sub").textContent=T("o2s")+" "+(L?"Work mode: ":"Cách làm: ")+sortT+" · "+nf(p.work.ch)+" chute · "+nf(1/p.work.w)+" "+T("prod")+".";
+  /* COT: ngày đông nhất */
+  const pk=D.reduce((a,d)=>d.X>a.X?d:a,D[0]||b);
+  const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
+  $("cot").innerHTML=`<thead><tr><th>${T("wave")}</th><th class="n">${T("dep")}</th><th class="n">${T("dl")}</th><th>${T("slack")} · ${dt[pk.t]}</th></tr></thead><tbody>${(pk.W||[]).map(w=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td class="n">${hm(w.c.p)}</td><td>${chip(w.slack)}</td></tr>`).join("")}</tbody>`;
+  /* chi phí / đơn */
+  $("o4s").textContent=TX.o4s(nf(p.fmU))[L];
+  const mx=Math.max(p.fmU*1.25,...D.map(d=>d.cost/d.X));
+  $("bars").innerHTML=D.map(d=>{const t=d.truck/d.X,l=d.lab/d.X,s=p.fmU-t-l;return `<div class="bar"><span>${dt[d.t]}</span><div class="track" role="img" aria-label="${dt[d.t]}: ${nf(t+l)} ${T("per")}"><div class="t" style="width:${t/mx*100}%"></div><div class="p" style="width:${l/mx*100}%"></div><span class="fm" style="left:${p.fmU/mx*100}%"></span></div><span class="n" style="font-family:var(--f-num);text-align:right">${nf(t+l)} <span class="${s>=0?"pos":"neg"}" style="font-size:11px">${s>=0?"−":"+"}${nf(Math.abs(s))}</span></span></div>`;}).join("");
+  /* sức chở */
+  const how=p.how.k==="like"?TX.howLike(short(p.how.name))[L]:p.how.k==="reg"?TX.howReg(p.how.n)[L]:p.how.k==="all"?TX.howAll(p.how.n)[L]:TX.howNear(p.how.n)[L];
+  $("howtxt").textContent=how;$("o5s").textContent=T("o5s")+" "+how;
+  const used=new Set();D.forEach(d=>d.W.forEach(w=>Object.keys(w.mix).forEach(k=>used.add(k))));
+  $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
+  $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
+}
+$("f").addEventListener("submit",e=>e.preventDefault());
+$("f").addEventListener("input",e=>{if(e.target.id==="R")return;if(e.target.id==="soc"){X.soc=e.target.value;X.km=REF.reg[X.R].km[X.soc]??X.km;$("km").value=X.km;}read();render();});
+$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";fillRegion(false);drawForm();render();});
+document.querySelectorAll(".lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
+drawForm();render();
+})();
+</script>
