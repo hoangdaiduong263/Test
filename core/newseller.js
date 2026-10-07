@@ -16,10 +16,11 @@ function nsRef(C, REF) {
     const sh = cots.map(() => []);
     N.forEach(i => { const w = C.waves(i); if (!w) return; const o = cots.map(() => 0); w.w.forEach(x => { let k = cots.findIndex(c => c.p >= x.dep - 45); if (k < 0) k = cots.length - 1; o[k] += x.sh; }); o.forEach((v, k) => sh[k].push(v)); });
     let shM = sh.map(a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0); const t = shM.reduce((a, b) => a + b, 0) || 1; shM = shM.map(v => +(v / t).toFixed(3));
-    const socs = {}; N.forEach(i => { const s = C.socOf(i); if (s) socs[s] = (socs[s] || 0) + 1; });
-    const kms = {}; N.forEach(i => { const s = C.socOf(i), k = C.kmSoc(i); if (s && k != null) (kms[s] = kms[s] || []).push(k); });
+    /* SOC chọn được: mọi SOC xe D2S của vùng từng tới (chuyến thật T8–9); SOC theo luồng hiện nay xếp trước (South từ 1/10: 1 chute về BD A Mega SOC) */
+    const socs = {}, cur = {}; N.forEach(i => { const s = C.socOf(i); if (s) cur[s] = (cur[s] || 0) + 1; (C.S[i].soc || []).forEach(x => { socs[x] = (socs[x] || 0) + 1; }); });
+    const kms = {}; N.forEach(i => Object.keys(socs).forEach(x => { const k = C.kmN(C.S[i].n, x); if (k != null) (kms[x] = kms[x] || []).push(k); }));
     const cs = N.map(i => C.chSt(i));
-    reg[R] = { cots, sh: shM, soc: Object.keys(socs).sort((a, b) => socs[b] - socs[a]), km: Object.fromEntries(Object.entries(kms).map(([s, a]) => [s, Math.round(nsMed(a))])),
+    reg[R] = { cots, sh: shM, soc: Object.keys(socs).sort((a, b) => ((cur[b] || 0) - (cur[a] || 0)) || (socs[b] - socs[a])), socN: socs, socCur: cur, km: Object.fromEntries(Object.entries(kms).map(([s, a]) => [s, Math.round(nsMed(a))])),
       ch: Math.round(nsMed(cs.map(x => x.ch))), st: Math.round(nsMed(cs.map(x => x.st))),
       price: Object.fromEntries(NS_KS.map(k => [k, Array.from({ length: 61 }, (_, j) => Math.round(C.price(k, R, { d0: j * 5, dt: 0 })))])) };
   });

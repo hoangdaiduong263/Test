@@ -106,6 +106,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
         <h3><b data-t="g1"></b><span class="tag" id="sample"></span></h3>
         <div class="row"><label for="R" data-t="reg"></label><select id="R"></select></div>
         <div class="row"><label for="soc" data-t="soc"></label><select id="soc"></select></div>
+        <p class="hint" id="sochint"></p>
         <div class="row"><label for="km" data-t="km"></label><input type="number" id="km" min="0" max="300" step="1"></div>
         <div id="waves" class="grid0" style="display:grid;gap:6px"></div>
       </div>
@@ -156,7 +157,8 @@ const $=id=>document.getElementById(id), REF=NSREF;
 const TX={
  lede:["Điền hồ sơ seller sắp nhận. Core Planner trả về số xe và cỡ xe mỗi lượt, số người, giờ xe rời so với COT, và chi phí mỗi đơn so với FM pickup.","Enter the profile of a seller about to onboard. Core Planner returns trucks per wave, people, truck departure vs COT, and cost per order vs FM pickup."],
  sample:["Ví dụ","Sample"],
- g1:["Hành vi seller","Seller behaviour"], reg:["Vùng","Region"], soc:["SOC nhận hàng","Destination SOC"], km:["Km tới SOC","Km to SOC"],
+ g1:["Hành vi seller","Seller behaviour"], socNow:["luồng hiện nay","current flow"],
+ socHint:(R,G)=>{const c=Object.keys(G.socCur),o=G.soc.filter(s=>!G.socCur[s]);return [`Luồng hiện nay của ${R}: ${c.join(", ")}.`+(o.length?` Xe D2S ${R} từng tới thêm ${o.join(", ")} (T8–9).`:""),`${R} current flow: ${c.join(", ")}.`+(o.length?` ${R} D2S trucks also went to ${o.join(", ")} (Aug–Sep).`:"")];}, reg:["Vùng","Region"], soc:["SOC nhận hàng","Destination SOC"], km:["Km tới SOC","Km to SOC"],
  wv:["Phần đơn lượt","Share, wave"],
  g2:["Hồ sơ đơn","Order profile"], ado:["ADO","ADO"], dpm:["Ngày/tháng","Days / month"], beta:["% hàng to","% bulky"],
  dt:[["BAU","Mini CP","CP"],["BAU","Mini CP","CP"]],
@@ -206,7 +208,8 @@ function drawForm(){
   $("lvi").setAttribute("aria-pressed",String(!L));$("len").setAttribute("aria-pressed",String(!!L));
   $("R").innerHTML=Object.keys(REF.reg).map(r=>`<option${r===X.R?" selected":""}>${r}</option>`).join("");
   const G=REF.reg[X.R];
-  $("soc").innerHTML=G.soc.map(s=>`<option${s===X.soc?" selected":""}>${esc(s)}</option>`).join("");
+  $("soc").innerHTML=G.soc.map(s=>`<option value="${esc(s)}"${s===X.soc?" selected":""}>${esc(s)}${G.socCur[s]?" · "+T("socNow"):""}</option>`).join("");
+  $("sochint").textContent=TX.socHint(X.R,G)[L];
   $("km").value=X.km;
   $("waves").innerHTML=`<div class="trio" style="grid-template-columns:repeat(${G.cots.length},minmax(0,1fr))">${G.cots.map((c,k)=>`<label for="sh${k}">${T("wv")} ${hm(c.p)}<input type="number" id="sh${k}" min="0" max="100" step="1" value="${X.sh[k]}"></label>`).join("")}</div>`;
   const dt=T("dt");
