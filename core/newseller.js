@@ -131,12 +131,21 @@ function nsPlan(ref, x) {
         const work = lab === "pps" ? 0 : v.Q * per, done = lab === "pps" ? b : Math.max(b, begin + work, b - 60 + v.Q * tail * per);
         const qT = v.t ? v.Q / v.t : 0, dw = dwFix + dwRate * qT + (lab === "pps" ? qT / (P.ppsSpd / 60) : 0), batch = Math.ceil(v.t / bays);
         let dep = done + P.closeMin + (batch - 1) * dw, slack = v.c.p - dep;
+        /* LỊCH CHẠY của lượt: mỗi điểm theo thứ tự xe ghé — hàng sẵn, xe tới, chất (phút), xe rời, hạn; rồi giờ tới SOC chính */
+        let tt = [{ n: null, me: 1, rd: done, arr: dep - dw, dw, dep, dl: v.c.p, q: v.t ? v.Q / v.t : 0 }];
         /* xe chung: lấy điểm sẵn hàng trước, chạy sang điểm sau (km ÷ tốc độ trung vị vùng); điểm có sẵn không trễ hơn giờ xe thật đang rời */
         const ps = partners.filter(pj => v.shared.includes(pj.n) && pj.dep[v.k] != null);
-        if (ps.length) { const qPer = q => q / Math.max(1, v.t), stops = [{ me: 1, ll: x.ll, rd: done, q: qPer(v.Q), dl: v.c.p }].concat(ps.map(pj => ({ ll: pj.ll, rd: pj.dep[v.k] - P.closeMin + dly, q: qPer(pj.ado * pj.sh[v.k]), dl: Math.max(v.c.p, pj.dep[v.k]) }))).sort((a, b) => a.rd - b.rd);
-          let tt = null, prev = null, sl = 1e9; stops.forEach(z => { const d0 = tt == null ? z.rd + P.closeMin : Math.max(tt + hav(prev.ll, z.ll) / ref.dw.spd + dwFix + dwRate * z.q, z.rd + P.closeMin); tt = d0; prev = z; if (z.me) dep = Math.max(dep, d0); sl = Math.min(sl, z.dl - d0); });
+        if (ps.length) { const qPer = q => q / Math.max(1, v.t), stops = [{ me: 1, ll: x.ll, rd: done, q: qPer(v.Q), dl: v.c.p }].concat(ps.map(pj => ({ n: pj.n, km: pj.km, ll: pj.ll, rd: pj.dep[v.k] - P.closeMin + dly, q: qPer(pj.ado * pj.sh[v.k]), dl: Math.max(v.c.p, pj.dep[v.k]) }))).sort((a, b) => a.rd - b.rd);
+          /* tính ngược từ điểm cuối (như Core): giờ rời muộn nhất ở mỗi điểm để xe tới điểm sau vừa lúc hàng sẵn — xe không tới sớm rồi nằm chờ */
+          const dzs = stops.map(z => dwFix + dwRate * z.q), trs = stops.map((z, j) => j ? hav(stops[j - 1].ll, z.ll) / ref.dw.spd : 0), LD = [];
+          for (let j = stops.length - 1; j >= 0; j--) LD[j] = j === stops.length - 1 ? stops[j].rd + P.closeMin : Math.min(stops[j].dl, LD[j + 1] - dzs[j + 1] - trs[j + 1]);
+          let t0 = null, sl = 1e9; tt = [];
+          stops.forEach((z, j) => { const dz = dzs[j], d0 = t0 == null ? Math.max(z.rd + P.closeMin, LD[j]) : Math.max(t0 + trs[j] + dz, z.rd + P.closeMin), arr = t0 == null ? d0 - dz : t0 + trs[j];
+            t0 = d0; if (z.me) dep = Math.max(dep, d0); sl = Math.min(sl, z.dl - d0); tt.push({ n: z.me ? null : z.n, me: z.me || 0, rd: z.rd, arr, dw: dz, dep: z.me ? Math.max(dep, d0) : d0, dl: z.dl, q: z.q, km: z.km }); });
           slack = Math.min(v.c.p - dep, sl); }
-        free = done; worst = Math.min(worst, slack); return { done, dep, slack, batch, dw }; }); return { r, worst }; };
+        const last = tt[tt.length - 1], kmSoc = ((socs.slice().sort((a, b) => b.sh - a.sh)[0]) || {}).km || 0;
+        const socArr = last.dep + kmSoc / ref.dw.spd;   // km tới SOC chính tính từ seller mới (điểm ghép gần đó)
+        free = done; worst = Math.min(worst, slack); return { done, dep, slack, batch, dw, tt, socArr, kmSoc }; }); return { r, worst }; };
     const hc0 = lab === "pps" ? 0 : Math.max(1, Math.ceil(X * w - 1e-9)); let hc = hc0, s = sim(Math.max(1, hc));
     /* trễ (hoặc dư dưới mức yêu cầu) thì thêm từng người, chỉ giữ khi giờ xe rời thật sự sớm hơn (trễ do chỗ chất xe thì thêm người không giúp) */
     if (lab !== "pps") while (s.worst < slackMin && hc < hc0 + P.maxExtra && (osCap == null || hc < osCap)) { const s2 = sim(hc + 1); if (s2.worst <= s.worst + 0.5) break; hc++; s = s2; }

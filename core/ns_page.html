@@ -182,6 +182,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       </div>
       <section class="panel sec"><h2><i>4</i><span data-t="o4"></span></h2><p class="sub" id="o4s"></p><div class="bars" id="bars"></div>
         <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--warn)" data-t="lgS"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
+      <section class="panel sec"><h2><span data-t="o8"></span></h2><p class="sub" id="o8s"></p><div class="lang" role="group" id="ttday" style="width:max-content;margin-bottom:10px"></div><div id="tt" style="display:grid;gap:14px"></div></section>
       <section class="panel sec"><h2><i>5</i><span data-t="o7"></span></h2><p class="sub" id="o7s"></p><div class="tw"><table id="mrg"></table></div></section>
       <section class="panel sec mix"><h2><i>6</i><span data-t="o6"></span><span class="chip mid" data-t="soon"></span></h2><p class="sub" data-t="o6s"></p></section>
       <section class="panel sec"><h2><span data-t="o5"></span></h2><p class="sub" id="o5s"></p><div class="tw"><table id="cap" class="cap"></table></div>
@@ -201,6 +202,8 @@ const TX={
  g1:["Hành vi seller","Seller behaviour"],
  llL:["Toạ độ (lat, long)","Location (lat, long)"], hubL:["FM Hub cover","Covering FM Hub"], supL:["Sup phụ trách","Supervisor"], unk:["chưa rõ","unknown"],
  o7:["Ghép xe với điểm D2S đang chạy","Share trucks with running D2S points"],
+ o8:["Lịch chạy đề xuất","Proposed timetable"], o8s:["Mỗi lượt: thứ tự xe ghé, giờ hàng sẵn, xe tới, thời gian chất một xe, xe rời, hạn COT. Điểm đầu: xe tới trước và chất dần trong lúc sort. Điểm sau: xe tới rồi mới chất. Giờ của điểm có sẵn lấy theo giờ xe thật đang rời.","Each wave: stop order, goods ready, truck arrives, loading time per truck, departs, COT deadline. First stop: truck arrives early and loads while sorting. Next stops: truck loads on arrival. Existing points use their real current departure times."],
+ ttH:[["#","Điểm","Đơn/xe","Hàng sẵn","Xe tới","Chất","Xe rời","Hạn rời","Dư"],["#","Stop","Orders/truck","Ready","Arrives","Load","Departs","Leave by","Slack"]], ttSoc:["Tới SOC chính","At main SOC"], ttMe:["Seller mới","New seller"],
  o7s:(R,oe)=>[`Các điểm D2S ${R} cách ≤ 30 km, chung SOC và chung lượt COT. Est. lợi = tiền xe hai bên chạy riêng − chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép seller giữ tuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`Running D2S points in ${R} within 30 km, sharing a SOC and a COT wave. Est. gain = truck cost of both running alone − sharing (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge for hub-kept or OE run-alone sellers.`:"")],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe các điểm đó đang chạy riêng.","Tick Share to plan shared trucks: the truck plan, cost, COT times and recommendation above are recomputed. New seller's truck cost = shared cost − what those points pay running alone."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
@@ -346,6 +349,13 @@ function render(){
   const pk=D.reduce((a,d)=>d.X>a.X?d:a,D[0]||b);
   const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
   $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th>${T("slack")} · ${dt[pk.t]}</th>${p.late?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(pk.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.c.b)}</td><td class="n">${hm(w.done)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td>${chip(w.slack)}</td>${p.late&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}</td>`:p.late?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
+  /* lịch chạy đề xuất theo loại ngày */
+  { const dts=p.days.filter(d=>d.X>0);if(X.ttd==null||!dts.some(d=>d.t===X.ttd))X.ttd=(dts.reduce((a,d)=>d.X>a.X?d:a,dts[0]||{t:0})).t;
+    $("o8s").textContent=T("o8s");$("ttday").innerHTML=dts.map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===X.ttd}">${dt[d.t]}</button>`).join("");
+    const D0=p.days.find(d=>d.t===X.ttd),H=T("ttH");
+    $("tt").innerHTML=(D0?D0.W:[]).map(w=>`<div><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:6px"><b class="cot">${L?"Wave":"Lượt"} ${hm(w.c.p)}</b><span class="meta">${nf(w.Q)} ${T("ord")} · ${w.t} ${L?"trucks":"xe"}: ${Object.entries(w.mix).map(([k,n])=>n+"×"+k).join(" + ")}${w.shared&&w.shared.length?` · ${L?"shared with":"chung xe với"} ${w.shared.map(n=>esc(short(n))).join(", ")}`:""}</span></div>
+      <div class="tw"><table><thead><tr>${H.map((h,j)=>`<th${j>1?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${(w.tt||[]).map((z,j)=>`<tr${z.me?' style="background:var(--navy-soft)"':""}><td>${j+1}</td><td>${z.me?`<b>${T("ttMe")}</b>`:esc(short(z.n))}</td><td class="n">${nf(z.q)}</td><td class="n">${hm(z.rd)}</td><td class="n">${hm(z.arr)}</td><td class="n">${nf(z.dw)}′</td><td class="n"><b>${hm(z.dep)}</b></td><td class="n">${hm(z.dl)}</td><td class="n">${z.dl-z.dep<0?`<span class="chip late">${T("lateT")} ${nf(z.dep-z.dl)}′</span>`:`<span class="chip ${z.dl-z.dep<20?"mid":"ok"}">${nf(z.dl-z.dep)}′</span>`}</td></tr>`).join("")}
+      <tr><td></td><td class="meta">${T("ttSoc")} · ${nf(w.kmSoc)} km</td><td></td><td></td><td class="n">${hm(w.socArr)}</td><td></td><td></td><td></td><td></td></tr></tbody></table></div></div>`).join(""); }
   /* ghép với điểm đang chạy */
   { const G=REF.reg[X.R],M=p.mrg;$("o7s").textContent=TX.o7s(X.R,G.oe)[L]+" "+T("mHow");
     if(M.need){$("mrg").innerHTML=`<tbody><tr><td>${T("mNeed")}</td></tr></tbody>`;}
@@ -365,6 +375,7 @@ function render(){
   $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
 }
 $("f").addEventListener("submit",e=>e.preventDefault());
+$("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R")return;read();render();});
 $("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];fillRegion(false);drawForm();render();});
