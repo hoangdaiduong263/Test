@@ -6,9 +6,12 @@ const nsMed = a => { const b = a.filter(x => x != null && isFinite(x)).sort((x, 
 
 function nsRef(C, REF) {
   const K = C.learnK(), P = C.P, sel = [], reg = {};
-  /* phần đơn theo SOC đích từ chuyến thật T8–9 (luồng cũ, trước khi South gom 1 chute từ 1/10): trung bình trên các seller của vùng */
-  const f0 = P.flow1cOn; P.flow1cOn = 0; C.reset(); const SSH = {}; ["HN", "HCM", "South", "North"].forEach(R => { const o = {}, N = C.nodes(R);
-    N.forEach(i => { const sh = C.socShare(i); for (const x in sh) o[x] = (o[x] || 0) + sh[x] / N.length; }); SSH[R] = o; }); P.flow1cOn = f0; C.reset();
+  /* phần đơn theo SOC đích từ chuyến thật T8–9 (luồng cũ, trước khi South gom 1 chute từ 1/10): trung vị trên các seller của vùng đi từ 2 SOC trở lên (mỗi SOC ≥ 5% đơn),
+     chuẩn hoá về 100% — hồ sơ một seller nhiều SOC điển hình, không phải trung bình cả vùng (trung bình pha seller 1 SOC làm SOC phụ nhỏ giả tạo) */
+  const f0 = P.flow1cOn; P.flow1cOn = 0; C.reset(); const SSH = {}, SN = {}; ["HN", "HCM", "South", "North"].forEach(R => { const N = C.nodes(R), L = [];
+    N.forEach(i => { const sh = C.socShare(i), k = Object.keys(sh).filter(x => sh[x] >= 0.05); if (k.length >= 2) L.push(sh); });
+    const ks = [...new Set(L.flatMap(Object.keys))], o = Object.fromEntries(ks.map(x => [x, nsMed(L.map(sh => sh[x] || 0)) || 0])), t = Object.values(o).reduce((a, b) => a + b, 0) || 1;
+    for (const x in o) o[x] /= t; SSH[R] = o; SN[R] = { multi: L.length, all: N.length }; }); P.flow1cOn = f0; C.reset();
   C.S.forEach((s, i) => { const act = C.active(i); if (!act.length || !K.sizeOk(i)) return;
     sel.push({ n: C.nm(i), R: s.R, b: +C.betaOf(i).toFixed(3), c: NS_KS.map(k => Math.round(K.cap(i, k))), ado: Math.round(nsMed(act.map(d => s.v[d]))) }); });
   ["HN", "HCM", "South", "North"].forEach(R => {
@@ -23,12 +26,9 @@ function nsRef(C, REF) {
     const socs = {}, cur = {}; N.forEach(i => { const s = C.socOf(i); if (s) cur[s] = (cur[s] || 0) + 1; (C.S[i].soc || []).forEach(x => { socs[x] = (socs[x] || 0) + 1; }); });
     const kms = {}; N.forEach(i => Object.keys(socs).forEach(x => { const k = C.kmN(C.S[i].n, x); if (k != null) (kms[x] = kms[x] || []).push(k); }));
     const cs = N.map(i => C.chSt(i));
-    reg[R] = { cots, sh: shM, soc: Object.keys(socs).sort((a, b) => (SSH[R][b] || 0) - (SSH[R][a] || 0)), socN: socs, socCur: cur, socSh: Object.fromEntries(Object.keys(socs).map(x => [x, +((SSH[R][x] || 0) * 100).toFixed(1)])), km: Object.fromEntries(Object.entries(kms).map(([s, a]) => [s, Math.round(nsMed(a))])),
+    reg[R] = { cots, sh: shM, soc: Object.keys(socs).sort((a, b) => (SSH[R][b] || 0) - (SSH[R][a] || 0)), socN: socs, socCur: cur, socMulti: SN[R], socSh: Object.fromEntries(Object.keys(socs).map(x => [x, +((SSH[R][x] || 0) * 100).toFixed(1)])), km: Object.fromEntries(Object.entries(kms).map(([s, a]) => [s, Math.round(nsMed(a))])),
       ch: Math.round(nsMed(cs.map(x => x.ch))), st: Math.round(nsMed(cs.map(x => x.st))),
-      price: Object.fromEntries(NS_KS.map(k => [k, Array.from({ length: 61 }, (_, j) => Math.round(C.price(k, R, { d0: j * 5, dt: 0 })))])),
-      /* đ/km đi thêm giữa các SOC (xe trả nhiều SOC), và km giữa các SOC */
-      pkm: Object.fromEntries(NS_KS.map(k => [k, Math.round(C.price(k, R, { d0: 0, dt: 1 }) - C.price(k, R, { d0: 0, dt: 0 }))])),
-      skm: Object.fromEntries(Object.keys(socs).map(a => [a, Object.fromEntries(Object.keys(socs).map(b => [b, a === b ? 0 : Math.round(C.kmN(a, b) ?? 30)]))])) };
+      price: Object.fromEntries(NS_KS.map(k => [k, Array.from({ length: 61 }, (_, j) => Math.round(C.price(k, R, { d0: j * 5, dt: 0 })))])) };
   });
   const dw = C.simK();
   return { v: 1, sel, reg, dw: { fix: +dw.fix.toFixed(2), rate: +dw.rate.toFixed(4) },
@@ -54,7 +54,7 @@ function nsPlan(ref, x) {
   const cap = NS_KS.map((k, j) => nsMed(pool.map(s => s.c[j])) || 0); for (let j = 1; j < cap.length; j++) cap[j] = Math.max(cap[j], cap[j - 1]);
   const mi = Math.max(0, NS_KS.indexOf(x.maxK)), ksAt = km => NS_KS.slice(0, mi + 1).map((k, j) => ({ k, q: cap[j], p: G.price[k][kmI(km)] })).filter(v => v.q > 0);
   /* 2. đội xe rẻ nhất chở Q đơn: n xe loại chính + 1 xe vừa phần lẻ (như Core), không quá 100% sức chở học được */
-  const fleet = (Q, km, dt) => { if (Q <= 0) return { t: 0, c: 0, mix: {}, q: 0 }; let best = null; const ks = ksAt(km).map(v => Object.assign({}, v, { p: v.p + (G.pkm[v.k] || 0) * (dt || 0) }));
+  const fleet = (Q, km) => { if (Q <= 0) return { t: 0, c: 0, mix: {}, q: 0 }; let best = null; const ks = ksAt(km);
     const add = (c, t, mix, q) => { if (!best || c < best.c - 1 || (Math.abs(c - best.c) <= 1 && t < best.t)) best = { c, t, mix, q }; };
     for (const m of ks) { const n = Math.floor(Q / m.q - 1e-9), rest = Q - n * m.q; add((n + 1) * m.p, n + 1, { [m.k]: n + 1 }, (n + 1) * m.q);
       if (rest > 0) for (const u of ks) if (u.q >= rest) { const mix = {}; if (n > 0) mix[m.k] = n; mix[u.k] = (mix[u.k] || 0) + 1; add(n * m.p + u.p, n + 1, mix, n * m.q + u.q); } }
@@ -69,13 +69,8 @@ function nsPlan(ref, x) {
   /* khung bàn giao của seller theo lượt: x.win[k] = [từ, đến] (phút từ 0h); thiếu thì theo khung COT của vùng, không trước giờ người bắt đầu làm (x.open) */
   const open = x.open ?? P.open, cots = G.cots.map((c, k) => { const w = (x.win || [])[k]; return { p: c.p, a0: c.a, b0: c.b, a: w ? w[0] : Math.max(c.a, open), b: w ? w[1] : c.b }; });
   const bays = Math.max(1, x.bays | 0), sh = G.cots.map((_, k) => Math.max(0, +(x.sh[k] || 0))), shT = sh.reduce((a, b) => a + b, 0) || 1;
-  /* 3b. SOC đích: chia các SOC thành nhóm, mỗi nhóm một đội xe đi lần lượt các SOC trong nhóm (xe trả nhiều SOC, cộng tiền km đi thêm giữa các SOC);
-     thử mọi cách chia, giữ cách rẻ nhất — SOC ít đơn đi ké xe của SOC khác thay vì một xe gần rỗng */
-  const parts = a => { if (!a.length) return [[]]; const [h, ...r] = a, out = []; parts(r).forEach(p => { out.push([[h], ...p]); p.forEach((b, j) => out.push(p.map((y, i) => i === j ? [h, ...y] : y))); }); return out; };
-  const PARTS = parts(socs.map((_, j) => j));
-  const best = Q => { let bb = null; for (const pt of PARTS) { const legs = pt.map(g => { const o = g.map(j => socs[j]).sort((a, b) => a.km - b.km), q = o.reduce((a, y) => a + Q * y.sh / shS, 0);
-        let dt = 0; for (let j = 1; j < o.length; j++) dt += (G.skm[o[j - 1].s] || {})[o[j].s] ?? 30; return Object.assign(fleet(q, o[0].km, dt), { s: o.map(y => y.s), fwd: o.flatMap(y => y.fwd || []), Q: q, dt }); });
-      const c = legs.reduce((a, l) => a + l.c, 0), t = legs.reduce((a, l) => a + l.t, 0); if (!bb || c < bb.c - 1 || (Math.abs(c - bb.c) <= 1 && t < bb.t)) bb = { c, t, legs }; } return bb ? bb.legs : []; };
+  /* 3b. SOC đích: mỗi SOC một đội xe riêng, giá theo km tới SOC đó */
+  const best = Q => socs.map(o => { const q = Q * o.sh / shS; return Object.assign(fleet(q, o.km), { s: [o.s], fwd: o.fwd || [], Q: q }); });
   /* 4. một loại ngày: xe từng lượt, người, giờ xe rời so với hạn COT */
   const day = X => {
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q), mix = {};
