@@ -430,10 +430,21 @@ function Core(D, REF) {
     const srcOf = (i, k) => { const e = E[i] || {}; if (e[k]) return e[k].src + " " + e[k].n + " chuyến"; if (SH[i]) return SH[i][k] ? "xe chung " + SHN[i][k] + " chuyến" : "quy từ " + Object.keys(SH[i]).sort((a, b) => SHN[i][b] - SHN[i][a])[0] + " (xe chung)";
       const b = best(i); return b ? "quy từ " + b[0] : "đường chung"; };
     /* kiểm định: độ đầy dự báo của xe chung nhiều seller (xe thật đã chở được) — p90 ≈ 1 nghĩa là số học từ xe 1 seller dùng được cho xe chung */
-    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capF(i, x.k), 0));
     /* ĐỘ TIN của số sức chở: cao = đo lúc xe chạm trần; vừa = đã thấy chở được (1 mình hoặc xe chung); thấp = quy đổi từ cỡ xe khác / đường chung (chưa đo trên cỡ xe này) */
-    const confOf = (i, k) => (E[i] && E[i][k]) ? (E[i][k].sat ? "cao" : "vừa") : (SH[i] && SH[i][k]) ? "vừa" : "thấp";
-    return LK = { cap: capF, src: srcOf, conf: confOf, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
+    /* [5] SÀN "ĐÃ THẤY CHỞ ĐƯỢC" trên MỌI chuyến thật (kể cả xe chung, xe ghé hub): đơn của riêng seller trên một xe, p95 (≥ 3 chuyến, bỏ chuyến bất thường).
+       Seller × cỡ xe chưa chạm trần: sức chở không thấp hơn mức này */
+    const SEEN = {}, own = {}; Object.entries(TRP).forEach(([c, t]) => { if (!fitTrip(c)) return; const k = TY[t[1]] === "KHAC" ? "VAN" : TY[t[1]]; if (!VSTD[k]) return; const u = {};
+      t[5].forEach(p => { if (p[1] !== 0 || !(p[2] > 0)) return; const j = ix[String(TRN[p[0]]).trim()]; if (j != null) u[j] = (u[j] || 0) + p[2]; });
+      Object.entries(u).forEach(([j, x]) => { ((own[j] = own[j] || {})[k] = own[j][k] || []).push(x); }); });
+    Object.entries(own).forEach(([j, ks]) => Object.entries(ks).forEach(([k, L]) => { if (L.length < 3) return; const lg = L.map(Math.log), q1 = pctI(lg, 25), q3 = pctI(lg, 75), hi = q3 + 3 * Math.max(q3 - q1, 0.25);
+      const ok = L.filter(x => Math.log(x) <= hi); if (ok.length >= 3) (SEEN[j] = SEEN[j] || {})[k] = { c: pctI(ok, 95), n: ok.length }; }));
+    const sat = (i, k) => !!(E[i] && E[i][k] && E[i][k].sat), seenOf = (i, k) => (SEEN[i] && SEEN[i][k]) || null;
+    const floorOn = (i, k) => { const z = seenOf(i, k); return !!z && !sat(i, k) && z.c > capF(i, k) + 0.5; };
+    const capX = (i, k) => floorOn(i, k) ? seenOf(i, k).c : capF(i, k);
+    const srcX = (i, k) => floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k);
+    const confOf = (i, k) => floorOn(i, k) || (E[i] && E[i][k] && !E[i][k].sat) || (SH[i] && SH[i][k]) ? (sat(i, k) ? "cao" : "vừa") : sat(i, k) ? "cao" : "thấp";
+    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capX(i, x.k), 0));
+    return LK = { cap: capX, src: srcX, conf: confOf, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
   /* hệ số sức chở thật ÷ sức chở chuẩn (để dùng chung công thức tiền xe; chuẩn chỉ là đơn vị, triệt tiêu) */
   const CPS = {};
   const capS = (i, k) => { if (!k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key]; const v = VK(k); if (!v) return CPS[key] = null;
