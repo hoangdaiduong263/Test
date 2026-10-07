@@ -92,19 +92,19 @@
       <div class="bridge"><h3>Tiết kiệm đến từ đâu (bấm để tới mục)</h3><table><tbody>${parts.map(x => row(x[0], x[1], x[2])).join("")}${Math.abs(resid) >= 0.05e6 ? row("", "Làm tròn / khác", resid) : ""}
         <tr class="tot"><td>Tổng</td><td class="r mono ${t >= 0 ? "pos" : "neg"}">${sg(t)}</td></tr></tbody></table>
         ${V.fv ? `<p class="muted">Không tính vào tiết kiệm: thêm người ở ${V.fix.length} điểm đang trễ COT ngay từ hiện nay, ${sg(V.fv)} tr (<a href="#sec-fix">xem</a>).</p>` : ""}</div>
-      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở thật của từng seller × cỡ xe, học từ chuyến thật; mức chở thường làm = ${P.capOvAt}%)</span></span>
+      <div class="opts"><div class="occ"><span><b>Xe chở đầy bao nhiêu?</b> <span class="muted">(số đơn ÷ sức chở thật của từng seller × cỡ xe, học từ chuyến thật; 100% = mức seller đã thực sự chở được)</span></span>
         <span>Cả vùng hiện nay: xe chở trung bình <b class="mono">${pc(O.now)}</b>, <b class="mono">${pc(O.low)}</b> số chuyến chở chưa tới nửa xe.</span>
         ${OC.nNew ? `<span>Riêng các tuyến được ghép: ${OC.nCut} tuyến hiện nay chở trung bình <b class="mono">${pc(OC.now)}</b> → ${OC.nNew} tuyến mới chở <b class="mono pos">${pc(OC.plan)}</b>.</span>` : ""}</div>
         <div class="occ"><b>Cài đặt kế hoạch</b></div>
         ${(() => { const L = C.S.map((s, i) => i).filter(i => C.S[i].R === r.R && P.flow1cOn && P.flow1c && P.flow1c[C.nm(i)]); return L.length ? `<p class="muted">Từ 1/10, ${L.length} seller của vùng chia 1 chute và giao toàn bộ đơn về một SOC (theo sheet Ops "D2S Southseller"). Cả hiện nay lẫn kế hoạch đều tính theo luồng mới này: seller không còn sort, SOC sort lại. Chi phí SOC sort lại như nhau ở hai bên nên không làm thay đổi số tiết kiệm.</p>` : ""; })()}
-        <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở thật <span class="muted">(học từ chuyến thật của từng seller × cỡ xe; ${P.capOvAt}% = mức thường làm)</span></label>
+        <label class="sw">Mỗi xe trong kế hoạch chở tối đa <input type="number" id="opt-fill" class="num-in" min="0" max="200" step="5" value="${P.newFillMax}"> % sức chở thật <span class="muted">(học từ chuyến thật của từng seller × cỡ xe; 100% = mức seller đã chở được)</span></label>
         <label class="sw"><input type="checkbox" id="opt-veh"${P.vehPlan ? " checked" : ""}> Cho phép dùng cỡ xe mới (VAN–8T) ở mọi tuyến <span class="muted">(${P.vehPlan ? "đang bật: tuyến nào rẻ hơn khi đổi cỡ xe thì đổi, nếu không trễ thêm" : "đang tắt: chỉ dùng các cỡ xe điểm đang chạy"})</span></label>
         ${capList(r.R)}</div>`; }
   /* SỨC CHỞ HỌC TỪ DỮ LIỆU: mọi seller × loại xe, luôn áp dụng; nguồn từng số; kiểm định trên xe chung */
   function capList(R) { const K = C.learnK(), ks = ["VAN", "1T25", "1T9", "5T", "8T"], f = x => Math.round(x).toLocaleString("vi-VN");
     const rows = C.S.map((s, i) => i).filter(i => C.S[i].R === R).sort((x, y) => C.nm(x).localeCompare(C.nm(y)));
     const nb = rows.reduce((a, i) => a + Object.values(K.bad[i] || {}).reduce((b, x) => b + x, 0), 0);
-    return `<details class="occ"><summary><b>Sức chở từng seller × cỡ xe — học từ chuyến thật</b> <span class="muted">(đơn/xe ở mức chở thường làm = ${P.capOvAt}%; không dùng sức chở chuẩn)</span></summary>
+    return `<details class="occ"><summary><b>Sức chở từng seller × cỡ xe — học từ chuyến thật</b> <span class="muted">(số đơn seller đã thực sự chở được trên một xe = 100%; không dùng sức chở chuẩn)</span></summary>
       <p class="muted">So với xe 1T9, các loại xe khác chở được: ${ks.filter(k => k !== "1T9").map(k => `${k} gấp ${K.RHO[k].toFixed(2).replace(".", ",")} lần`).join(", ")} (học từ các seller đã chạy cả hai loại xe; riêng 1T25 chưa có dữ liệu nên tạm lấy theo thể tích thùng xe).
         Với seller chưa có chuyến nào, một xe 1T9 ước chở khoảng ${f(K.a)} đơn nếu toàn hàng nhỏ, hoặc ${f(K.b)} đơn nếu toàn hàng to (học từ ${K.nSat} trường hợp xe đã chở đầy).
         Kiểm tra lại trên ${f(K.chk.n)} chuyến xe chở chung nhiều seller: theo các số này, chuyến điển hình đầy ${Math.round(K.chk.p50 * 100)}% và 90% số chuyến đầy không quá ${Math.round(K.chk.p90 * 100)}%, tức là khớp với thực tế.${nb ? ` Đã tự loại ${nb} chuyến có số đơn bất thường (nghi lỗi dữ liệu).` : ""}</p>
@@ -358,10 +358,10 @@
     const tg = t.closest("[data-tg]"); if (tg) { const id = tg.dataset.tg; ST.open.has(id) ? ST.open.delete(id) : ST.open.add(id); const r = ST.res[ST.R]; id[0] === "t" ? teamsL(r) : routes(r); return; }
     if (t.id === "prun" || t.id === "pdef") { PF.forEach(([, k, , , f]) => { const v = t.id === "pdef" ? DEF[k] : parseFloat($("p-" + k).value) * f; if (isFinite(v)) P[k] = v; });
       if (t.id === "pdef") pform(); LV.close(); C.reset(); Object.keys(CAL).forEach(k => delete CAL[k]); ST.res = {}; ST.open.clear(); render(); } });
-  document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
+  document.addEventListener("change", e => { if (e.target.id === "opt-fill") { const v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) return; P.newFillMax = v; try { localStorage.setItem("d2s-core-fill2", v); } catch (x) {} LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); return; }
     if (e.target.id !== "opt-veh") return; P.vehPlan = e.target.checked ? 1 : 0; try { localStorage.setItem("d2s-core-veh", P.vehPlan); } catch (x) {}
     LV.close(); C.reset(); ST.res = {}; ST.open.clear(); render(); });
-  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
+  try { if (localStorage.getItem("d2s-core-veh") === "1") P.vehPlan = 1; const f = localStorage.getItem("d2s-core-fill2"); if (f != null && isFinite(+f)) P.newFillMax = +f; } catch (e) {}
   document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("[data-tg]")) { e.preventDefault(); e.target.click(); } });
 
   pform(); render();
