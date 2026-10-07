@@ -441,10 +441,31 @@ function Core(D, REF) {
     const sat = (i, k) => !!(E[i] && E[i][k] && E[i][k].sat), seenOf = (i, k) => (SEEN[i] && SEEN[i][k]) || null;
     const floorOn = (i, k) => { const z = seenOf(i, k); return !!z && !sat(i, k) && z.c > capF(i, k) + 0.5; };
     const capX = (i, k) => floorOn(i, k) ? seenOf(i, k).c : capF(i, k);
-    const srcX = (i, k) => floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k);
-    const confOf = (i, k) => floorOn(i, k) || (E[i] && E[i][k] && !E[i][k].sat) || (SH[i] && SH[i][k]) ? (sat(i, k) ? "cao" : "vừa") : sat(i, k) ? "cao" : "thấp";
-    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capX(i, x.k), 0));
-    return LK = { cap: capX, src: srcX, conf: confOf, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
+    /* [6] KÍCH THƯỚC ĐƠN THEO SELLER, học chung trên MỌI xe thật (kể cả xe chung, xe ghé hub): mỗi seller / hub / điểm khác một kích thước đơn s (phần xe 1T9 một đơn chiếm);
+       độ đầy xe = Σ đơn × s ÷ thể tích cỡ xe (tỷ lệ [2]). Seller chạm trần: s cố định theo số chạm trần. Còn lại: chỉnh s cho tới khi xe đầy nhất thường gặp (p95)
+       trong các xe mà phần của nó ≥ 25% đúng bằng 1 xe — cùng nguyên tắc "đã thấy chở được", nhưng so được các seller với nhau qua xe chung */
+    const SZ = {}, NI = {}, AT = []; Object.entries(TRP).forEach(([c, t]) => { if (!fitTrip(c)) return; const k = TY[t[1]] === "KHAC" ? "VAN" : TY[t[1]]; if (!RHO[k]) return; const u = {};
+      t[5].forEach(p => { if (!(p[2] > 0) || p[1] === 2) return; const n = String(TRN[p[0]]).trim(), e = p[1] === 1 ? "h:" + n : n in ix ? "s:" + ix[n] : "o:" + n; u[e] = (u[e] || 0) + p[2]; });
+      const L = Object.entries(u); if (L.length) AT.push({ V: RHO[k], L }); });
+    const FX = {}; Object.entries(E).forEach(([i, ks]) => { const z = Object.entries(ks).filter(e => e[1].sat).sort((a, b) => b[1].n - a[1].n)[0]; if (z) FX["s:" + i] = RHO[z[0]] / z[1].c; });
+    S.forEach((_, i) => { SZ["s:" + i] = 1 / Math.max(1, capX(i, "1T9")); }); const szMed = pctI(Object.values(SZ), 50);
+    AT.forEach(t => t.L.forEach(([e]) => { if (!(e in SZ)) SZ[e] = szMed; })); Object.assign(SZ, FX);
+    const fillT = t => t.L.reduce((a, [e, u]) => a + u * SZ[e], 0) / t.V;
+    for (let it = 0; it < 40; it++) { const Q = {}; AT.forEach(t => { const f = fillT(t); if (f <= 0) return; t.L.forEach(([e, u]) => { if (u * SZ[e] / t.V / f >= 0.25) (Q[e] = Q[e] || []).push(f); }); });
+      Object.entries(Q).forEach(([e, L]) => { if (e in FX || L.length < 3) return; SZ[e] *= Math.sqrt(1 / pctI(L, 95)); }); }
+    AT.forEach(t => { const f = fillT(t); t.L.forEach(([e, u]) => { if (f > 0 && u * SZ[e] / t.V / f >= 0.25) NI[e] = (NI[e] || 0) + 1; }); });
+    const szOk = i => (NI["s:" + i] || 0) >= 3 || ("s:" + i) in FX, capSz = (i, k) => RHO[k] / SZ["s:" + i];
+    /* SỨC CHỞ CUỐI: chạm trần → số chạm trần (cao) · seller có chuyến 1 mình trên cỡ đó → số đã thấy, không dưới sàn (vừa) ·
+       seller đã chạy cỡ đó nhưng chỉ trên xe chung / ghé hub → kích thước đơn, không dưới sàn (vừa) · cỡ xe seller chưa từng chạy → quy theo kích thước đơn (thấp) ·
+       không có xe nào đủ thông tin → như cũ (quy đổi / đường chung, thấp) */
+    const ran = (i, k) => !!(E[i] && E[i][k]) || !!seenOf(i, k);
+    const capY = (i, k) => { if (sat(i, k)) return E[i][k].c; if (E[i] && E[i][k]) return capX(i, k); const z = seenOf(i, k);
+      if (szOk(i)) return Math.max(capSz(i, k), z ? z.c : 0); return capX(i, k); };
+    const srcX = (i, k) => { if (sat(i, k) || (E[i] && E[i][k])) return floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k);
+      if (szOk(i)) return ran(i, k) ? "kích thước đơn " + (NI["s:" + i] || 0) + " xe" : "quy từ kích thước đơn"; return floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k); };
+    const confOf = (i, k) => sat(i, k) ? "cao" : ran(i, k) ? "vừa" : "thấp";
+    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capY(i, x.k), 0));
+    return LK = { cap: capY, src: srcX, conf: confOf, size: i => SZ["s:" + i], sizeN: i => NI["s:" + i] || 0, sizeOk: szOk, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
   /* hệ số sức chở thật ÷ sức chở chuẩn (để dùng chung công thức tiền xe; chuẩn chỉ là đơn vị, triệt tiêu) */
   const CPS = {};
   const capS = (i, k) => { if (!k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key]; const v = VK(k); if (!v) return CPS[key] = null;
