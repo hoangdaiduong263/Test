@@ -153,7 +153,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       </div>
       <div class="grp">
         <h3><b data-t="g4"></b></h3>
-        <div class="row"><label for="ch" data-t="ch"></label><input type="number" id="ch" min="1" max="6" step="1"></div>
+        <div class="trio" id="chs"></div>
         <div class="row"><label for="lab" data-t="labL"></label><select id="lab"></select></div>
         <div class="row"><label for="osCap" data-t="osCapL"></label><input type="number" id="osCap" min="0" step="1"></div>
         <div class="row"><label for="slackMin" data-t="slackL"></label><input type="number" id="slackMin" min="0" step="5"></div>
@@ -215,7 +215,7 @@ const TX={
  g2:["Hồ sơ đơn","Order profile"], ado:["ADO","ADO"], dpm:["Ngày/tháng","Days / month"], beta:["% hàng to","% bulky"],
  dt:[["BAU","Mini CP","CP"],["BAU","Mini CP","CP"]],
  g3:["Kích thước đơn","Order size"], like:["Học từ","Learn from"], auto:["Seller giống (tự động)","Similar sellers (auto)"],
- g4:["Giới hạn vận hành","Ops limits"], ch:["Số chute seller chia","Chutes at seller"],
+ g4:["Giới hạn vận hành","Ops limits"], ch:["Chute","Chutes"],
  g5:["Mặt bằng","Site setup"], maxK:["Xe lớn nhất vào được","Max truck size"], bays:["Số xe chất cùng lúc","Loading bays"],
  o1:["Kế hoạch xe","Truck plan"], o1s:["Cỡ và số xe mỗi lượt, độ đầy so với mức seller giống đã thực sự chở.","Size and count per wave; fill against what similar sellers really carried."],
  o2:["Kế hoạch người","People plan"], o2s:["Người của Hub tại điểm, đủ khối việc và kịp COT.","Hub staff on site, sized for workload and COT."],
@@ -252,7 +252,7 @@ const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,
 const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
-  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null)X.ch=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);}
+  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}}
 fillRegion(false);
 
 function drawForm(){
@@ -270,7 +270,7 @@ function drawForm(){
   $("beta").value=X.beta;
   const peers=REF.sel.filter(s=>s.R===X.R).sort((a,b)=>a.b-b.b);
   $("like").innerHTML=`<option value="">${T("auto")}</option>`+peers.map(s=>`<option value="${esc(s.n)}"${s.n===X.like?" selected":""}>${esc(short(s.n))} · ${Math.round(s.b*100)}%</option>`).join("");
-  $("ch").value=X.ch;
+  $("chs").innerHTML=T("dt").map((d,t)=>`<label for="ch${t}">${T("ch")} ${d}<input type="number" id="ch${t}" min="1" max="8" step="1" value="${X.ch[t]}"></label>`).join("");
   $("maxK").innerHTML=NS_KS.map(k=>`<option${k===X.maxK?" selected":""}>${k}</option>`).join("");
   $("bays").value=X.bays;
   $("tail").value=X.tail;$("dwFix").value=X.dwFix;$("dwRate").value=X.dwRate;$("dwFix").placeholder=nf(REF.dw.fix,1);$("dwRate").placeholder=nf(REF.dw.rate*100,1);
@@ -284,7 +284,7 @@ function read(){
   const tm=v=>{const m=/^(\d{1,2}):?(\d\d)$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?+m[1]*60+ +m[2]:null;};
   X.open=tm($("open").value)??X.open;X.win=G.cots.map((c,k)=>{const a=tm($("wa"+k).value),b=tm($("wb"+k).value),o=X.win[k];return [a??o[0],Math.max(a??o[0],b??o[1])];});
   X.ado=[0,1,2].map(t=>Math.max(0,+$("ado"+t).value||0));X.days=[0,1,2].map(t=>Math.max(0,+$("day"+t).value||0));
-  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.ch=Math.max(1,Math.round(+$("ch").value||1));
+  X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;X.ch=[0,1,2].map(t=>Math.max(1,Math.round(+$("ch"+t).value||1)));
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
   X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;
@@ -317,11 +317,13 @@ function render(){
   /* người */
   const sortT={none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[p.work.sort];
   $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
+    <tr><td>Chute</td>${D.map(d=>`<td class="n">${d.work.ch}${d.work.ch<d.work.st?`<div class="meta">${L?"main SOC re-sorts":"SOC chính chia lại"}</div>`:""}</td>`).join("")}</tr>
+    <tr><td>${L?"Sorting":"Sort"}</td>${D.map(d=>`<td class="n" style="font-size:12px">${{none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[d.work.sort].split(":")[0]}<div class="meta">${nf(d.work.prod)} ${L?"/person/day":"/người/ngày"}</div></td>`).join("")}</tr>
     <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
     ${p.lab==="pps"?"":`<tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/Math.max(1,d.hc))}</td>`).join("")}</tr>`}
     <tr><td>${L?"Cost / day":"Tiền / ngày"}</td>${D.map(d=>`<td class="n">${nf(d.lab/1e3)}k${d.short?`<div class="meta" style="color:var(--bad)">${T("shortL")} ${d.short}</div>`:""}</td>`).join("")}</tr></tbody>`;
   $("ppl").insertAdjacentHTML("afterend","");
-  $("ppl").closest("section").querySelector(".sub").textContent=T("o2s")+" "+({fte:T("labF"),hub:T("labH"),pps:T("labP")}[p.lab])+" · "+(L?"Work mode: ":"Cách làm: ")+sortT+" · "+nf(p.work.ch)+" chute · "+nf(1/p.work.w)+" "+T("prod")+".";
+  $("ppl").closest("section").querySelector(".sub").textContent=T("o2s")+" "+({fte:T("labF"),hub:T("labH"),pps:T("labP")}[p.lab])+".";
   /* COT: ngày đông nhất */
   const pk=D.reduce((a,d)=>d.X>a.X?d:a,D[0]||b);
   const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
