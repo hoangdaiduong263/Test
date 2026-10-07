@@ -17,6 +17,10 @@ function Core(D, REF) {
     // xe
     fill: 85,          // % lấp đầy tối đa mỗi xe
     maxStops: 4,       // số điểm tối đa trên một tuyến
+    oeRules: ["South"], // vùng áp luật OE: ghép cùng Sup (sameSup) và giữ tuyến ghé hub (hubKeep) — OE South đề nghị; vùng khác chờ OE vùng đó xác nhận
+    soloKeep: ["SouthSeller-MASAN OFFICIAL", "SouthSeller-Khang Vu - Binh Duong"],   // OE xác nhận phải chạy xe riêng: không ghép với điểm nào (vẫn được xét đổi cỡ xe)
+    sameSup: 1,        // chỉ ghép điểm cùng Supervisor (OE South: khác Sup thì không ai chịu trách nhiệm tuyến chung) — cần REF.SUP
+    hubKeep: 30,       // seller có ≥ bấy nhiêu % chuyến thật ghé hub (OE cố tình ghép với hàng hub cho đầy xe): giữ nguyên tuyến, không ghép, không đổi cỡ xe; 0 = tắt
     maxKm: 30,         // hai điểm cách nhau quá số km này thì không ghép (0 = không giới hạn)
     cotGap: 180,       // giờ xe tới lượt đầu của hai điểm lệch quá số phút này thì không ghép (0 = bỏ qua)
     minGain: 0.5e6,    // một bước ghép/tách phải lợi ít nhất bấy nhiêu đ/kỳ
@@ -463,9 +467,16 @@ function Core(D, REF) {
       if (szOk(i)) return Math.max(capSz(i, k), z ? z.c : 0); return capX(i, k); };
     const srcX = (i, k) => { if (sat(i, k) || (E[i] && E[i][k])) return floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k);
       if (szOk(i)) return ran(i, k) ? "kích thước đơn " + (NI["s:" + i] || 0) + " xe" : "quy từ kích thước đơn"; return floorOn(i, k) ? "đã thấy trên mọi chuyến " + seenOf(i, k).n + " chuyến" : srcOf(i, k); };
-    const confOf = (i, k) => sat(i, k) ? "cao" : ran(i, k) ? "vừa" : "thấp";
-    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capY(i, x.k), 0));
-    return LK = { cap: capY, src: srcX, conf: confOf, size: i => SZ["s:" + i], sizeN: i => NI["s:" + i] || 0, sizeOk: szOk, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
+    const confY = (i, k) => sat(i, k) ? "cao" : ran(i, k) ? "vừa" : "thấp";
+    /* CỠ XE LỚN HƠN KHÔNG CHỞ ÍT HƠN: sức chở mỗi cỡ ≥ sức chở cao nhất của các cỡ nhỏ hơn (theo thể tích [2]) — xe to hơn chắc chắn chở được ít nhất bằng xe nhỏ */
+    const KS = Object.keys(RHO).sort((a, b) => RHO[a] - RHO[b]), MC = {};
+    const monoOf = (i, k) => { const key = i + "|" + k; if (key in MC) return MC[key]; let best = { c: capY(i, k), from: null };
+      for (const j of KS) { if (RHO[j] >= RHO[k]) break; const c = capY(i, j); if (c > best.c + 0.5) best = { c, from: j }; } return MC[key] = best; };
+    const capM = (i, k) => monoOf(i, k).c;
+    const srcM = (i, k) => { const m = monoOf(i, k); return m.from ? "không ít hơn xe " + m.from + " (" + srcX(i, m.from) + ")" : srcX(i, k); };
+    const confOf = (i, k) => { const m = monoOf(i, k); return m.from ? (confY(i, m.from) === "thấp" ? "thấp" : "vừa") : confY(i, k); };
+    const fl = TRK.filter(x => x.L.length > 1).map(x => x.L.reduce((a, [i, u]) => a + u / capM(i, x.k), 0));
+    return LK = { cap: capM, src: srcM, conf: confOf, capRaw: capY, size: i => SZ["s:" + i], sizeN: i => NI["s:" + i] || 0, sizeOk: szOk, RHO, a: 1 / pa, b: 1 / pb, E, bad, nSat: nS, chk: { n: fl.length, p50: pctI(fl, 50), p90: pctI(fl, 90), over: fl.filter(x => x > 1.2).length } }; }
   /* hệ số sức chở thật ÷ sức chở chuẩn (để dùng chung công thức tiền xe; chuẩn chỉ là đơn vị, triệt tiêu) */
   const CPS = {};
   const capS = (i, k) => { if (!k) return null; const key = i + "|" + k; if (key in CPS) return CPS[key]; const v = VK(k); if (!v) return CPS[key] = null;
@@ -528,7 +539,17 @@ function Core(D, REF) {
     for (const d of LHD) { const x = routeDay(g, d); if (!x) continue; c += x.c; t += x.t; nd.add(d); Object.entries(x.mix).forEach(([v, n]) => { mix[v] = (mix[v] || 0) + n; }); }
     Object.keys(mix).forEach(v => { mix[v] /= Math.max(1, nd.size); }); return RC[k] = { c, t: t / Math.max(1, nd.size), mix, days: nd.size }; }
   /* hai điểm được phép đi chung xe: chung SOC, chạy trùng đủ ngày, không quá xa, giờ xe lượt đầu không lệch quá — hoặc đã đi chung chuyến thật */
-  function pairOk(i, j) { if (coOf(i, j) >= 3) return true; if (!(S[i].soc || []).some(x => (S[j].soc || []).includes(x))) return false;
+  const supOf = i => (REF.SUP || {})[nm(i)] || null;
+  /* seller hay đi chung chuyến với hàng hub (theo chuyến thật, ngày học) — OE ghép cố ý cho đầy xe → giữ nguyên tuyến */
+  const HBS = {}; const hubShare = i => { if (i in HBS) return HBS[i]; let n = 0, h = 0; const seen = new Set();
+    for (const d of FD()) ((S[i].tc && S[i].tc[d]) || []).forEach(c => { if (seen.has(c)) return; seen.add(c); const t = TRP[c]; if (!t) return; n++; if (t[5].some(p => p[1] === 1)) h++; });
+    return HBS[i] = n ? h / n : 0; };
+  const oeR = i => !P.oeRules || P.oeRules.includes(S[i].R);
+  const locked = i => oeR(i) && P.hubKeep > 0 && hubShare(i) >= P.hubKeep / 100, frozen = g => g.some(locked);
+  /* luật OE (vùng trong P.oeRules): không đụng seller giữ tuyến ghé hub; chỉ ghép cùng Sup */
+  const soloK = i => (P.soloKeep || []).includes(nm(i));
+  const oeOk = (i, j) => !locked(i) && !locked(j) && !soloK(i) && !soloK(j) && !(P.sameSup && REF.SUP && (oeR(i) || oeR(j)) && (!supOf(i) || supOf(i) !== supOf(j)));
+  function pairOk(i, j) { if (!oeOk(i, j)) return false; if (coOf(i, j) >= 3) return true; if (!(S[i].soc || []).some(x => (S[j].soc || []).includes(x))) return false;
     const a = active(i), b = new Set(active(j)), both = a.filter(d => b.has(d)).length; if (both < Math.max(3, 0.5 * Math.min(a.length, b.size))) return false;
     const km = kmPt(i, j); if (P.maxKm > 0 && km != null && km > P.maxKm) return false;
     if (P.cotGap > 0) { const wi = waves(i), wj = waves(j); if (wi && wj && Math.abs(wi.w[0].arr - wj.w[0].arr) > P.cotGap) return false; }
@@ -541,11 +562,11 @@ function Core(D, REF) {
     for (let it = 0; it < 800; it++) { const gm = {}; T.forEach((g, k) => g.forEach(i => { gm[i] = k; })); let best = null;
       const tryMv = (dc, f, what) => { if (dc < -P.minGain && (!best || dc < best.dc)) best = { dc, f, what }; };
       for (let a = 0; a < T.length; a++) for (let b = a + 1; b < T.length; b++) { const A = T[a], B = T[b]; if (A.length + B.length > P.maxStops) continue;
-        if (!A.some(i => nb[i].some(j => gm[j] === b)) || !A.every(i => okAll(i, B))) continue; const U = A.concat(B); if (!okG(U)) continue;
+        if (frozen(A) || frozen(B) || !A.some(i => nb[i].some(j => gm[j] === b)) || !A.every(i => okAll(i, B))) continue; const U = A.concat(B); if (!okG(U)) continue;
         tryMv(cst(U) - cst(A) - cst(B), () => { T[a] = U; T[b] = []; }, ["ghép", U]); }
-      N.forEach(i => { const a = gm[i], A = T[a], A2 = A.filter(x => x !== i), cA = cst(A), cA2 = cst(A2);
+      N.forEach(i => { const a = gm[i], A = T[a]; if (frozen(A)) return; const A2 = A.filter(x => x !== i), cA = cst(A), cA2 = cst(A2);
         if (A.length > 1 && (A2.length < 2 || okG(A2))) tryMv(cA2 + cst([i]) - cA, () => { T[a] = A2; T.push([i]); }, ["tách", [i]]);
-        const seen = new Set(); nb[i].forEach(j => { const b = gm[j]; if (b === a) return; const B = T[b], cB = cst(B);
+        const seen = new Set(); nb[i].forEach(j => { const b = gm[j]; if (b === a || frozen(T[b])) return; const B = T[b], cB = cst(B);
           if (!seen.has(b)) { seen.add(b); const B2 = B.concat([i]); if (B.length < P.maxStops && okAll(i, B) && okG(B2) && (A2.length < 2 || okG(A2))) tryMv(cA2 + cst(B2) - cA - cB, () => { T[a] = A2; T[b] = B2; }, ["chuyển", B2]); }
           if (i < j && A.length > 1 && B.length > 1) { const A3 = A2.concat([j]), B3 = B.filter(x => x !== j).concat([i]);
             if (okAll(j, A2) && okAll(i, B3.filter(x => x !== i)) && okG(A3) && okG(B3)) tryMv(cst(A3) + cst(B3) - cA - cB, () => { T[a] = A3; T[b] = B3; }, ["đổi chéo", A3]); } }); });
@@ -868,11 +889,11 @@ function Core(D, REF) {
       neg.forEach(g => { const alts = [];
         if (g.length > 1) g.forEach(i => alts.push(T.filter(h => h !== g).concat([g.filter(j => j !== i), [i]])));
         const olds = new Set(T0.filter(b => b.some(i => g.includes(i))).flat().filter(i => !g.includes(i))), host = T.filter(h => h !== g && h.some(i => olds.has(i))).sort((x, y) => y.filter(i => olds.has(i)).length - x.filter(i => olds.has(i)).length)[0];
-        if (host && host.length + g.length <= P.maxStops) alts.push(T.filter(h => h !== g && h !== host).concat([host.concat(g)]));
+        if (host && !frozen(host) && host.length + g.length <= P.maxStops && g.every(i => host.every(j => oeOk(i, j)))) alts.push(T.filter(h => h !== g && h !== host).concat([host.concat(g)]));
         alts.forEach(T2 => { if (T2.some(h => h.length > 1 && !k0s.has(key(h)) && !routeBest(h, tolOf(h)).ok)) return; const L2 = assign(T2, tolOf), v = totOf(T2, L2); if (v > cur + P.minGain && (!best || v > best.v)) best = { T2, L2, v }; }); });
       if (!best) break; T = best.T2; L1 = best.L2; }
     /* ĐỔI CỠ XE (kế hoạch): từng tuyến thử chọn cỡ xe rẻ nhất trong mọi loại; giữ nếu rẻ hơn ≥ 0,05 tr/kỳ và mô phỏng không trễ thêm (người như kế hoạch) */
-    const vehDecide = (g, L) => { const h = L.routes[key(g)], A = h && h.A ? h.A : Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), e0 = h && h.sim ? null : routeEval(g, A);
+    const vehDecide = (g, L) => { if (frozen(g)) return false; const h = L.routes[key(g)], A = h && h.A ? h.A : Object.fromEntries(g.map(i => [i, { m: "F", n: fteBase(i) }])), e0 = h && h.sim ? null : routeEval(g, A);
       const c0 = routeCost(g).c + xOf(L, g); g.forEach(i => VFREE.add(i));
       const c1 = routeCost(g).c, e = routeEval(g, A), lt0 = h && h.sim ? h.sim.late : e0 ? e0.late : 0;
       if (!(c1 < c0 - 0.05e6) || (e && e.late > tolOf(g) + 0.5) || !dayOk(g, A)) { g.forEach(i => VFREE.delete(i)); return false; } return true; };
@@ -961,6 +982,19 @@ function Core(D, REF) {
     return c - routeCost(g).c - xf(L, g) + g.reduce((a, i) => a + (L0.cost[i] || 0) - (L.cost[i] || 0), 0); }
   /* giá trị từng tuyến mới trong kết quả r (cùng cách tính với soloV) */
   const routeValue = (r, g) => attrV(r.T0, g, r.L0, r.L1, (L, h) => r.xCost(h));
+  /* RỦI RO GHÉP TUYẾN (tuyến mới nhiều điểm):
+     - xe đặt trước = trung vị số xe cần của 7 ngày chạy trước đó; ngày cần nhiều hơn → xe đầy ở các điểm đầu, phần thiếu dồn về điểm cuối tuyến (theo thứ tự ghé)
+       → % ngày thiếu chỗ, số đơn TB của điểm cuối phải chờ xe thêm. So với chạy riêng: mỗi seller tự đặt xe, thiếu thì chỉ ảnh hưởng chính nó
+     - Linehaul thiếu 1 xe: số seller bị ảnh hưởng (= số điểm trên tuyến; chạy riêng = 1) */
+  const ovDays = (g, plan) => { const days = LHD.filter(d => g.some(i => (S[i].v[d] || 0) > 0)), t = days.map(d => { const x = plan ? withPlan(() => routeDay(g, d)) : routeDay(g, d); return x ? x.t : 0; }), o = new Set();
+    days.forEach((d, k) => { if (k < 3) return; const p = t.slice(Math.max(0, k - 7), k).sort((a, b) => a - b); if (t[k] > Math.ceil(p[p.length >> 1] - 1e-9) + 0.5) o.add(d); }); return { o, n: Math.max(1, days.length - 3) }; };
+  /* hiện nay (các tuyến cũ chạy riêng): % ngày có ít nhất một tuyến thiếu xe đặt trước */
+  const riskNow = cut => { const o = new Set(); let n = 0; cut.forEach(h => { const x = ovDays(h, false); x.o.forEach(d => o.add(d)); n = Math.max(n, x.n); }); return n ? o.size / n : 0; };
+  function mergeRisk(g, cut) { if (g.length < 2) return null; return withPlan(() => { const o = routeOrder(g), last = o[o.length - 1], days = LHD.filter(d => g.some(i => (S[i].v[d] || 0) > 0));
+      const t = days.map(d => { const x = routeDay(g, d); return x ? x.t : 0; }); let nOv = 0, nD = 0, str = 0;
+      days.forEach((d, k) => { if (k < 3) return; const prev = t.slice(Math.max(0, k - 7), k).sort((a, b) => a - b), book = Math.ceil(prev[prev.length >> 1] - 1e-9); nD++;
+        if (t[k] > book + 0.5) { nOv++; const V = g.reduce((a, i) => a + (S[i].v[d] || 0), 0); str += Math.min(S[last].v[d] || 0, (t[k] - book) / t[k] * V); } });
+      return { pOver: nD ? nOv / nD : 0, pNow: cut ? riskNow(cut) : null, strand: nOv ? str / nOv : 0, last, blast: g.length }; }); }
   function standalone0(r, g) { const S0 = new Set(g); let c = 0; r.T0.filter(b => b.some(i => S0.has(i))).forEach(b => { const rest = b.filter(i => !S0.has(i)), cb = routeCost(b).c;
       /* phần còn lại so với tuyến hiện nay cùng một cách tính (chưa hiệu chỉnh theo tuyến), rồi quy về tiền thật của tuyến hiện nay */
       const u = rest.length ? costU(rest) / Math.max(1, costU(b)) : 0; c += cb * (1 - u); });
@@ -986,8 +1020,8 @@ function Core(D, REF) {
     r.T.filter(g => g.some(i => t.pts.includes(i))).forEach(g => { const h = r.hc(g); if (!h || !h.A) return; const A2 = Object.assign({}, h.A); g.forEach(i => { if (A2[i] && A2[i].team === t) A2[i] = { m: "H", team: t2 }; });
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
-  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, CPS].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; LK = null; }
-  return { routeValue, routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, scOf, capS, learnK, lowCap, tripFill, tripsOf, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, CPS, HBS].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; LK = null; }
+  return { routeValue, routeDetail, pairOk, occChanged, TY, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, scOf, capS, learnK, lowCap, mergeRisk, supOf, hubShare, locked, tripFill, tripsOf, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
