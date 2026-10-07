@@ -76,7 +76,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .bars{display:grid;gap:10px}
 .bar{display:grid;grid-template-columns:72px minmax(0,1fr) 92px;gap:8px;align-items:center;font-size:12.5px}
 .track{position:relative;height:22px;background:var(--soft);border-radius:4px;overflow:hidden;display:flex}
-.track .t{background:var(--navy)} .track .p{background:var(--accent)}
+.track .t{background:var(--navy)} .track .p{background:var(--accent)} .track .so{background:var(--warn)}
 .track .fm{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink)}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--ink2)}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
@@ -178,7 +178,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
         <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="tw"><table id="cot"></table></div></section>
       </div>
       <section class="panel sec"><h2><i>4</i><span data-t="o4"></span></h2><p class="sub" id="o4s"></p><div class="bars" id="bars"></div>
-        <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
+        <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--warn)" data-t="lgS"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
       <section class="panel sec mix"><h2><i>5</i><span data-t="o6"></span><span class="chip mid" data-t="soon"></span></h2><p class="sub" data-t="o6s"></p></section>
       <section class="panel sec"><h2><span data-t="o5"></span></h2><p class="sub" id="o5s"></p><div class="tw"><table id="cap" class="cap"></table></div>
         <div class="foot" id="foot"></div></section>
@@ -221,7 +221,7 @@ const TX={
  o2:["Kế hoạch người","People plan"], o2s:["Người của Hub tại điểm, đủ khối việc và kịp COT.","Hub staff on site, sized for workload and COT."],
  o3:["Rủi ro COT","COT risk"], o3s:["Bàn giao xong, làm xong, xe cuối rời điểm so với hạn COT, ngày đông nhất.","Handover end, work done and last truck departure vs COT deadline, on the heaviest day."],
  o4:["Chi phí mỗi đơn","Cost per order"], o5:["Sức chở dùng cho seller này","Capacity used for this seller"],
- lgT:["Tiền xe / đơn","Truck / order"], lgP:["Tiền người / đơn","People / order"], lgF:["FM pickup / đơn","FM pickup / order"],
+ lgS:["SOC chia lại / đơn","SOC re-sort / order"], lgT:["Tiền xe / đơn","Truck / order"], lgP:["Tiền người / đơn","People / order"], lgF:["FM pickup / đơn","FM pickup / order"],
  kSave:["Est. tiết kiệm / tháng","Est. saving / month"], kCpo:["D2S / đơn (BAU)","D2S cost / order (BAU)"], kThr:["ADO hoà vốn","Break-even ADO"], kTr:["Xe / ngày","Trucks / day"],
  vsFM:["so với FM pickup","vs FM pickup"], fmIs:["FM pickup","FM pickup"], aboveThr:["trên ngưỡng","above break-even"], belowThr:["dưới ngưỡng","below break-even"], noThr:["không có mức hoà vốn ổn định","no stable break-even"],
  wave:["Lượt (COT)","Wave (COT)"], ord:["đơn","orders"], fill:["đầy","fill"], ppl:["người","people"], peop:["Người","People"],
@@ -319,6 +319,7 @@ function render(){
   $("ppl").innerHTML=`<thead><tr><th></th>${D.map(d=>`<th class="n">${dt[d.t]}</th>`).join("")}</tr></thead><tbody>
     <tr><td>Chute</td>${D.map(d=>`<td class="n">${d.work.ch}${d.work.ch<d.work.st?`<div class="meta">${L?"main SOC re-sorts":"SOC chính chia lại"}</div>`:""}</td>`).join("")}</tr>
     <tr><td>${L?"Sorting":"Sort"}</td>${D.map(d=>`<td class="n" style="font-size:12px">${{none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[d.work.sort].split(":")[0]}<div class="meta">${nf(d.work.prod)} ${L?"/person/day":"/người/ngày"}</div></td>`).join("")}</tr>
+    ${D.some(d=>d.rs>0)?`<tr><td>${L?"Main SOC re-sorts":"SOC chính chia lại"}</td>${D.map(d=>`<td class="n">${d.rs>0?`${nf(d.rs)} ${T("ord")}<div class="meta">${nf(d.soc/1e3)}k</div>`:"–"}</td>`).join("")}</tr>`:""}
     <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
     ${p.lab==="pps"?"":`<tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/Math.max(1,d.hc))}</td>`).join("")}</tr>`}
     <tr><td>${L?"Cost / day":"Tiền / ngày"}</td>${D.map(d=>`<td class="n">${nf(d.lab/1e3)}k${d.short?`<div class="meta" style="color:var(--bad)">${T("shortL")} ${d.short}</div>`:""}</td>`).join("")}</tr></tbody>`;
@@ -331,7 +332,7 @@ function render(){
   /* chi phí / đơn */
   $("o4s").textContent=TX.o4s(nf(p.fmU))[L];
   const mx=Math.max(p.fmU*1.25,...D.map(d=>d.cost/d.X));
-  $("bars").innerHTML=D.map(d=>{const t=d.truck/d.X,l=d.lab/d.X,s=p.fmU-t-l;return `<div class="bar"><span>${dt[d.t]}</span><div class="track" role="img" aria-label="${dt[d.t]}: ${nf(t+l)} ${T("per")}"><div class="t" style="width:${t/mx*100}%"></div><div class="p" style="width:${l/mx*100}%"></div><span class="fm" style="left:${p.fmU/mx*100}%"></span></div><span class="n" style="font-family:var(--f-num);text-align:right">${nf(t+l)} <span class="${s>=0?"pos":"neg"}" style="font-size:11px">${s>=0?"−":"+"}${nf(Math.abs(s))}</span></span></div>`;}).join("");
+  $("bars").innerHTML=D.map(d=>{const t=d.truck/d.X,l=d.lab/d.X,so=d.soc/d.X,s=p.fmU-t-l-so;return `<div class="bar"><span>${dt[d.t]}</span><div class="track" role="img" aria-label="${dt[d.t]}: ${nf(t+l+so)} ${T("per")}"><div class="t" style="width:${t/mx*100}%"></div><div class="p" style="width:${l/mx*100}%"></div><div class="so" style="width:${so/mx*100}%"></div><span class="fm" style="left:${p.fmU/mx*100}%"></span></div><span class="n" style="font-family:var(--f-num);text-align:right">${nf(t+l+so)} <span class="${s>=0?"pos":"neg"}" style="font-size:11px">${s>=0?"−":"+"}${nf(Math.abs(s))}</span></span></div>`;}).join("");
   /* sức chở */
   const how=p.how.k==="like"?TX.howLike(short(p.how.name))[L]:p.how.k==="reg"?TX.howReg(p.how.n)[L]:p.how.k==="all"?TX.howAll(p.how.n)[L]:TX.howNear(p.how.n)[L];
   $("howtxt").textContent=how;$("o5s").textContent=T("o5s")+" "+how;

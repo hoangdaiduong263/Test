@@ -85,7 +85,10 @@ function nsPlan(ref, x) {
   const tail = Math.min(1, Math.max(0, (+x.tail || 0) / 100)), slackMin = Math.max(0, +x.slackMin || 0), osCap = +x.osCap > 0 ? Math.round(+x.osCap) : null;
   const stage = +x.area > 0 && +x.dens > 0 ? +x.area * +x.dens : null;   // số đơn tập kết được cùng lúc
   /* 4. một loại ngày: xe từng lượt, người, giờ xe rời so với hạn COT */
-  const day = (X, dly, t) => { dly = dly || 0; const w = works[t || 0].w;
+  const day = (X, dly, t) => { dly = dly || 0; const wk = works[t || 0], w = wk.w;
+    /* SOC chia lại: chia ít chute hơn số SOC phải chia thì phần (SOC − chute) ÷ SOC số đơn được SOC chính sort lại,
+       năng suất như sort đủ chute tại điểm, 520k/người/ngày (như Seller Planner: soc.same, soc.pay) */
+    const rs = wk.ch < st ? X * (st - wk.ch) / st : 0, socC = rs > 0 ? rs / workOf(st).prod * P.ftePay : 0;
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q), mix = {};
       /* chỗ tập kết không đủ chứa cả lượt: số xe ít nhất = ⌈đơn ÷ chỗ tập kết⌉ (xe phải lấy nhiều đợt); thêm xe cỡ nhỏ nhất đủ chở phần chia */
       let xs = 0; if (stage && legs.length) { const need = Math.ceil(Q / stage - 1e-9), t0 = legs.reduce((a, l) => a + l.t, 0);
@@ -103,13 +106,13 @@ function nsPlan(ref, x) {
     if (lab !== "pps") while (s.worst < slackMin && hc < hc0 + P.maxExtra && (osCap == null || hc < osCap)) { hc++; s = sim(hc); }
     W.forEach((v, j) => Object.assign(v, s.r[j]));
     const truck = W.reduce((a, v) => a + v.cost, 0), labC = lab === "pps" ? X * P.ppsRate : hc * pay, fm = X * fmU;
-    return { X, W, hc, hc0, short: osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, cost: truck + labC, fm, net: fm - truck - labC, trucks: W.reduce((a, v) => a + v.t, 0), xs: W.reduce((a, v) => a + v.xs, 0), worst: s.worst };
+    return { X, W, hc, hc0, short: osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0), xs: W.reduce((a, v) => a + v.xs, 0), worst: s.worst };
   };
   const days = x.ado.map((X, t) => ({ t, ...day(Math.max(0, +X || 0), 0, t), n: +x.days[t] || 0, work: works[t] }));
   /* thử seller giao trễ x.delay phút trên ngày đông nhất (cùng số người) */
   const dly = Math.max(0, +x.delay || 0), pk = days.reduce((a, d) => d.X > a.X ? d : a, days[0]), late = dly && pk.X > 0 ? day(pk.X, dly, pk.t) : null;
   const sum = f => days.reduce((a, d) => a + d.n * f(d), 0), V = sum(d => d.X);
-  const month = { orders: V, truck: sum(d => d.truck), lab: sum(d => d.lab), fm: sum(d => d.fm) }; month.cost = month.truck + month.lab; month.net = month.fm - month.cost;
+  const month = { orders: V, truck: sum(d => d.truck), lab: sum(d => d.lab), soc: sum(d => d.soc), fm: sum(d => d.fm) }; month.cost = month.truck + month.lab + month.soc; month.net = month.fm - month.cost;
   /* 5. ngưỡng ADO hoà vốn (ngày BAU; Mini CP và CP giữ tỷ lệ so với BAU): mức thấp nhất mà từ đó tới gấp đôi đều lời */
   const r0 = +x.ado[0] || 1, netAt = a => { let n = 0; x.ado.forEach((X, t) => { const d = day(a * (+X || 0) / r0, 0, t); n += (+x.days[t] || 0) * d.net; }); return n; };
   const grid = []; for (let a = 20; a <= 3000; a += 20) grid.push(a); for (let a = 3050; a <= 20000; a += 50) grid.push(a);
