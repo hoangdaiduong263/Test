@@ -12,6 +12,8 @@ const NS_KS = ["VAN", "1T25", "1T9", "5T", "8T"];
 const NS_GATE = { move: 10 };
 /* trần số người khi tìm số người kịp COT nếu không nhập "số người tối đa cấp được" — chỉ để vòng tìm có điểm dừng, coi như không giới hạn */
 const NS_HCMAX = 1000;
+/* trễ COT cho phép (phút): xe rời sau hạn COT không quá bấy nhiêu phút vẫn coi là kịp (Ops chấp nhận, 10/2026) — đổi được trên trang */
+const NS_LATE = 12;
 const NS_BAN = { heavy: ["5T", "8T"], clKm: 2, near: 3,
   HN: { zone: 1, c: [21.0285, 105.8542], r: 14.5, allow: [[1260, 1800]] },
   HCM: { c: [10.7724, 106.698], r: 15, allow: [[1320, 1800]] } };
@@ -187,7 +189,9 @@ function nsPlan(ref, x) {
      số cổng bàn giao (gates): mỗi cổng ≥ 1 người; xe lấy hàng nhiều cổng: tour = 1 xe đi vòng các cổng (+ gMove phút mỗi cổng thêm), each = mỗi cổng xe riêng, auto = chọn rẻ hơn mà kịp COT */
   const hoN = Math.max(2, Math.round(+x.hoN || 3)), gates = Math.max(1, Math.round(+x.gates || 1)), hoRate = +x.hoRate > 0 ? +x.hoRate : null, lateBase = Math.max(0, +x.late || 0);
   const gMove = x.gMove != null && x.gMove !== "" ? Math.max(0, +x.gMove) : NS_GATE.move, gMode = ["tour", "each"].includes(x.gMode) ? x.gMode : "auto";
-  const tail = Math.min(1, Math.max(0, (+x.tail || 0) / 100)), prof = ["even", "end", "lump", "batch"].includes(x.hoProf) ? x.hoProf : (tail > 0 ? "end" : "even"), slackMin = Math.max(0, +x.slackMin || 0), osCap = +x.osCap > 0 ? Math.round(+x.osCap) : null;
+  const tail = Math.min(1, Math.max(0, (+x.tail || 0) / 100)), prof = ["even", "end", "lump", "batch"].includes(x.hoProf) ? x.hoProf : (tail > 0 ? "end" : "even"), slackMin = Math.max(0, +x.slackMin || 0), lateTol = x.lateTol != null && x.lateTol !== "" && isFinite(+x.lateTol) ? Math.max(0, +x.lateTol) : NS_LATE, osCap = +x.osCap > 0 ? Math.round(+x.osCap) : null;
+  /* mức dư COT tối thiểu để coi là kịp: có nhập phút dư (> 0) thì theo đó; không thì được trễ tới lateTol phút. Lượt chưa cuối: xe được chờ tới COT + lateTol rồi mới đóng tải phần đã sort (phần còn lại dồn lượt sau) */
+  const sMin = slackMin > 0 ? slackMin : -lateTol, tolX = Math.max(0, -sMin);
   /* số người thực tế tại điểm theo loại ngày (trống = model tự tính): mô phỏng chạy theo số này; số đề xuất vẫn tính song song */
   const hcIn = [0, 1, 2].map(t => +(x.hcIn || [])[t] > 0 ? Math.round(+x.hcIn[t]) : null);
   const stage = +x.area > 0 && +x.dens > 0 ? +x.area * +x.dens : null;   // số đơn tập kết được cùng lúc
@@ -310,7 +314,7 @@ function nsPlan(ref, x) {
     const STEP = 5;
     const sim = hc => { const per = lab === "pps" ? 0 : w * P.fteH * 60 / Math.max(1, hc), S = per > 0 ? STEP / per : 1e12, Rt = hoRate ? gates * hoRate * STEP / 60 : 1e12;
       const pass = cy0 => { let free = open, cS = cy0, cU = 0, worst = 1e9, rollC = 0, xr = 0, rollT = 0; const r = W.map((v, wi) => { const lastW = wi === W.length - 1;
-        const a = v.c.a + dl, b = Math.max(a, v.c.b + dl), Lc = v.c.p, Qn = v.Q, cy = cS + cU, Qt = Qn + cy, tour = gates > 1 && !v.legs.some(l => l.gates > 1);
+        const a = v.c.a + dl, b = Math.max(a, v.c.b + dl), Lc = v.c.p, LcX = Lc + tolX, Qn = v.Q, cy = cS + cU, Qt = Qn + cy, tour = gates > 1 && !v.legs.some(l => l.gates > 1);
         /* luỹ kế hàng seller định nhả tới giờ t (chưa tính giới hạn tốc độ) */
         const tgt = t => { if (t < a) return 0; if (prof === "lump") return t >= b ? Qn : 0;
           if (prof === "batch") return Qn * Math.min(1, Math.floor((t - a) / Math.max(1e-9, (b - a) / hoN) + 1e-9) / hoN);
@@ -341,13 +345,13 @@ function nsPlan(ref, x) {
           const start = Math.max(Math.min(z.tau, 1e9) - z.dw, mn); let dep = Math.max(z.tau + P.closeMin, start + z.dw);
           if (HV.has(z.k) && AL && isFinite(dep)) { const d2 = nextOk(dep); hvW = Math.max(hvW, d2 - dep); dep = d2; }
           if (lastW && !(dep <= Lc)) { if (!isFinite(dep)) dep = tE; z.load = z.ld; z.late = 1; } /* lượt cuối: chở hết, rời trễ */
-          else if (!(dep <= Lc)) { /* tới hạn COT: đóng tải với phần đã sort xong (xe vơi); phần còn lại dồn lượt sau */
-            const okDock = Math.max(z.tau === Infinity ? -1e9 : start, mn) <= Lc - P.closeMin, okHv = !(HV.has(z.k) && AL) || nextOk(Lc) <= Lc;
-            const av = okDock && okHv ? Math.max(0, Math.min(z.to, Pat(Lc - P.closeMin) * L.sh) - Math.max(z.from, got[z.li])) : 0;
-            z.load = Math.min(z.ld, av); z.cut = 1; want = Math.max(want, isFinite(dep) ? dep : 1e9); dep = Lc; if (z.load > 0.5) cut++; }
+          else if (!(dep <= LcX)) { /* tới hạn COT (+ trễ cho phép): đóng tải với phần đã sort xong (xe vơi); phần còn lại dồn lượt sau */
+            const okDock = Math.max(z.tau === Infinity ? -1e9 : start, mn) <= LcX - P.closeMin, okHv = !(HV.has(z.k) && AL) || nextOk(LcX) <= LcX;
+            const av = okDock && okHv ? Math.max(0, Math.min(z.to, Pat(LcX - P.closeMin) * L.sh) - Math.max(z.from, got[z.li])) : 0;
+            z.load = Math.min(z.ld, av); z.cut = 1; want = Math.max(want, isFinite(dep) ? dep : 1e9); dep = LcX; if (z.load > 0.5) cut++; }
           else if (!z.late) z.load = z.ld;
           z.dep = dep; got[z.li] = Math.max(got[z.li], z.from + z.load); loaded += z.load; if (z.load > 0.5) { dock[di] = dep; dep1 = dep1 == null ? dep : Math.min(dep1, dep); depL = depL == null ? dep : Math.max(depL, dep); } });
-        const roll = Math.max(0, Qt - loaded) > 0.5 ? Qt - loaded : 0, sortedAtCut = Math.min(Qt, Pat(Lc - P.closeMin));
+        const roll = Math.max(0, Qt - loaded) > 0.5 ? Qt - loaded : 0, sortedAtCut = Math.min(Qt, Pat(LcX - P.closeMin));
         /* dư COT: âm = xe lẽ ra phải rời trễ chừng ấy phút để chở hết (thay vì dồn hàng) */
         let slack = roll > 0 ? Math.min(-STEP, Lc - Math.min(want, (doneT != null ? doneT : tE) + P.closeMin + 120)) : Lc - (depL != null ? depL : Lc);
         cS = Math.max(0, Math.min(roll, sortedAtCut - loaded)); cU = Math.max(0, roll - cS); rollT += roll;
@@ -376,17 +380,17 @@ function nsPlan(ref, x) {
     /* trễ (hoặc dư dưới mức yêu cầu) thì thêm người tới khi kịp COT — KHÔNG giới hạn số người thêm, chỉ chặn bởi số người cấp được (nếu có nhập).
        Thêm bao nhiêu cũng không kịp hẳn (trễ do giờ bàn giao xong / xe / chỗ chất) thì lấy số ít nhất cho kết quả tốt nhất có thể. Tìm nhị phân giữa hc0 và mức trần */
     const lim = lab === "pps" ? 0 : Math.max(hc0, osCap != null ? osCap : NS_HCMAX);
-    if (lab !== "pps" && s.worst < slackMin && lim > hc) {
-      const sB = sim(lim), goal = sB.worst >= slackMin ? slackMin : sB.worst - 0.5;
+    if (lab !== "pps" && s.worst < sMin && lim > hc) {
+      const sB = sim(lim), goal = sB.worst >= sMin ? sMin : sB.worst - 0.5;
       if (sB.worst > s.worst + 0.5) { let lo = hc, hi = lim, sh = sB; while (hi - lo > 1) { const m = (lo + hi) >> 1, sm = sim(m); if (sm.worst >= goal) { hi = m; sh = sm; } else lo = m; } hc = hi; s = sh; } }
     /* nhập số người thực tế: số đề xuất (và kết quả với số đó) giữ lại để so; mọi kết quả còn lại chạy theo số nhập; ít hơn số theo khối việc (hc0) thì báo thiếu người (sim không giới hạn giờ làm mỗi người) */
-    let rec = null; if (hf > 0 && lab !== "pps") { rec = { hc, worst: s.worst, roll: s.rollT, ok: s.worst >= slackMin && !(s.rollT > 0.5), cap: osCap != null && hc >= osCap }; if (hf !== hc) s = sim(hf); hc = hf; }
+    let rec = null; if (hf > 0 && lab !== "pps") { rec = { hc, worst: s.worst, roll: s.rollT, ok: s.worst >= sMin && !(s.rollT > 0.5), cap: osCap != null && hc >= osCap }; if (hf !== hc) s = sim(hf); hc = hf; }
     W.forEach((v, j) => Object.assign(v, s.r[j]));
     /* nhóm FM Hub dùng chung người với các điểm cùng Hub (POOL): số người Hub phải thêm khi nhận seller */
     let pool = null; if (poolPts.length && !(hf > 0)) { const PT = poolTasks(tD); if (PT.length) {
       const memS = {}, simN = n => memS[n] || (memS[n] = n === hc ? s : sim(n));
       /* việc của seller mỗi lượt: hàng từ đầu khung bàn giao, hết hàng lúc bàn giao xong; xong không muộn hơn: giờ xong khi người riêng + phần dư COT (trừ dư tối thiểu) */
-      const me = W.map((v, j) => { const dl = Math.min(v.c.p - P.closeMin, v.done + Math.max(0, (v.slack || 0) - slackMin)); return { me: 1, j, ll: x.ll, k: v.k, q: v.Qt, W: v.Qt * w * P.fteH * 60, av: v.a, be: Math.min(v.hoEnd != null ? v.hoEnd : v.b, dl), dl, hold: v.dep }; }).filter(z => z.q > 0.5);
+      const me = W.map((v, j) => { const dl = Math.min(v.c.p - P.closeMin - sMin, v.done + Math.max(0, (v.slack || 0) - sMin)); return { me: 1, j, ll: x.ll, k: v.k, q: v.Qt, W: v.Qt * w * P.fteH * 60, av: v.a, be: Math.min(v.hoEnd != null ? v.hoEnd : v.b, dl), dl, hold: v.dep }; }).filter(z => z.q > 0.5);
       const endMe = (n, z) => simN(n).r[z.j].done;
       const best = T0 => { const own = T0.reduce((a, o) => a + o.own, 0), tm = T0.length >= 2 ? teamMin(T0.flatMap(o => o.T), own) : null; return tm ? { n: tm.n, team: tm } : { n: own, team: null }; };
       /* thử: cả các điểm cùng Hub + seller; seller + từng điểm. Chọn cách thêm ít người nhất */
@@ -414,7 +418,7 @@ function nsPlan(ref, x) {
      Chỉ phụ thuộc hồ sơ của loại ngày đó, không phụ thuộc ADO đang nhập. Phía trên ngưỡng có thể có dải lỗ lại (nhảy bậc xe / người) → ghi riêng tới 2× ngưỡng */
   const grid = []; for (let a = 20; a <= 3000; a += 20) grid.push(a); for (let a = 3050; a <= 20000; a += 50) grid.push(a);
   /* một ngày "kịp COT" khi không dồn hàng, đủ phút dư yêu cầu và không vượt số người cấp được; lý do khi không kịp */
-  const okD = d => !(d.X > 0) || (d.worst >= slackMin && !(d.roll > 0.5) && !d.short), whyD = d => d.roll > 0.5 ? "roll" : d.short ? "staff" : "late";
+  const okD = d => !(d.X > 0) || (d.worst >= sMin && !(d.roll > 0.5) && !d.short), whyD = d => d.roll > 0.5 ? "roll" : d.short ? "staff" : "late";
   /* mỗi loại ngày: tự hoà vốn từ ADO nào (v) và còn kịp COT tới ADO nào (cot.max; null = vẫn kịp tới 20.000) */
   /* nhớ kết quả một ngày theo (loại ngày, ADO); các loại ngày giống hệt nhau (cùng chute, SOC, năng suất) dùng chung. Tắt khi đang thử đổi sức chở xe */
   const sigT = works.map((_, t) => JSON.stringify([works[t], socsT[t], rsSh[t]])), sigI = sigT.map(z => sigT.indexOf(z)), memo = new Map(); let memoOff = false;
@@ -473,7 +477,7 @@ function nsPlan(ref, x) {
       /* luật OE (vùng đang áp): khác Sup thì không ghép; tuyến có seller giữ chuyến ghé hub thì không ghép.
          "OE yêu cầu chạy riêng" chỉ là nhận định định tính → không chặn: chứng minh được chạy chung (kịp COT, có lời) thì đề xuất chạy chung */
       const oeNo = ps.some(q => q.lock) ? "hub" : G.oe && x.sup && ps.some(q => q.sup && q.sup !== x.sup) ? "sup" : null;
-      const o = { n: r.id, grp: r.grp ? 1 : 0, gt: r.t, gk: r.k, mem: ps.map(q => q.n), now: r.now, km: +km.toFixed(1), sup: ps[0].sup, hub: ps[0].hub, supOk: !!x.sup && ps.every(q => q.sup === x.sup), hubOk: !!x.hub && ps.some(q => q.hub === x.hub), oeNo, socs: cs, waves: ws.map(k => cots[k].p), ado: ps.reduce((a, q) => a + q.ado, 0), save: 0, slack: null };
+      const o = { n: r.id, grp: r.grp ? 1 : 0, gt: r.t, gk: r.k, mem: ps.map(q => q.n), now: r.now, km: +km.toFixed(1), sup: ps[0].sup, hub: ps[0].hub, supOk: !!x.sup && ps.every(q => q.sup === x.sup), hubOk: !!x.hub && ps.some(q => q.hub === x.hub), oeNo, socs: cs, waves: ws.map(k => cots[k].p), ado: ps.reduce((a, q) => a + adoOf(q, bau ? bau.t : 0), 0), save: 0, slack: null };   // đơn/ngày của loại ngày đang so (BAU), theo nhãn ngày thật
       /* Est. lợi và COT: chạy lại đúng kế hoạch như khi tick tuyến này (cùng số xe, lịch chạy) — tiền xe seller mới đi riêng − tiền xe phần thêm khi đi chung, cả tháng; COT = mức dư nhỏ nhất ngày BAU */
       if (cs.length && ws.length && runT.length) { const AB = {};
         runT.forEach(d => { const a = day(d.X, 0, d.t, [], null, hcIn[d.t]), b = day(d.X, 0, d.t, ps, null, hcIn[d.t]); o.save += d.n * (a.truck - b.truck); AB[d.t] = { d, a, b }; });
@@ -489,13 +493,13 @@ function nsPlan(ref, x) {
         o.fwT = {}; Object.values(AB).forEach(({ d, a, b }) => { o.fwT[d.t] = fwOf(d, a, b); });
         if (bau) { const e = AB[bau.t], y = e ? e.b : day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) || 0 : null; o.fw = o.fwT[bau.t] || []; } }
       mrg.list.push(o); });
-    mrg.list.forEach(o => { o.st = !o.socs.length || !o.waves.length ? "na" : o.oeNo ? "oe" : o.slack != null && o.slack < slackMin ? "late" : o.save <= 0 ? "nogain" : !o.supOk ? "check" : "go"; });
+    mrg.list.forEach(o => { o.st = !o.socs.length || !o.waves.length ? "na" : o.oeNo ? "oe" : o.slack != null && o.slack < sMin ? "late" : o.save <= 0 ? "nogain" : o.slack != null && o.slack < 0 ? "watch" : !o.supOk ? "check" : "go"; });
     mrg.day = bau ? bau.t : null;
     const rk = { go: 0, check: 1, late: 2, oe: 3, nogain: 4, na: 5 }; mrg.list.sort((a, b) => rk[a.st] - rk[b.st] || b.save - a.save || a.km - b.km); }
   /* CÁCH CỨU khi không mức ADO nào hoà vốn: thử các đòn bẩy ĐANG CÓ trong model (không thêm khoản chi phí mới) — người của Hub, rider PPS,
      gộp TO về SOC chính (1 chute, SOC chính chia lại), ghép xe với tuyến gợi ý tốt nhất, và kết hợp; mỗi cách tính lại đủ để có ADO hoà vốn */
   if (!lite && !x.noRescue && bi >= 0 && !be.ado) {
-    const best = (mrg.list || []).filter(o => (o.st === "go" || o.st === "check") && o.save > 0).sort((a, b) => b.save - a.save)[0], pk = x.pick || [], V = [], multi = socsT[0].length > 1;
+    const best = (mrg.list || []).filter(o => (o.st === "go" || o.st === "check" || o.st === "watch") && o.save > 0).sort((a, b) => b.save - a.save)[0], pk = x.pick || [], V = [], multi = socsT[0].length > 1;
     if (lab !== "hub" && hubPeers.length) V.push(["hub", { lab: "hub" }]); if (lab !== "pps") V.push(["pps", { lab: "pps" }]); if (multi) V.push(["1to", { ch: [1, 1, 1], chutes: null }]);
     if (best) { V.push(["merge", { pick: pk.concat([best.n]) }]); if (lab !== "pps") V.push(["pps+merge", { lab: "pps", pick: pk.concat([best.n]) }]); if (lab !== "hub" && hubPeers.length) V.push(["hub+merge", { lab: "hub", pick: pk.concat([best.n]) }]); }
     if (multi && lab !== "pps") V.push(["pps+1to", { lab: "pps", ch: [1, 1, 1], chutes: null }]);
@@ -503,10 +507,11 @@ function nsPlan(ref, x) {
       return { k, ex, be: r.be.ado ? r.be.ado.slice() : null, base: r.be.base, bands: r.be.bands || [], at: ado0[r.be.base] || 0, net: r.month.net, vd: r.verdict, mem: best && k.includes("merge") ? best.mem : null }; } catch (e) { return null; } }).filter(Boolean);
     be.hvLimited = cots.some((c, k) => sh[k] > 0 && !hvOk[k]); }
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
-  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
+  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= sMin), cotW: run.some(d => d.worst < 0 && d.worst >= sMin), people: run.every(d => !d.short), delay: !late || late.worst >= sMin };
   /* lời cả tháng + kịp COT + đủ người là điều kiện cứng; có loại ngày lỗ hoặc dễ trễ khi seller giao trễ → vẫn chạy nhưng cần theo dõi (cond) */
-  const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay ? "go" : "cond") : "no";
+  /* trễ trong mức cho phép: kịp theo luật nhưng phải theo dõi → không xếp "nên chạy" thẳng */
+  const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay && !chk.cotW ? "go" : "cond") : "no";
   const lossDays = run.filter(d => d.net < 0).map(d => ({ t: d.t, X: d.X, net: d.net, thr: thrs[d.t] }));
-  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
+  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };
