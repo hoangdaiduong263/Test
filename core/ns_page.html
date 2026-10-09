@@ -48,6 +48,7 @@ header p{margin:4px 0 0;color:var(--ink2);max-width:68ch}
 input,select{font:500 13px var(--f-ui);color:var(--ink);background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:5px 8px;min-width:0}
 input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .row input[type=number]{width:96px}
+#ppl input.hcin{width:84px;font-weight:700;border-color:var(--accent)}
 select{max-width:200px}
 input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .hint{font-size:11.5px;color:var(--ink2);margin:0}
@@ -244,7 +245,6 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
         <h3><b data-t="g4"></b></h3>
         <p class="lab2" style="font-size:12px;font-weight:600;margin:0 0 4px"><span data-t="cuL"></span></p><div class="cub" id="chs"></div><p class="hint" data-t="cuHint"></p>
         <div class="row"><label for="lab" data-t="labL"></label><select id="lab"></select></div>
-        <div id="hcBox"><p class="lab2" style="font-size:12px;font-weight:600;margin:0 0 4px" data-t="hcInL"></p><div class="trio" id="hcIn"></div><p class="hint" id="hcNote"></p></div>
         <div class="row"><label for="ban" data-t="banL"></label><select id="ban"></select></div>
         <p class="hint" id="banNote"></p>
         <div class="row adv"><label for="osCap" data-t="osCapL"></label><input type="number" id="osCap" min="0" step="1"></div>
@@ -267,7 +267,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       <section class="panel sec" id="winSec"><h2><span data-t="oWin"></span></h2><p class="sub" data-t="oWinS"></p><div class="tw"><table id="win"></table></div><p class="hint" id="winNote" style="margin-top:8px;font-size:12.5px;color:var(--ink)"></p></section>
       <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div><div id="gcmp"></div></section>
       <div class="two">
-        <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div></section>
+        <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div><p class="hint" id="hcNote" style="margin:8px 0 0"></p></section>
         <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="lang" role="group" id="cotday" style="width:max-content;margin-bottom:10px"></div><div class="tw"><table id="cot"></table></div></section>
       </div>
       <section class="panel sec"><h2><span data-t="oFlow"></span></h2><p class="sub" data-t="oFlowS"></p><div class="lang" role="group" id="flday" style="width:max-content;margin-bottom:10px"></div><div id="flow" class="flow"></div>
@@ -324,7 +324,7 @@ const TX={
  mH:[["Tuyến · cách · lượt chung","Sup · FM Hub","Est. lợi / tháng","COT","Đề xuất"],["Route · distance · shared waves","Sup · FM Hub","Est. gain / month","COT","Suggestion"]],
  tailL:["% đơn dồn vào 60′ cuối khung","% orders in last 60′ of window"], dwFixL:["Xe đứng: phút cố định","Truck dwell: fixed min"], dwRateL:["phút / 100 đơn","min / 100 orders"],
  capOvL:["Seller báo: đơn / xe 1T9","Seller says: orders / 1T9"], capKL:["Seller báo: đơn / xe (để trống = theo seller giống)","Seller says: orders / truck (blank = similar sellers)"], capBad:s=>[`Seller báo ${s} chở ít hơn cỡ nhỏ hơn: đang lấy bằng cỡ nhỏ hơn, cần kiểm tra lại`,`${s} reported below a smaller size: using the smaller size’s figure, please re-check`], sellerSays:["seller báo","seller says"], labL:["Người tại điểm","Staff on site"], labF:["FTE riêng · 520k/ngày","Own FTE · 520k/day"], labH:["Nhóm FM Hub · 350k/ngày","FM Hub team · 350k/day"], labP:["Rider PPS · 700 đ/đơn","Rider PPS · 700 VND/order"],
- osCapL:["Số người tối đa cấp được","Max staff available"], hcInL:["Số người thực tế tại điểm (trống = theo đề xuất)","Actual staff on site (blank = suggested)"], ckPplIn:["Số người nhập đủ khối việc trong ca","Entered staff cover the workload within the shift"], slackL:["Dư COT tối thiểu (phút)","Min COT slack (min)"], delayL:["Thử seller giao trễ (phút)","Test seller delay (min)"],
+ osCapL:["Số người tối đa cấp được","Max staff available"], ckPplIn:["Số người nhập đủ khối việc trong ca","Entered staff cover the workload within the shift"], slackL:["Dư COT tối thiểu (phút)","Min COT slack (min)"], delayL:["Thử seller giao trễ (phút)","Test seller delay (min)"],
  areaL:["Chỗ tập kết (m²)","Staging area (m²)"], densL:["Mật độ (đơn/m²)","Density (orders/m²)"], blankHint:["Ô để trống = dùng số Core Planner đã học hoặc chưa tính. Điền số thật khi có.","Blank = use what Core Planner learned, or not modelled. Fill real values when known."],
  vdL:["Kết luận cho Ops","Recommendation for Ops"], vdGo:["Nên chạy D2S","Run D2S"], vdCond:["Nên chạy, cần theo dõi","Run D2S, watch closely"], vdNo:["Chưa nên chạy D2S","Do not run D2S yet"],
  ckProfit:["Lời so với FM pickup cả tháng","Cheaper than FM pickup over the month"], ckThr:["Mỗi loại ngày đều lời ở ADO đang nhập","Every day type is profitable at the entered ADO"], ckCot:["Kịp COT mọi loại ngày, đủ mức dư yêu cầu","Meets COT on every day type, with required slack"],
@@ -406,7 +406,6 @@ function drawForm(){
     <div class="wv wv-h"><span>${T("wave")}</span><span>${T("hoFrom")}</span><span>${T("hoTo")}</span><span>${T("socPct")}</span></div>`+G.cots.map((c,k)=>`<div class="wv"><span class="cot">${hm(c.p)}</span><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wa${k}" aria-label="${T("hoFrom")} ${hm(c.p)}" value="${hm(X.win[k][0])}"><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wb${k}" aria-label="${T("hoTo")} ${hm(c.p)}" value="${hm(X.win[k][1])}"><input type="number" id="sh${k}" aria-label="${T("socPct")} ${hm(c.p)}" min="0" max="100" step="1" value="${X.sh[k]}"></div>`).join("")+`<p class="hint">${T("hoHint")}</p>`;
   const dt=T("dt");
   $("ado").innerHTML=dt.map((d,t)=>`<label for="ado${t}">${T("ado")} ${d}<input type="number" id="ado${t}" min="0" step="50" value="${X.ado[t]}"></label>`).join("");
-  $("hcIn").innerHTML=dt.map((d,t)=>`<label for="hc${t}">${d}<input type="number" id="hc${t}" min="0" step="1" value="${X.hcIn[t]}"></label>`).join("");
   $("days").innerHTML=dt.map((d,t)=>`<label for="day${t}">${T("dpm")} ${d}<input type="number" id="day${t}" min="0" max="31" step="1" value="${X.days[t]}"></label>`).join("");
   $("beta").value=X.beta;
   const peers=REF.sel.filter(s=>s.R===X.R).sort((a,b)=>a.b-b.b);
@@ -462,7 +461,7 @@ function read(){
   X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
-  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capK=Object.fromEntries(NS_KS.map(k=>[k,num("cap"+k)]).filter(e=>e[1]!==""));X.capOv="";X.osCap=num("osCap");X.hcIn=[0,1,2].map(t=>num("hc"+t));X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.hoProf=$("hoProf").value;X.hoN=Math.max(2,Math.round(+$("hoN").value||3));X.late=+num("late")||0;X.hoRate=num("hoRate");X.gates=Math.max(1,Math.round(+$("gates").value||1));X.gMode=$("gMode").value;X.gMove=num("gMove");X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
+  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capK=Object.fromEntries(NS_KS.map(k=>[k,num("cap"+k)]).filter(e=>e[1]!==""));X.capOv="";X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.hoProf=$("hoProf").value;X.hoN=Math.max(2,Math.round(+$("hoN").value||3));X.late=+num("late")||0;X.hoRate=num("hoRate");X.gates=Math.max(1,Math.round(+$("gates").value||1));X.gMode=$("gMode").value;X.gMove=num("gMove");X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 /* TAB CẬP NHẬT (bản trình bày): tiến độ, lộ trình theo mốc ETA (vẽ đúng tỷ lệ ngày), việc tiếp theo; dải số "model dựa trên" lấy từ REF */
 function drawUpd(){const V=(vi,en)=>L?en:vi,d8=REF.dates||[],G=Object.values(REF.reg),C=(k,t)=>`<span class="chip ${k}">${t}</span>`;
@@ -587,9 +586,8 @@ function render(){
   drawChutes();
   $("banNote").textContent=banText(p.ban);
   /* số người: nhập thì mô phỏng chạy theo số nhập; số đề xuất (đủ khối việc + kịp COT) luôn hiện ngay dưới */
-  { const dtn=T("dt"),on=p.lab!=="pps";$("hcBox").hidden=!on;
+  { const dtn=T("dt"),on=p.lab!=="pps";
     const rc=d=>d.rec||{hc:d.hc,ok:d.worst>=p.slackMin&&!((d.roll||0)>0.5)&&!d.short,cap:p.osCap!=null&&d.hc>=p.osCap};
-    p.days.forEach(d=>{$("hc"+d.t).placeholder=d.X>0?String(rc(d).hc):"–";});
     const ds=p.days.filter(d=>d.X>0);let h="";
     if(on&&ds.length){h=(L?"Suggested to meet COT: ":"Đề xuất để kịp COT: ")+ds.map(d=>{const r=rc(d);return `${dtn[d.t]} ${r.hc}${r.ok?"":L?(r.cap?" (still late: staff cap reached)":" (still late: trucks/loading bays, more staff does not help)"):(r.cap?" (vẫn trễ: chạm số người cấp được)":" (vẫn trễ do xe/chỗ chất xe, thêm người không giúp)")}`;}).join(" · ")+(L?" people.":" người.");
       ds.filter(d=>d.rec).forEach(d=>{const r=d.rec,dif=d.hc-r.hc,late=(d.roll||0)>0.5,ok=!late&&d.worst>=p.slackMin,m=dif*p.pay*d.n,s=[];
@@ -598,7 +596,7 @@ function render(){
         if(dif>0&&r.ok)s.push(L?`${dif} more than suggested: Est. ${mn(m)}/month extra labour`:`dư ${dif} người so với đề xuất: Est. thêm ${mn(m)}/tháng tiền người`);
         if(dif<0&&r.ok&&!ok)s.push(L?`${-dif} more people meets COT`:`thêm ${-dif} người thì kịp COT`);
         h+=` ${dtn[d.t]} ${L?"with":"với"} ${d.hc}${L?"":" người"}: ${s.join("; ")}.`;});
-      if(!ds.some(d=>d.rec))h+=L?" Leave blank to use the suggestion.":" Để trống = dùng số đề xuất.";}
+      if(!ds.some(d=>d.rec))h+=L?" Type the real headcount in the first row to test it; blank = suggested.":" Gõ số người thực tế ở dòng đầu bảng để thử; để trống = theo đề xuất.";}
     $("hcNote").textContent=h; }
   $("rowTail").hidden=X.hoProf!=="end";$("rowHoN").hidden=X.hoProf!=="batch";$("rowGm").hidden=$("rowGmv").hidden=X.gates<=1;
   { const pkd=p.days.reduce((a,d)=>d.X>a.X?d:a,p.days[0]),wq=pkd&&pkd.W.length?pkd.W.reduce((a,w)=>w.Q>a.Q?w:a,pkd.W[0]):null,parts=[];
@@ -662,7 +660,8 @@ function render(){
     <tr><td>Chute</td>${D.map(d=>`<td class="n">${d.work.ch}${p.rsSh[d.t]>0?`<div class="meta">${L?"main SOC re-sorts":"SOC chính chia lại"} ${nf(p.rsSh[d.t]*100)}%</div>`:""}</td>`).join("")}</tr>
     <tr><td>${L?"Sorting":"Sort"}</td>${D.map(d=>`<td class="n" style="font-size:12px">${{none:T("sortNone"),small:T("sortSmall"),big:T("sortBig")}[d.work.sort].split(":")[0]}<div class="meta">${nf(d.work.prod)} ${L?"/person/day":"/người/ngày"}</div></td>`).join("")}</tr>
     ${D.some(d=>d.rs>0)?`<tr><td>${L?"Main SOC re-sorts":"SOC chính chia lại"}</td>${D.map(d=>`<td class="n">${d.rs>0?`${nf(d.rs)} ${T("ord")}<div class="meta">${nf(d.soc/1e3)}k</div>`:"–"}</td>`).join("")}</tr>`:""}
-    <tr><td>${T("peop")}</td>${D.map(d=>`<td class="n"><b>${d.hc}</b>${d.rec?`<div class="meta">${L?"entered":"nhập"} · ${L?"suggested":"đề xuất"} <b>${d.rec.hc}</b>${d.rec.ok?"":` (${L?"still late":"vẫn trễ"})`}</div>`:d.hc>d.hc0?`<div class="meta">+${d.hc-d.hc0} ${T("extra")}</div>`:""}</td>`).join("")}</tr>
+    ${p.lab==="pps"?`<tr><td>${T("peop")}</td>${D.map(d=>`<td class="n">–</td>`).join("")}</tr>`:`<tr><td><b>${L?"Actual staff":"Số người thực tế"}</b><div class="meta">${L?"type to test · blank = suggested":"gõ để thử · trống = theo đề xuất"}</div></td>${D.map(d=>`<td class="n"><input type="number" class="hcin" data-hc="${d.t}" min="0" step="1" value="${X.hcIn[d.t]}" placeholder="${d.rec?d.rec.hc:d.hc}" aria-label="${L?"Actual staff":"Số người thực tế"} ${dt[d.t]}"></td>`).join("")}</tr>
+    <tr><td>${L?"Suggested (meets COT)":"Đề xuất (kịp COT)"}</td>${D.map(d=>{const r=d.rec||{hc:d.hc,ok:d.worst>=p.slackMin&&!((d.roll||0)>0.5)&&!d.short};return `<td class="n"><b>${r.hc}</b>${r.ok?(r.hc>d.hc0?`<div class="meta">+${r.hc-d.hc0} ${T("extra")}</div>`:""):`<div class="meta" style="color:var(--warn)">${L?"still late (trucks/bays)":"vẫn trễ (do xe/chỗ chất)"}</div>`}</td>`;}).join("")}</tr>`}
     ${D.some(d=>d.rec)?`<tr><td>COT</td>${D.map(d=>`<td class="n">${(d.roll||0)>0.5?`<span class="chip late">${L?"rolls":"dồn"} ${nf(d.roll)}</span>`:d.worst<p.slackMin?`<span class="chip late">${T("lateT")} ${nf(-d.worst)}′</span>`:`<span class="chip ok">${L?"on time":"kịp"}</span>`}${d.rec&&d.rec.hc!==d.hc?`<div class="meta">${L?"with":"với"} ${d.rec.hc}: ${d.rec.ok?(L?"on time":"kịp"):(L?"still late":"vẫn trễ")}</div>`:""}</td>`).join("")}</tr>`:""}
     ${p.lab==="pps"?"":`<tr><td>${T("ord")}/${T("ppl")}</td>${D.map(d=>`<td class="n">${nf(d.X/Math.max(1,d.hc))}</td>`).join("")}</tr>`}
     <tr><td>${L?"Cost / day":"Tiền / ngày"}</td>${D.map(d=>`<td class="n">${nf(d.lab/1e3)}k${d.short?`<div class="meta" style="color:var(--bad)">${T("shortL")} ${d.short}</div>`:""}</td>`).join("")}</tr></tbody>`;
@@ -739,6 +738,9 @@ $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if
 $("cotday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("flday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
+/* số người thực tế gõ ngay trong bảng Kế hoạch người: chạy lại khi đổi xong (Enter / rời ô / mũi tên), giữ con trỏ ở ô đang đứng */
+$("ppl").addEventListener("change",e=>{const t=e.target.dataset&&e.target.dataset.hc;if(t==null)return;const v=e.target.value.trim();X.hcIn[+t]=v===""?"":Math.max(0,Math.round(+v||0))||"";
+  setTimeout(()=>{const a=document.activeElement,k=a&&a.dataset?a.dataset.hc:null;render();if(k!=null){const n=document.querySelector(`#ppl [data-hc="${k}"]`);if(n)n.focus();}},0);});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R")return;if(e.target.id==="preset"){if(e.target.value){applyPreset(e.target.value);drawForm();render();}else X.preset="";return;}if(X.preset){X.preset="";$("preset").value="";}read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
