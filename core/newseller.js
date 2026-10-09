@@ -285,7 +285,8 @@ function nsPlan(ref, x) {
       const p1 = pass(0); return p1.rollDay > 0 ? pass(p1.rollDay) : p1; };
     const hc0 = lab === "pps" ? 0 : Math.max(1, gates, Math.ceil(X * w - 1e-9)); let hc = hc0, s = sim(Math.max(1, hc));
     /* trễ (hoặc dư dưới mức yêu cầu) thì thêm từng người, chỉ giữ khi giờ xe rời thật sự sớm hơn (trễ do chỗ chất xe thì thêm người không giúp) */
-    if (lab !== "pps") while (s.worst < slackMin && hc < hc0 + P.maxExtra && (osCap == null || hc < osCap)) { const s2 = sim(hc + 1); if (s2.worst <= s.worst + 0.5) break; hc++; s = s2; }
+    /* hàng dồn vào khung ngắn cần nhiều người hơn mức tính theo cả ngày: thêm tới khi hết trễ hoặc không cải thiện, tối đa gấp 3 + maxExtra (và không quá số người cấp được) */
+    if (lab !== "pps") while (s.worst < slackMin && hc < Math.min(40, hc0 * 3 + P.maxExtra) && (osCap == null || hc < osCap)) { const s2 = sim(hc + 1); if (s2.worst <= s.worst + 0.5) break; hc++; s = s2; }
     W.forEach((v, j) => Object.assign(v, s.r[j]));
     const truck = W.reduce((a, v) => a + v.cost, 0) + s.rollC, labC = lab === "pps" ? X * P.ppsRate : hc * pay, fm = X * fmU;
     return { X, W, hc, hc0, short: osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0) + s.xr, xs: W.reduce((a, v) => a + v.xs, 0), xr: s.xr, rollC: s.rollC, roll: s.rollT, rollDay: s.rollDay, worst: s.worst, gm };
@@ -309,7 +310,7 @@ function nsPlan(ref, x) {
   const okD = d => !(d.X > 0) || (d.worst >= slackMin && !(d.roll > 0.5) && !d.short), whyD = d => d.roll > 0.5 ? "roll" : d.short ? "staff" : "late";
   /* mỗi loại ngày: tự hoà vốn từ ADO nào (v) và còn kịp COT tới ADO nào (cot.max; null = vẫn kịp tới 20.000) */
   const thrOf = t => { const D = grid.map(a => day(a, 0, t)), net = D.map(d => d.net), j0 = net.findIndex(v => v >= 0), jf = D.findIndex(d => !okD(d));
-    const cot = jf < 0 ? { max: null, why: null } : { max: jf ? grid[jf - 1] : 0, why: whyD(D[jf]) }; if (j0 < 0) return { v: null, bands: [], cot };
+    const cot = jf < 0 ? { max: null, why: null } : { max: jf ? grid[jf - 1] : 0, why: whyD(D[jf]), again: D.slice(jf + 1).some(okD) }; if (j0 < 0) return { v: null, bands: [], cot };
     const bands = []; let cur = null; for (let j = j0; j < grid.length && grid[j] <= 2 * grid[j0]; j++) { if (net[j] < 0) { if (!cur) bands.push(cur = [grid[j], grid[j]]); else cur[1] = grid[j]; } else cur = null; }
     return { v: grid[j0], bands, cot }; };
   const thrR = [0, 1, 2].map(thrOf), thrs = thrR.map(o => o.v), thr = thrs[0];
