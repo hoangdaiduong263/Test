@@ -239,11 +239,13 @@ function nsPlan(ref, x) {
           if (b <= a) return Qn; if (prof === "end" && tail > 0 && b - a > 60) { const m = b - 60; return t <= m ? Qn * (1 - tail) * (t - a) / (m - a) : Math.min(Qn, Qn * (1 - tail) + Qn * tail * (t - m) / 60); }
           return Math.min(Qn, Qn * (t - a) / (b - a)); };
         /* hàng về (As), đã sort (Ps) theo thời gian; người bắt đầu khi rảnh tay và đã tới giờ làm; hàng dồn đã sort sẵn sàng ngay */
-        const sb = Math.max(open, free), t0 = Math.min(a, sb), tE = Math.max(Lc, b) + 900, ts = [], Ps = [], As = []; let An = 0, Pq = cS, hoEnd = null, doneT = null;
+        /* chạy tới khi xử lý xong (ít người thì lâu): tối thiểu 15 giờ sau COT, tối đa 7 ngày — để "thêm người" luôn không làm trễ hơn */
+        const sb = Math.max(open, free), t0 = Math.min(a, sb), tE = Math.max(Lc, b) + Math.min(10080, Math.max(900, Math.ceil(Qt / Math.max(1e-9, Math.min(S, Rt))) * STEP + 120)), ts = [], Ps = [], As = []; let An = 0, Pq = cS, hoEnd = null, doneT = null;
         for (let t = t0; t <= tE; t += STEP) { An = Math.min(tgt(t), An + Rt); const A = cy + An; if (t >= sb) Pq = Math.min(A, Pq + S);
           ts.push(t); Ps.push(Pq); As.push(A); if (hoEnd == null && An >= Qn - 1e-6) hoEnd = t; if (doneT == null && Pq >= Qt - 1e-6) doneT = t; if (doneT != null && t >= Lc) break; }
         const Pat = t => { const i = Math.floor((t - ts[0]) / STEP); return i < 0 ? cS : Ps[Math.min(Ps.length - 1, i)]; };
-        const tAt = q => { for (let i = 0; i < Ps.length; i++) if (Ps[i] >= q - 1e-6) return ts[i]; return Infinity; };
+        /* giờ sớm nhất đã xử lý xong q đơn (Ps không giảm → tìm nhị phân) */
+        const tAt = q => { if (!Ps.length || Ps[Ps.length - 1] < q - 1e-6) return Infinity; let lo = 0, hi = Ps.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (Ps[m] >= q - 1e-6) hi = m; else lo = m + 1; } return ts[lo]; };
         /* làn xe: mỗi SOC một đội xe; mỗi cổng xe riêng thì mỗi cổng một làn; 1 xe đi vòng các cổng thì cộng giờ chuyển cổng vào thời gian chất */
         const lanes = []; v.legs.forEach(l => { const sh = v.Q > 0 ? l.Q / v.Q : 0, cpu = l.shared ? (l.t ? l.q / l.t : 0) : null;
           const tr = m => Object.entries(m || {}).flatMap(([k, n]) => Array.from({ length: n }, () => ({ k, cap: cpu != null ? cpu : cap[NS_KS.indexOf(k)] }))).sort((p2, q2) => q2.cap - p2.cap);
@@ -285,7 +287,7 @@ function nsPlan(ref, x) {
         const last = tt[tt.length - 1], kmSoc = ((socs.slice().sort((p2, q2) => q2.sh - p2.sh)[0]) || {}).km || 0;
         const socArr = last.dep + kmSoc / ref.dw.spd;
         worst = Math.min(worst, slack);
-        return { a, b, hoEnd, done, dep, dep1, slack, roll, carryIn: cy, cut, last: lastW ? 1 : 0, lateN: all.filter(z => z.late && z.load > 0.5).length, fillU: capU ? loaded / capU : 0, trk: used.map(z => ({ k: z.k, dep: z.dep, fill: z.cap ? z.load / z.cap : 0, cut: z.cut || 0, extra: z.extra })),
+        return { a, b, hoEnd, done, dep, dep1, slack, roll, carryIn: cy, cut, last: lastW ? 1 : 0, lateN: all.filter(z => z.late && z.load > 0.5).length, fillU: capU ? loaded / capU : 0, trk: used.map(z => ({ k: z.k, dep: z.dep, q: z.load, fill: z.cap ? z.load / z.cap : 0, cut: z.cut || 0, extra: z.extra })),
           curve, Qt, batch: 1, dw, tt, socArr, kmSoc, hvW, tour }; });
         return { r, worst, rollC, xr, rollT, rollDay: r.length ? r[r.length - 1].roll : 0 }; };
       const p1 = pass(0); return p1.rollDay > 0 ? pass(p1.rollDay) : p1; };
@@ -293,7 +295,8 @@ function nsPlan(ref, x) {
     /* trễ (hoặc dư dưới mức yêu cầu) thì thêm người tới khi kịp COT — KHÔNG giới hạn số người thêm, chỉ chặn bởi số người cấp được (nếu có nhập).
        Thêm bao nhiêu cũng không kịp hẳn (trễ do giờ bàn giao xong / xe / chỗ chất) thì lấy số ít nhất cho kết quả tốt nhất có thể. Tìm nhị phân giữa hc0 và mức trần */
     const lim = lab === "pps" ? 0 : Math.max(hc0, osCap != null ? osCap : NS_HCMAX);
-    if (lab !== "pps" && s.worst < slackMin && lim > hc) { const sB = sim(lim), goal = sB.worst >= slackMin ? slackMin : sB.worst - 0.5;
+    if (lab !== "pps" && s.worst < slackMin && lim > hc) {
+      const sB = sim(lim), goal = sB.worst >= slackMin ? slackMin : sB.worst - 0.5;
       if (sB.worst > s.worst + 0.5) { let lo = hc, hi = lim, sh = sB; while (hi - lo > 1) { const m = (lo + hi) >> 1, sm = sim(m); if (sm.worst >= goal) { hi = m; sh = sm; } else lo = m; } hc = hi; s = sh; } }
     /* nhập số người thực tế: số đề xuất (và kết quả với số đó) giữ lại để so; mọi kết quả còn lại chạy theo số nhập; ít hơn số theo khối việc (hc0) thì báo thiếu người (sim không giới hạn giờ làm mỗi người) */
     let rec = null; if (hf > 0 && lab !== "pps") { rec = { hc, worst: s.worst, roll: s.rollT, ok: s.worst >= slackMin && !(s.rollT > 0.5), cap: osCap != null && hc >= osCap }; if (hf !== hc) s = sim(hf); hc = hf; }
@@ -327,21 +330,24 @@ function nsPlan(ref, x) {
     const cot = jf < 0 ? { max: null, why: null } : { max: jf ? grid[jf - 1] : 0, why: whyD(D[jf]), again: D.slice(jf + 1).some(okD) }; if (j0 < 0) return { v: null, bands: [], cot };
     const bands = []; let cur = null; for (let j = j0; j < grid.length && grid[j] <= 2 * grid[j0]; j++) { if (net[j] < 0) { if (!cur) bands.push(cur = [grid[j], grid[j]]); else cur[1] = grid[j]; } else cur = null; }
     return { v: grid[j0], bands, cot }; };
-  const thrR = [0, 1, 2].map(thrOf), thrs = thrR.map(o => o.v), thr = thrs[0];
+  /* x.lite: chỉ tính kế hoạch các ngày đang nhập (nhanh, cho lúc đang gõ) — bỏ qua các phân tích quét nhiều mức ADO và ghép tuyến */
+  const lite = !!x.lite, thrR = lite ? [0, 1, 2].map(() => ({ v: null, bands: [], cot: { max: null, why: null } })) : [0, 1, 2].map(thrOf), thrs = thrR.map(o => o.v), thr = thrs[0];
   /* HOÀ VỐN THÁNG: nhân cả bộ ADO đang nhập (giữ tỷ lệ BAU / Mini CP / CP và số ngày mỗi loại) tới mức nhỏ nhất mà cả tháng không lỗ.
      Tìm thô theo ADO của loại ngày đầu có đơn (bước 100 tới 3.000, 250 tới 20.000), rồi tìm mịn (bước 10) trong khoảng vừa vượt; ghi dải lỗ lại tới 2× */
   const ado0 = x.ado.map(v => Math.max(0, +v || 0)), dn = x.ado.map((_, t) => +x.days[t] || 0), bi = ado0.findIndex((v, t) => v > 0 && dn[t] > 0);
-  const netM = a => ado0.reduce((s0, v, t) => { const X = Math.round(v * a / ado0[bi]); return dn[t] > 0 && X > 0 ? s0 + dn[t] * dayA(X, t).net : s0; }, 0);
-  const be = { ado: null, bands: [], base: bi };
-  if (bi >= 0) { const g = []; for (let a = 100; a <= 3000; a += 100) g.push(a); for (let a = 3250; a <= 20000; a += 250) g.push(a);
+  /* gốc để nhân cả bộ ADO = loại ngày có ADO lớn nhất (đang chạy): các loại khác ≤ gốc nên không vượt 20.000 khi quét (gốc nhỏ thì loại khác bị nhân lên hàng trăm nghìn) */
+  const bm = bi < 0 ? -1 : ado0.reduce((m, v, t) => dn[t] > 0 && v > 0 && v > ado0[m] ? t : m, bi);
+  const netM = a => ado0.reduce((s0, v, t) => { const X = Math.round(v * a / ado0[bm]); return dn[t] > 0 && X > 0 ? s0 + dn[t] * dayA(X, t).net : s0; }, 0);
+  const be = { ado: null, bands: [], base: bm };
+  if (bi >= 0 && !lite) { const g = []; for (let a = 100; a <= 3000; a += 100) g.push(a); for (let a = 3250; a <= 20000; a += 250) g.push(a);
     /* mỗi mức: lời/lỗ cả tháng và cả 3 loại ngày có kịp COT không → khung chạy được = [hoà vốn, còn kịp COT] */
-    const ev = g.map(a => { let n = 0, ok = true, why = null, wt = null; ado0.forEach((v, t) => { const X = Math.round(v * a / ado0[bi]); if (dn[t] > 0 && X > 0) { const d = dayA(X, t); n += dn[t] * d.net; if (ok && !okD(d)) { ok = false; why = whyD(d); wt = t; } } }); return { n, ok, why, wt }; });
+    const ev = g.map(a => { let n = 0, ok = true, why = null, wt = null; ado0.forEach((v, t) => { const X = Math.round(v * a / ado0[bm]); if (dn[t] > 0 && X > 0) { const d = dayA(X, t); n += dn[t] * d.net; if (ok && !okD(d)) { ok = false; why = whyD(d); wt = t; } } }); return { n, ok, why, wt }; });
     const nv = ev.map(e => e.n), j0 = nv.findIndex(v => v >= 0), jf = ev.findIndex(e => !e.ok);
-    be.cotMax = jf < 0 ? null : ado0.map(v => Math.round(v * (jf ? g[jf - 1] : 0) / ado0[bi])); be.cotWhy = jf < 0 ? null : { why: ev[jf].why, t: ev[jf].wt, at: ado0.map(v => Math.round(v * g[jf] / ado0[bi])) };
+    be.cotMax = jf < 0 ? null : ado0.map(v => Math.round(v * (jf ? g[jf - 1] : 0) / ado0[bm])); be.cotWhy = jf < 0 ? null : { why: ev[jf].why, t: ev[jf].wt, at: ado0.map(v => Math.round(v * g[jf] / ado0[bm])) };
     if (j0 >= 0) { let a0 = g[j0]; for (let a = (j0 ? g[j0 - 1] : 0) + 10; a < g[j0]; a += 10) if (netM(a) >= 0) { a0 = a; break; }
-      be.ado = ado0.map(v => Math.round(v * a0 / ado0[bi])); let cur = null;
+      be.ado = ado0.map(v => Math.round(v * a0 / ado0[bm])); let cur = null;
       /* dải lỗ lại quét mịn (bước 50, 20 khi ADO nhỏ) và luôn gồm đúng mức đang nhập — lưới thô 250 bỏ sót dải hẹp do nhảy bậc người/xe */
-      const st2 = a0 <= 1000 ? 20 : 50, gb = []; for (let a = Math.ceil((a0 + 1) / st2) * st2; a <= 2 * a0; a += st2) gb.push(a); if (ado0[bi] > a0 && ado0[bi] <= 2 * a0 && !gb.includes(ado0[bi])) gb.push(ado0[bi]); gb.sort((p2, q2) => p2 - q2);
+      const st2 = a0 <= 1000 ? 20 : 50, gb = []; for (let a = Math.ceil((a0 + 1) / st2) * st2; a <= 2 * a0; a += st2) gb.push(a); if (ado0[bm] > a0 && ado0[bm] <= 2 * a0 && !gb.includes(ado0[bm])) gb.push(ado0[bm]); gb.sort((p2, q2) => p2 - q2);
       gb.forEach(a => { if (netM(a) < 0) { if (!cur) be.bands.push(cur = [a, a]); else cur[1] = a; } else cur = null; }); } }
   /* không hoà vốn ở mức đơn nào: tiền xe tối thiểu mỗi đơn (giá ÷ sức chở, cỡ rẻ nhất mỗi đơn, theo SOC) + tiền người + chia lại ≥ FM pickup.
      Cần sức chở gấp f lần mới có thể hoà vốn → quy ra số đơn tối thiểu một xe 1T9 */
@@ -350,7 +356,7 @@ function nsPlan(ref, x) {
     be.floor = { truck: trO, lab: labO, soc: socO, fm: fmU, ok: room > 0 && trO < room }; }
   /* SỨC CHỞ HOÀ VỐN: ở đúng ADO đang nhập, xe 1T9 phải chở tối thiểu bao nhiêu đơn thì cả tháng không lỗ (đổi mọi cỡ xe cùng tỷ lệ, như ô seller báo).
      Chia đôi trên hệ số sức chở 0,2–8×; trên 8× coi như không đạt (tiền người / chia lại đã cao hơn FM pickup) */
-  if (bi >= 0) { const c0 = cap.slice(), netAt = f => { for (let j = 0; j < cap.length; j++) cap[j] = c0[j] * f; memoOff = true; try { return netM(ado0[bi]); } finally { memoOff = false; for (let j = 0; j < cap.length; j++) cap[j] = c0[j]; } };
+  if (bi >= 0 && !lite) { const c0 = cap.slice(), netAt = f => { for (let j = 0; j < cap.length; j++) cap[j] = c0[j] * f; memoOff = true; try { return netM(ado0[bm]); } finally { memoOff = false; for (let j = 0; j < cap.length; j++) cap[j] = c0[j]; } };
     if (netAt(8) < 0) be.cap1T9 = null; else { let lo = 0.2, hi = 8; if (netAt(lo) >= 0) hi = lo; else for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (netAt(mid) >= 0) hi = mid; else lo = mid; }
       be.cap1T9 = Math.ceil(c0[2] * hi / 10) * 10; } }
   /* số chuyến tối thiểu mỗi ngày (mỗi lượt có hàng × mỗi SOC đích của TO ≥ 1 xe): ở ADO thấp đây là lý do chở bao nhiêu cũng lỗ */
@@ -359,8 +365,8 @@ function nsPlan(ref, x) {
      → tuyến có điểm cách ≤ 30 km, chung SOC, chung lượt COT. Tiền xe: seller mới đi riêng + tuyến đang chạy so với một đội xe chở cả tuyến và seller mới
      (mỗi seller chiếm chỗ theo sức chở của mình, cộng đ/km đi vòng). Điểm có sẵn: đơn/ngày = trung vị đơn của điểm (mọi loại ngày), phần đơn mỗi lượt và SOC theo chuyến thật.
      Kịp COT (ngày BAU): lịch xe chung như phần Lịch chạy */
-  const mrg = { need: !llOk, list: [] };
-  if (!mrg.need) {
+  const mrg = { need: !llOk, list: [], pending: lite };
+  if (!mrg.need && !lite) {
     const mySoc = Object.fromEntries(socs.map(o => [o.s, o.sh / shS])), runT = days.filter(d => d.X > 0 && d.n > 0), bau = days.find(d => d.t === 0 && d.X > 0) || runT[0];
     rts.forEach(r => { const ps = r.ps.filter(q => q.ll).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
       const km = ps[0].km; if (km > 30) return;
@@ -388,6 +394,6 @@ function nsPlan(ref, x) {
   /* lời cả tháng + kịp COT + đủ người là điều kiện cứng; có loại ngày lỗ hoặc dễ trễ khi seller giao trễ → vẫn chạy nhưng cần theo dõi (cond) */
   const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay ? "go" : "cond") : "no";
   const lossDays = run.filter(d => d.net < 0).map(d => ({ t: d.t, X: d.X, net: d.net, thr: thrs[d.t] }));
-  return { ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
+  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };
