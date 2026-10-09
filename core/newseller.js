@@ -120,7 +120,14 @@ function nsPlan(ref, x) {
     if (pool.length < 3) { pool = ref.sel.slice().sort((a, b) => Math.abs(a.b - beta) - Math.abs(b.b - beta)).slice(0, 5); how = { k: "near", n: pool.length }; } }
   const cap = NS_KS.map((k, j) => nsMed(pool.map(s => s.c[j])) || 0); for (let j = 1; j < cap.length; j++) cap[j] = Math.max(cap[j], cap[j - 1]);
   /* seller tự báo một xe 1T9 chở bao nhiêu đơn: quy mọi cỡ theo cùng tỷ lệ (giữ tỷ lệ giữa các cỡ đã học) */
-  const capLearn = cap.slice(); if (+x.capOv > 0 && cap[2] > 0) { const f = +x.capOv / cap[2]; for (let j = 0; j < cap.length; j++) cap[j] *= f; how.ov = Math.round(+x.capOv); }
+  /* SELLER BÁO SỨC CHỞ theo từng cỡ (x.capK = { VAN, 1T25, 1T9, 5T, 8T }, đơn/xe; x.capOv cũ = 1T9): cỡ được nhập dùng đúng số;
+     cỡ để trống suy từ cỡ đã nhập gần nhất theo tỷ lệ học được (nằm giữa hai cỡ đã nhập thì nội suy theo hệ số); vẫn giữ cỡ lớn không chở ít hơn cỡ nhỏ */
+  const capLearn = cap.slice(), ovK = NS_KS.map(k => { const v = x.capK && +x.capK[k] > 0 ? +x.capK[k] : k === "1T9" && +x.capOv > 0 ? +x.capOv : null; return v; });
+  if (ovK.some(v => v)) { const f = cap.map((c, j) => ovK[j] && c > 0 ? ovK[j] / c : null), ix = f.map((v, j) => v != null ? j : -1).filter(j => j >= 0);
+    for (let j = 0; j < cap.length; j++) { if (ovK[j]) { cap[j] = ovK[j]; continue; } const lo = ix.filter(i => i < j).pop(), hi = ix.find(i => i > j);
+      const fj = lo == null ? (hi == null ? 1 : f[hi]) : hi == null ? f[lo] : Math.pow(f[lo], (hi - j) / (hi - lo)) * Math.pow(f[hi], (j - lo) / (hi - lo)); cap[j] *= fj; }
+    how.ov = Object.fromEntries(NS_KS.map((k, j) => [k, ovK[j]]).filter(e => e[1])); how.ovBad = [];
+    for (let j = 1; j < cap.length; j++) if (cap[j] < cap[j - 1]) { if (ovK[j]) how.ovBad.push(NS_KS[j]); cap[j] = cap[j - 1]; } }
   const mi = Math.max(0, NS_KS.indexOf(x.maxK)), ksAt = (km, wk) => NS_KS.slice(0, mi + 1).map((k, j) => ({ k, q: cap[j], p: G.price[k][kmI(km)] })).filter(v => v.q > 0 && (wk == null || hvOk[wk] || !HV.has(v.k)));
   /* 2. đội xe rẻ nhất chở Q đơn: n xe loại chính + 1 xe vừa phần lẻ (như Core), không quá 100% sức chở học được */
   const fleet = (Q, km, wk) => { if (Q <= 0) return { t: 0, c: 0, mix: {}, q: 0 }; let best = null; const ks = ksAt(km, wk);
@@ -347,6 +354,6 @@ function nsPlan(ref, x) {
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
   const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
   const verdict = chk.profit && chk.thr && chk.cot && chk.people ? (chk.delay ? "go" : "cond") : "no";
-  return { ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), be, mrg, picked: partners.map(q => q.n) };
+  return { ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };

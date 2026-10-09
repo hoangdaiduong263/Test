@@ -59,6 +59,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .kpi .v{font:600 22px var(--f-num);letter-spacing:-.02em}
 .kpi .s{font-size:12px;color:var(--ink2)}
 .kpi.hero{background:var(--navy-soft)}
+.capk{grid-template-columns:repeat(5,minmax(0,1fr))}.capk input{padding:5px 3px;font-size:12px;-moz-appearance:textfield;appearance:textfield}.capk input::-webkit-inner-spin-button,.capk input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .flow figure{margin:0;display:grid;gap:4px;min-width:0}
 .flow figcaption{font-size:12px;color:var(--ink2)}.flow figcaption b{color:var(--ink);font-weight:600}
@@ -236,7 +237,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       <div class="grp">
         <h3><b data-t="g3"></b></h3>
         <div class="row adv"><label for="like" data-t="like"></label><select id="like"></select></div>
-        <div class="row"><label for="capOv" data-t="capOvL"></label><input type="number" id="capOv" min="0" step="50"></div>
+        <p class="lab2" style="font-size:12px;margin:0;color:var(--ink2)" data-t="capKL"></p><div class="trio capk" id="capK"></div>
         <p class="hint" id="howtxt"></p>
       </div>
       <div class="grp">
@@ -317,7 +318,7 @@ const TX={
  mOe:{solo:["luật OE: chạy riêng","OE rule: runs alone"],hub:["luật OE: giữ tuyến ghé hub","OE rule: hub route kept"],sup:["luật OE: khác Sup","OE rule: other Sup"]},
  mH:[["Tuyến · cách · lượt chung","Sup · FM Hub","Est. lợi / tháng","COT","Đề xuất"],["Route · distance · shared waves","Sup · FM Hub","Est. gain / month","COT","Suggestion"]],
  tailL:["% đơn dồn vào 60′ cuối khung","% orders in last 60′ of window"], dwFixL:["Xe đứng: phút cố định","Truck dwell: fixed min"], dwRateL:["phút / 100 đơn","min / 100 orders"],
- capOvL:["Seller báo: đơn / xe 1T9","Seller says: orders / 1T9"], labL:["Người tại điểm","Staff on site"], labF:["FTE riêng · 520k/ngày","Own FTE · 520k/day"], labH:["Nhóm FM Hub · 350k/ngày","FM Hub team · 350k/day"], labP:["Rider PPS · 700 đ/đơn","Rider PPS · 700 VND/order"],
+ capOvL:["Seller báo: đơn / xe 1T9","Seller says: orders / 1T9"], capKL:["Seller báo: đơn / xe (để trống = theo seller giống)","Seller says: orders / truck (blank = similar sellers)"], capBad:s=>[`Seller báo ${s} chở ít hơn cỡ nhỏ hơn: đang lấy bằng cỡ nhỏ hơn, cần kiểm tra lại`,`${s} reported below a smaller size: using the smaller size’s figure, please re-check`], sellerSays:["seller báo","seller says"], labL:["Người tại điểm","Staff on site"], labF:["FTE riêng · 520k/ngày","Own FTE · 520k/day"], labH:["Nhóm FM Hub · 350k/ngày","FM Hub team · 350k/day"], labP:["Rider PPS · 700 đ/đơn","Rider PPS · 700 VND/order"],
  osCapL:["Số người tối đa cấp được","Max staff available"], slackL:["Dư COT tối thiểu (phút)","Min COT slack (min)"], delayL:["Thử seller giao trễ (phút)","Test seller delay (min)"],
  areaL:["Chỗ tập kết (m²)","Staging area (m²)"], densL:["Mật độ (đơn/m²)","Density (orders/m²)"], blankHint:["Ô để trống = dùng số Core Planner đã học hoặc chưa tính. Điền số thật khi có.","Blank = use what Core Planner learned, or not modelled. Fill real values when known."],
  vdL:["Kết luận cho Ops","Recommendation for Ops"], vdGo:["Nên chạy D2S","Run D2S"], vdCond:["Chạy được, có điều kiện","Run D2S with conditions"], vdNo:["Chưa nên chạy D2S","Do not run D2S yet"],
@@ -372,14 +373,14 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
 
 /* hồ sơ ví dụ */
-const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:"",ban:"auto",tab:MODE==="walk"?"upd":"plan",preset:"",adv:false,chutes:null,cuDay:0,cuSame:true,cuSel:null,tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
+const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",capK:{},ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:"",ban:"auto",tab:MODE==="walk"?"upd":"plan",preset:"",adv:false,chutes:null,cuDay:0,cuSame:true,cuSel:null,tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 /* VÍ DỤ CÓ SẴN (để demo; số là ví dụ, không phải seller thật) */
 const PRESETS=[
   {id:"big",vi:"Seller lớn · South · đi 3 SOC",en:"Large seller · South · 3 SOCs",R:"South",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",ado:[4000,6400,10000],beta:35},
   {id:"small",vi:"Seller nhỏ · HCM · 600 đơn/ngày",en:"Small seller · HCMC · 600 orders/day",R:"HCM",ll:"10.87, 106.58",hub:"50-HCM Hoc Mon Hub",sup:"Nguyễn Thị Phượng Liên",ado:[600,900,1500],beta:20,soc:{"BD A Mega SOC":100}},
   {id:"mcl",vi:"Seller lớn gần kho MCL Bình Tân · cấm tải",en:"Large seller next to MCL Binh Tan · truck ban",R:"HCM",ll:"10.8195, 106.6145",hub:"51-HCM Binh Tan/Binh Hung Hoa B Hub",sup:"Phan Văn Trưng",ado:[6000,9000,15000],beta:40,soc:{"BD A Mega SOC":80,"BD B Mega SOC":20}}];
 function applyPreset(id){const q=PRESETS.find(x=>x.id===id);X.preset=id;if(!q)return;
-  Object.assign(X,{R:q.R,ll:q.ll,hub:q.hub,sup:q.sup,ado:q.ado.slice(),days:[25,4,1],beta:q.beta,like:"",pick:[],chutes:null,ch:null,tail:0,dwFix:"",dwRate:"",capOv:"",osCap:"",slackMin:0,delay:20,area:"",dens:"",lab:"fte",ban:"auto",maxK:"8T",bays:4,hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:""});
+  Object.assign(X,{R:q.R,ll:q.ll,hub:q.hub,sup:q.sup,ado:q.ado.slice(),days:[25,4,1],beta:q.beta,like:"",pick:[],chutes:null,ch:null,tail:0,dwFix:"",dwRate:"",capOv:"",capK:{},osCap:"",slackMin:0,delay:20,area:"",dens:"",lab:"fte",ban:"auto",maxK:"8T",bays:4,hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:""});
   X.socs=null;fillRegion(false);if(q.soc){X.socs.forEach(o=>{o.sh=q.soc[o.s]||0;});const c=X.socs.filter(o=>o.sh>=5).length;X.ch=[c,c,c];X.chutes=null;fillRegion(true);}}
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
@@ -412,7 +413,8 @@ function drawForm(){
   $("gMode").innerHTML=["auto","tour","each"].map(k=>`<option value="${k}"${X.gMode===k?" selected":""}>${TX.gModes[k][L]}</option>`).join("");
   $("hoN").value=X.hoN;$("late").value=X.late;$("hoRate").value=X.hoRate;$("hoRate").placeholder="∞";$("gates").value=X.gates;$("gMove").value=X.gMove;$("gMove").placeholder=String(NS_GATE.move);
   $("tail").value=X.tail;$("dwFix").value=X.dwFix;$("dwRate").value=X.dwRate;$("dwFix").placeholder=nf(REF.dw.fix,1);$("dwRate").placeholder=nf(REF.dw.rate*100,1);
-  $("capOv").value=X.capOv;$("osCap").value=X.osCap;$("slackMin").value=X.slackMin;$("delay").value=X.delay;$("area").value=X.area;$("dens").value=X.dens;
+  $("capK").innerHTML=NS_KS.map(k=>`<label for="cap${k}">${k}<input type="number" id="cap${k}" min="0" step="10" value="${X.capK[k]??""}"></label>`).join("");
+$("osCap").value=X.osCap;$("slackMin").value=X.slackMin;$("delay").value=X.delay;$("area").value=X.area;$("dens").value=X.dens;
   $("lab").innerHTML=[["fte",T("labF")],["hub",T("labH")],["pps",T("labP")]].map(([k,l])=>`<option value="${k}"${X.lab===k?" selected":""}>${l}</option>`).join("");
   $("ban").innerHTML=[["auto",T("banAuto")],["off",T("banOff")]].map(([k,l])=>`<option value="${k}"${X.ban===k?" selected":""}>${l}</option>`).join("");
   $("cotlist").textContent=TX.cotL(X.R,G.cots.map(c=>(c.a>-1e8?hm(c.a)+"–":"→ ")+hm(c.b)+" ⇒ "+hm(c.p)).join(" · "))[L];
@@ -454,7 +456,7 @@ function read(){
   X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
-  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.hoProf=$("hoProf").value;X.hoN=Math.max(2,Math.round(+$("hoN").value||3));X.late=+num("late")||0;X.hoRate=num("hoRate");X.gates=Math.max(1,Math.round(+$("gates").value||1));X.gMode=$("gMode").value;X.gMove=num("gMove");X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
+  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capK=Object.fromEntries(NS_KS.map(k=>[k,num("cap"+k)]).filter(e=>e[1]!==""));X.capOv="";X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.hoProf=$("hoProf").value;X.hoN=Math.max(2,Math.round(+$("hoN").value||3));X.late=+num("late")||0;X.hoRate=num("hoRate");X.gates=Math.max(1,Math.round(+$("gates").value||1));X.gMode=$("gMode").value;X.gMove=num("gMove");X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 /* TAB CẬP NHẬT (bản trình bày): tiến độ, lộ trình theo mốc ETA (vẽ đúng tỷ lệ ngày), việc tiếp theo; dải số "model dựa trên" lấy từ REF */
 function drawUpd(){const V=(vi,en)=>L?en:vi,d8=REF.dates||[],G=Object.values(REF.reg),C=(k,t)=>`<span class="chip ${k}">${t}</span>`;
@@ -512,7 +514,7 @@ function drawAsm(p){const G=REF.reg[X.R],P=REF.P,dw=REF.dw,fm=REF.fm,V=(vi,en)=>
     R("FM Hub → Sup",`${n((G.hs||[]).length)} ${V("hub","hubs")}`,V("Sheet Network Address, tab Mng treemap (cột Month = 12)","Network Address sheet, Mng treemap tab (Month column = 12)"))])));
   out.push(sec(V("Xe và giá","Trucks and prices"),"",tb(H3,[
     R(V("Cỡ xe","Truck sizes"),NS_KS.join(" · ")+` (${V("tối đa đang chọn","max selected")}: ${esc(X.maxK)})`,V("Như Core Planner","Same as Core Planner")),
-    R(V("Sức chở mỗi cỡ","Capacity per size"),p.cap.filter(c=>c.on).map(c=>`${c.k} ${n(c.q)}`).join(" · ")+` ${V("đơn","orders")}`,V("Trung vị seller giống: cùng vùng, % hàng to ±10 điểm (≥ 3 seller), thiếu thì toàn quốc; cỡ lớn không chở ít hơn cỡ nhỏ; ghi đè được bằng số 1T9 seller báo","Median of similar sellers: same region, bulky ±10 pts (≥ 3 sellers), else nationwide; bigger never carries less; can be overridden by the seller's 1T9 figure")),
+    R(V("Sức chở mỗi cỡ","Capacity per size"),p.cap.filter(c=>c.on).map(c=>`${c.k} ${n(c.q)}`).join(" · ")+` ${V("đơn","orders")}`,V("Trung vị seller giống: cùng vùng, % hàng to ±10 điểm (≥ 3 seller), thiếu thì toàn quốc; cỡ lớn không chở ít hơn cỡ nhỏ; ghi đè được bằng số seller báo cho từng cỡ (cỡ để trống suy từ cỡ đã nhập gần nhất)","Median of similar sellers: same region, bulky ±10 pts (≥ 3 sellers), else nationwide; bigger never carries less; can be overridden per size by the seller's figures (blank sizes follow the nearest entered size)")),
     R(V("Giá thuê chuyến","Trip price"),price,V(`Bảng giá nhà xe vùng ${X.R}, theo km tới SOC (bậc 5 km)`,`Carrier rate card of ${X.R}, by km to SOC (5-km steps)`)),
     R(V("Đi vòng thêm 1 km","Each extra detour km"),pkm,V("Chênh giá giữa 2 bậc km","Price step between km bands")),
     R(V("Đội xe mỗi lượt","Fleet per wave"),V("n xe cỡ chính + 1 xe vừa phần lẻ, chọn tổ hợp rẻ nhất; mỗi SOC đích của TO một đội xe","n main trucks + 1 right-sized truck for the remainder, cheapest mix; one fleet per TO destination"),V("Như Core Planner (đúng 97–99% số chuyến khi kiểm trên chuyến thật)","Same as Core Planner (97–99% of trips matched on real data)")),
@@ -538,7 +540,7 @@ function drawAsm(p){const G=REF.reg[X.R],P=REF.P,dw=REF.dw,fm=REF.fm,V=(vi,en)=>
     R(V("Chuyển hàng giữa SOC","SOC-to-SOC transfer"),V("Không tính vào D2S","Not charged to D2S"),V("Khoản chi phí mới chưa duyệt","New cost item not yet approved"))])));
   out.push(sec(V("So với FM pickup","Against FM pickup"),"",tb(H3,[
     R(V("Đơn giá FM pickup","FM pickup unit cost"),V(`Rider ${n(fm.rS)} + hub ${n(fm.hS)} đ/đơn; hàng to rider ×${nf(fm.rM,1)}, hub ×${nf(fm.hM,1)} → seller này ${n(p.fmU)} đ/đơn`,`Rider ${n(fm.rS)} + hub ${n(fm.hS)} VND/order; bulky rider ×${nf(fm.rM,1)}, hub ×${nf(fm.hM,1)} → this seller ${n(p.fmU)} VND/order`),V("Giả định của Seller Planner","Seller Planner assumption")),
-    R(V("Ngưỡng hoà vốn tháng","Monthly break-even"),V("Nhân cả bộ ADO đang nhập (giữ tỷ lệ BAU / Mini CP / CP và số ngày) tới mức nhỏ nhất mà cả tháng không lỗ; ghi dải lỗ lại tới 2×. Thêm: ở ADO đang nhập, xe 1T9 phải chở tối thiểu bao nhiêu đơn để hoà vốn","Scale the entered ADO set (same BAU / Mini CP / CP mix and days) to the smallest level where the month does not lose; loss bands up to 2×. Also: at the entered ADO, the minimum orders per 1T9 to break even"),V("Không có mức nào: giải thích bằng số chuyến tối thiểu (lượt × SOC đích) hoặc tiền xe tối thiểu mỗi đơn","When none exists: explained by minimum trips (waves × destinations) or minimum truck cost per order")),
+    R(V("Ngưỡng hoà vốn tháng","Monthly break-even"),V("Nhân cả bộ ADO đang nhập (giữ tỷ lệ BAU / Mini CP / CP và số ngày) tới mức nhỏ nhất mà cả tháng không lỗ; ghi dải lỗ lại tới 2×. Thêm: ở ADO đang nhập, xe 1T9 phải chở tối thiểu bao nhiêu đơn để hoà vốn (các cỡ khác đổi cùng tỷ lệ)","Scale the entered ADO set (same BAU / Mini CP / CP mix and days) to the smallest level where the month does not lose; loss bands up to 2×. Also: at the entered ADO, the minimum orders per 1T9 to break even"),V("Không có mức nào: giải thích bằng số chuyến tối thiểu (lượt × SOC đích) hoặc tiền xe tối thiểu mỗi đơn","When none exists: explained by minimum trips (waves × destinations) or minimum truck cost per order")),
     R(V("Kết luận cho Ops","Recommendation"),V("Nên chạy: lời cả tháng, mỗi loại ngày đều lời, kịp COT với mức dư yêu cầu, đủ người. Có điều kiện: như trên nhưng seller giao trễ thì trễ COT","Run: profitable over the month, every day type profitable, meets COT with slack, enough staff. Conditional: as above but a seller delay breaks COT"),"Est. = "+V("ước tính trước khi chạy thật","estimate before a live run"))])));
   out.push(sec(V("Ghép điểm","Merging pickups"),"",tb(H3,[
     R(V("Ứng viên","Candidates"),V("Tuyến theo kế hoạch Core có điểm cách ≤ 30 km, chung SOC và lượt; vào chung cả tuyến, không tách điểm","Core-plan routes with a stop within 30 km, sharing a SOC and wave; join the whole route"),V("Như Core","As Core")),
@@ -573,7 +575,7 @@ function banText(b){const W=a=>(a||[]).map(([x,y])=>hm(x)+"–"+hm(y)).join(", "
   if(X.R==="HN"||X.R==="HCM")return L?`Outside the inner-city zone (${nf(b.kc,1)} km from centre) → no limit.`:`Ngoài vùng nội đô (cách trung tâm ${nf(b.kc,1)} km) → không ràng buộc.`;
   return L?"No time-based truck ban seen in this region's trip data → no limit.":"Chuyến xe thật của vùng không cho thấy cấm tải theo giờ → không ràng buộc.";}
 function render(){
-  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,chutes:X.chutes,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,ban:X.ban,hoProf:X.hoProf,hoN:X.hoN,late:X.late,hoRate:X.hoRate,gates:X.gates,gMode:X.gMode,gMove:X.gMove,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
+  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,chutes:X.chutes,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:"",capK:X.capK,lab:X.lab,ban:X.ban,hoProf:X.hoProf,hoN:X.hoN,late:X.late,hoRate:X.hoRate,gates:X.gates,gMode:X.gMode,gMove:X.gMove,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
   /* gán chute: SOC × loại ngày; SOC chính luôn có chute; SOC không chute → túi chung trong chute SOC chính, đi xe SOC chính, SOC chính chia lại */
   drawChutes();
   $("banNote").textContent=banText(p.ban);
@@ -598,7 +600,7 @@ function render(){
       if(parts.length)why.push(parts.join("; "));}
     if(p.picked.length)why.push((L?"planned with shared trucks: ":"đang tính chạy chung xe với ")+p.picked.map(short).join(", "));
     const bm=(p.mrg.list||[]).find(o=>o.st==="go"&&!X.pick.includes(o.n));if(bm&&!p.picked.length)why.push((L?"can share trucks with ":"có thể ghép xe với ")+bm.mem.map(short).join(" + ")+" (Est. +"+mn(bm.save)+(L?"/month)":"/tháng)"));
-    const ask=[];if(X.hoProf==="even"&&!X.hoRate&&X.gates<=1)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));if(p.ban.m==="unk")ask.push(T("askBan"));
+    const ask=[];if(X.hoProf==="even"&&!X.hoRate&&X.gates<=1)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(!Object.keys(X.capK).length)ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));if(p.ban.m==="unk")ask.push(T("askBan"));
     $("vd").className="panel vdp "+p.verdict;
     $("vd").innerHTML=`<div class="vd-h"><span class="l">${T("vdL")}</span><span class="t">${T(p.verdict==="go"?"vdGo":p.verdict==="cond"?"vdCond":"vdNo")}</span><p>${why.length?esc(why.join(" · ")):(L?"All checks pass on the inputs below.":"Mọi điều kiện đạt với hồ sơ đang nhập.")}</p></div>
       <ul class="chk">${ck(p.ok.profit,T("ckProfit"))}${ck(p.ok.thr,T("ckThr"))}${ck(p.ok.cot,T("ckCot"))}${ck(p.ok.people,T("ckPpl"))}${p.dly?ck(p.ok.delay,TX.ckDelay(p.dly)[L]):""}</ul>
@@ -669,9 +671,10 @@ function render(){
   $("bars").innerHTML=D.map(d=>{const t=d.truck/d.X,l=d.lab/d.X,so=d.soc/d.X,s=p.fmU-t-l-so;return `<div class="bar"><span>${dt[d.t]}</span><div class="track" role="img" aria-label="${dt[d.t]}: ${nf(t+l+so)} ${T("per")}"><div class="t" style="width:${t/mx*100}%"></div><div class="p" style="width:${l/mx*100}%"></div><div class="so" style="width:${so/mx*100}%"></div><span class="fm" style="left:${p.fmU/mx*100}%"></span></div><span class="n" style="font-family:var(--f-num);text-align:right">${nf(t+l+so)} <span class="${s>=0?"pos":"neg"}" style="font-size:11px">${s>=0?"−":"+"}${nf(Math.abs(s))}</span></span></div>`;}).join("");
   /* sức chở */
   const how=p.how.k==="like"?TX.howLike(short(p.how.name))[L]:p.how.k==="reg"?TX.howReg(p.how.n)[L]:p.how.k==="all"?TX.howAll(p.how.n)[L]:TX.howNear(p.how.n)[L];
-  $("howtxt").textContent=how;$("o5s").textContent=T("o5s")+" "+how;
+  NS_KS.forEach((k,j)=>{const el=$("cap"+k);if(el)el.placeholder=p.cap[j]?nf(p.cap[j].q0):"";});
+  $("howtxt").textContent=how+(p.how.ovBad&&p.how.ovBad.length?" "+TX.capBad(p.how.ovBad.join(", "))[L]:"");$("o5s").textContent=T("o5s")+" "+how;
   const used=new Set();D.forEach(d=>d.W.forEach(w=>Object.keys(w.mix).forEach(k=>used.add(k))));
-  $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}${c.q0!==c.q?`<div class="meta">${T("learned")} ${nf(c.q0)}</div>`:""}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
+  $("cap").innerHTML=`<thead><tr><th>${T("cap")}</th><th class="n">${T("capq")}</th><th class="n">${T("price")}</th><th></th></tr></thead><tbody>${p.cap.map(c=>`<tr class="${c.on?"":"off"}"><td><span class="truck">${c.k}</span></td><td class="n">${nf(c.q)}${c.q0!==c.q?`<div class="meta">${c.ov?T("sellerSays")+" · ":""}${T("learned")} ${nf(c.q0)}</div>`:""}</td><td class="n">${nf(c.p)}</td><td class="conf">${!c.on?T("notAllowed"):used.has(c.k)?T("used"):""}</td></tr>`).join("")}</tbody>`;
   $("foot").innerHTML=TX.foot[L].map(s=>`<span>${esc(s)}</span>`).join("");
 }
 $("chs").addEventListener("click",e=>{const d=e.target.closest("[data-cud]");if(d){X.cuDay=+d.dataset.cud;render();return;}
