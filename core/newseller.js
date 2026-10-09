@@ -194,7 +194,15 @@ function nsPlan(ref, x) {
   const rtsC = (G.rts0 || []).map((m, j) => ({ id: "c" + j, now: 1, cur: 1, ps: m.map(i => G.pts[i]) }));
   /* x.self: đang mô hình một seller có sẵn như seller mới → không ghép với chính nó (tuyến của nó còn lại các điểm khác) */
   const notSelf = q => !x.self || q.n !== x.self;
-  const partners = llOk ? rts.concat(rtsC).filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.filter(notSelf).map(q => Object.assign({}, q, { rt: r.id }))).filter(q => q.ll).map(q => Object.assign(q, { km: hav(x.ll, q.ll) })).filter((q, j, A) => A.findIndex(z => z.n === q.n) === j).sort((a, b) => a.km - b.km) : [];
+  /* x.pick: "r12" = chạy chung cả tuyến (mọi lượt, mọi loại ngày); "r12@0:1" = chỉ lượt 1 của loại ngày 0 (gom cho một khung COT cụ thể).
+     Mỗi điểm một bản ghi; w = các cặp "loại ngày:lượt" được chung (null = mọi lượt) */
+  const pickL = (x.pick || []).map(p => { const m = /^([rc]\d+)(?:@(\d+):(\d+))?$/.exec(String(p)); return m ? { id: m[1], t: m[2] == null ? null : +m[2], k: m[3] == null ? null : +m[3] } : null; }).filter(Boolean);
+  const partners = llOk ? (() => { const by = {};
+    rts.concat(rtsC).forEach(r => { const pp = pickL.filter(o => o.id === r.id); if (!pp.length) return; const all = pp.some(o => o.t == null);
+      r.ps.filter(q => q.ll && notSelf(q)).forEach(q => { const e = by[q.n] || (by[q.n] = Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll), w: new Set() }));
+        if (all) e.w = null; else if (e.w) pp.forEach(o => e.w.add(o.t + ":" + o.k)); }); });
+    return Object.values(by).sort((a, b) => a.km - b.km); })() : [];
+  const okW = (pj, t, k) => !pj.w || pj.w.has(t + ":" + k);
   /* LUẬT CẤM TẢI cho seller mới (x.ban: "auto" | "off"): theo điểm D2S gần nhất trong NS_BAN.near km có luật; HN ngoài đó thì theo vùng; HCM trong vùng nội đô mà không có điểm gần → chưa đủ dữ liệu */
   const ban = (() => { const bz = NS_BAN[x.R]; if (x.ban === "off") return { m: "off" }; if (!llOk || !bz) return { m: llOk ? "free" : "noll" };
     const near = G.pts.filter(q => q.ll && q.ban).map(q => ({ q, km: nsKm(x.ll, q.ll) })).filter(o => o.km <= NS_BAN.near).sort((a, b) => a.km - b.km);
@@ -227,7 +235,7 @@ function nsPlan(ref, x) {
     const rs = X * rsSh[tD], socC = rs > 0 ? rs / workOf(st).prod * P.ftePay : 0;
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q, tD, k, prt.length ? "tour" : gm), mix = {};
       if (prt.length) legs.forEach(l => { const z = l.s[0], kmS = (socs.find(o => o.s === z) || {}).km || 0;
-        const ps = prt.map(pj => ({ pj, q: pj.ado * (pj.sh[k] || 0) * (pj.soc[z] || 0) })).filter(o => o.q > 0.5); if (!ps.length || !(l.Q > 0)) return;
+        const ps = prt.map(pj => ({ pj, q: okW(pj, tD, k) ? pj.ado * (pj.sh[k] || 0) * (pj.soc[z] || 0) : 0 })).filter(o => o.q > 0.5); if (!ps.length || !(l.Q > 0)) return;
         const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k), al = aloneX(ps, kmS, k), alone = al.c;
         Object.assign(l, { c: Math.max(0, m.c - alone), tAlone: al.t, uAlone: al.u, t: m.t, mix: m.mix, q: m.t ? l.Q * m.t / Math.max(1e-9, m.U) : l.q, shared: ps.map(o => ({ n: o.pj.n, q: o.q, pj: o.pj })), fillAll: m.t ? m.U / m.t : 0 }); });
       /* chỗ tập kết không đủ chứa cả lượt: số xe ít nhất = ⌈đơn ÷ chỗ tập kết⌉ (xe phải lấy nhiều đợt); thêm xe cỡ nhỏ nhất đủ chở phần chia */
@@ -399,7 +407,9 @@ function nsPlan(ref, x) {
             const own = va.legs.filter(l => sh2.some(z => z.s[0] === l.s[0])), q0 = own.reduce((s0, l) => s0 + l.q, 0), Q0 = own.reduce((s0, l) => s0 + l.Q, 0), tO = own.reduce((s0, l) => s0 + l.t, 0);
             const tP = sh2.reduce((s0, l) => s0 + (l.tAlone || 0), 0), uP = sh2.reduce((s0, l) => s0 + (l.uAlone || 0), 0), fO = q0 ? Q0 / q0 : 0, t1 = sh2.reduce((s0, l) => s0 + l.t, 0);
             return { k: vb.k, p: cots[vb.k].p, socs: sh2.map(l => l.s[0]), add: sh2.reduce((s0, l) => s0 + l.shared.reduce((s1, z) => s1 + z.q, 0), 0), fO, fP: tP ? uP / tP : 0, f0: tO + tP ? (fO * tO + uP) / (tO + tP) : 0,
-              f1: t1 ? sh2.reduce((s0, l) => s0 + l.fillAll * l.t, 0) / t1 : 0, t0: tO + tP, t1 }; }).filter(Boolean); } }
+              f1: t1 ? sh2.reduce((s0, l) => s0 + l.fillAll * l.t, 0) / t1 : 0, t0: tO + tP, t1,
+              /* chỉ chung đúng lượt này của ngày BAU: Est. lợi / tháng (số ngày BAU × tiền xe lượt này đi riêng − phần tăng khi đi chung) và phút dư COT của lượt */
+              save: (bau.n || 0) * ((va.cost || 0) - (vb.cost || 0)), slack: isFinite(vb.slack) ? Math.round(vb.slack) || 0 : null }; }).filter(Boolean); } }
       mrg.list.push(o); });
     mrg.list.forEach(o => { o.st = !o.socs.length || !o.waves.length ? "na" : o.oeNo ? "oe" : o.slack != null && o.slack < slackMin ? "late" : o.save <= 0 ? "nogain" : !o.supOk ? "check" : "go"; });
     mrg.day = bau ? bau.t : null;
