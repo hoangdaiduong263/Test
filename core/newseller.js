@@ -381,7 +381,8 @@ function nsPlan(ref, x) {
   const mrg = { need: !llOk, list: [], pending: lite };
   if (!mrg.need && !lite) {
     const mySoc = Object.fromEntries(socs.map(o => [o.s, o.sh / shS])), runT = days.filter(d => d.X > 0 && d.n > 0), bau = days.find(d => d.t === 0 && d.X > 0) || runT[0];
-    const inP = new Set(partners.map(q => q.n));
+    /* chỉ bỏ các điểm đang đi chung sẵn với seller đang chạy (nhóm c…); tuyến người dùng tick vẫn nằm trong danh sách để bỏ tick được */
+    const inP = new Set(rtsC.filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.map(q => q.n)));
     rts.forEach(r => { const ps = r.ps.filter(q => q.ll && notSelf(q) && !inP.has(q.n)).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
       const km = ps[0].km; if (km > 30) return;
       const cs = Object.keys(mySoc).filter(z => ps.some(q => q.soc[z] > 0)), ws = cots.map((_, k) => k).filter(k => sh[k] > 0 && ps.some(q => q.sh[k] > 0));
@@ -392,7 +393,7 @@ function nsPlan(ref, x) {
       /* Est. lợi và COT: chạy lại đúng kế hoạch như khi tick tuyến này (cùng số xe, lịch chạy) — tiền xe seller mới đi riêng − tiền xe phần thêm khi đi chung, cả tháng; COT = mức dư nhỏ nhất ngày BAU */
       if (cs.length && ws.length && runT.length) { let yB = null, aB = null;
         runT.forEach(d => { const a = day(d.X, 0, d.t, [], null, hcIn[d.t]), b = day(d.X, 0, d.t, ps, null, hcIn[d.t]); o.save += d.n * (a.truck - b.truck); if (d === bau) { yB = b; aB = a; } });
-        if (bau) { const y = yB || day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]), a = aB || day(bau.X, 0, bau.t, [], null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) : null;
+        if (bau) { const y = yB || day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]), a = aB || day(bau.X, 0, bau.t, [], null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) || 0 : null;
           /* GOM THÊM cho xe vơi (ngày BAU), mỗi lượt chung: đơn tuyến này gom thêm; độ đầy xe seller mới (chặng chung SOC), xe tuyến đó đang chạy riêng, và xe chở chung; số xe trước (cả hai bên) → sau */
           o.fw = y.W.map(vb => { const sh2 = vb.legs.filter(l => l.shared && l.t), va = a.W.find(v => v.k === vb.k); if (!sh2.length || !va) return null;
             const own = va.legs.filter(l => sh2.some(z => z.s[0] === l.s[0])), q0 = own.reduce((s0, l) => s0 + l.q, 0), Q0 = own.reduce((s0, l) => s0 + l.Q, 0), tO = own.reduce((s0, l) => s0 + l.t, 0);

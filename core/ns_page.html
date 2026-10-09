@@ -51,6 +51,7 @@ input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .stale{opacity:.45;transition:opacity .2s}
 .sortb{font:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}.sortb[aria-pressed="true"]{color:var(--ink)}
 .curt td{vertical-align:top}
+.ttl{font-size:12px;line-height:1.6;margin:2px 0}.ttl .stop{white-space:nowrap}.linkb{font:inherit;font-size:12px;background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
 .savebar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.savebar button[disabled]{opacity:.5;cursor:default}
 .busy{position:fixed;right:16px;bottom:16px;z-index:20;background:var(--panel);color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .fillsug{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.fillsug h3{font-size:14px;margin:0 0 4px}.fillsug .wl{font-size:12px;line-height:1.5}.fillsug .wl b{font-family:var(--f-num)}
@@ -827,7 +828,7 @@ function drawAll(p){
     $("o8s").textContent=T("o8s");$("ttday").innerHTML=dts.map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===X.ttd}">${dt[d.t]}</button>`).join("");
     const D0=p.days.find(d=>d.t===X.ttd),H=T("ttH");
     $("tt").innerHTML=(D0?D0.W:[]).map(w=>`<div style="min-width:0;overflow-x:auto"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:6px"><b class="cot">${L?"Wave":"Lượt"} ${hm(w.c.p)}</b><span class="meta">${nf(w.Q)} ${T("ord")} · ${w.t} ${L?"trucks":"xe"}: ${Object.entries(w.mix).map(([k,n])=>n+"×"+k).join(" + ")}${w.shared&&w.shared.length?` · ${L?"shared with":"chung xe với"} ${w.shared.map(n=>esc(short(n))).join(", ")}`:""}</span></div>
-      <div class="tw"><table><thead><tr>${H.map((h,j)=>`<th${j>1?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${(w.tt||[]).map((z,j)=>`<tr${z.me?' style="background:var(--navy-soft)"':""}><td>${j+1}</td><td>${z.me?`<b>${T("ttMe")}</b>`:esc(short(z.n))}</td><td class="n">${nf(z.q)}</td><td class="n">${hm(z.rd)}</td><td class="n">${hm(z.arr)}</td><td class="n">${nf(z.dw)}′</td><td class="n"><b>${hm(z.dep)}</b></td><td class="n">${hm(z.dl)}</td><td class="n">${z.dl-z.dep<0?`<span class="chip late">${T("lateT")} ${nf(z.dep-z.dl)}′</span>`:`<span class="chip ${z.dl-z.dep<20?"mid":"ok"}">${nf(z.dl-z.dep)}′</span>`}</td></tr>`).join("")}
+      <div class="tw"><table><thead><tr>${H.map((h,j)=>`<th${j>1?' class="n"':""}>${h}</th>`).join("")}</tr></thead><tbody>${(w.tt||[]).map((z,j)=>`<tr${z.me?' style="background:var(--navy-soft)"':""}><td>${j+1}</td><td>${z.me?`<b>${X.self?esc(short(X.self)):T("ttMe")}</b>`:esc(short(z.n))}</td><td class="n">${nf(z.q)}</td><td class="n">${hm(z.rd)}</td><td class="n">${hm(z.arr)}</td><td class="n">${nf(z.dw)}′</td><td class="n"><b>${hm(z.dep)}</b></td><td class="n">${hm(z.dl)}</td><td class="n">${z.dl-z.dep<0?`<span class="chip late">${T("lateT")} ${nf(z.dep-z.dl)}′</span>`:`<span class="chip ${z.dl-z.dep<20?"mid":"ok"}">${nf(z.dl-z.dep)}′</span>`}</td></tr>`).join("")}
       <tr><td></td><td class="meta">${T("ttSoc")} · ${nf(w.kmSoc)} km</td><td></td><td></td><td class="n">${hm(w.socArr)}</td><td></td><td></td><td></td><td></td></tr></tbody></table></div></div>`).join(""); }
   }
   /* ghép với điểm đang chạy */
@@ -846,20 +847,26 @@ function drawAll(p){
     else{const lowK=new Set(low.map(w=>w.k)),sn2=z=>esc(z.replace(/ (Mega )?SOC$/,""));
       const head=`<h3>${L?"Fill part-empty trucks":"Gom thêm đơn cho xe vơi"} · ${L?"":"ngày "}${dn}</h3><p class="meta" style="margin:0 0 8px">${low.map(w=>`${L?"Wave":"Lượt"} ${hm(w.c.p)}: ${(w.trk||[]).length||w.t} ${L?"trucks":"xe"}, ${L?"fill":"đầy"} ${nf(flOf(w)*100)}%`).join(" · ")}. ${L?"Nearby D2S routes (≤ 30 km, same SOC and wave) whose orders can ride in the spare room; only routes that keep COT and save money.":"Tuyến D2S gần (≤ 30 km, chung SOC và lượt) có thể gom đơn lên chỗ trống; chỉ hiện tuyến vẫn kịp COT và có lời."}</p>`;
       if(M.need){box.innerHTML=head+`<p class="hint">${T("mNeed")}</p>`;}
-      else{const cand=M.list.filter(o=>(o.st==="go"||o.st==="check"||X.pick.includes(o.n))&&o.save>0&&(o.fw||[]).some(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5)).slice(0,5);
+      else{const fills=e=>e.f1>e.f0+0.01||e.t1<e.t0,cand=M.list.filter(o=>(o.st==="go"||o.st==="check"||X.pick.includes(o.n))&&o.save>0&&(o.fw||[]).some(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5&&fills(e))).slice(0,5);
         /* các tuyến chung SOC + lượt vơi nhưng không đề xuất: đếm theo lý do */
-        const rej=M.list.filter(o=>!cand.includes(o)&&(o.fw||[]).some(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5)),why={};
+        const rej=M.list.filter(o=>!cand.includes(o)&&(o.fw||[]).some(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5&&fills(e))),why={};
         rej.forEach(o=>{const k=o.st==="oe"?"oe_"+o.oeNo:o.st==="late"?"late":"nogain";why[k]=(why[k]||0)+1;});
         const whyL={oe_sup:L?"other Sup (OE rule)":"khác Sup (luật OE)",oe_hub:L?"hub route kept (OE rule)":"giữ tuyến ghé hub (luật OE)",late:L?"would miss COT":"đi chung sẽ trễ COT",nogain:L?"no saving":"không lời"};
         const rejTxt=rej.length?(L?`Checked ${rej.length} more route(s) on the same SOC and wave: `:`Đã xét thêm ${rej.length} tuyến chung SOC và lượt nhưng loại: `)+Object.entries(why).map(([k,n])=>`${n} ${whyL[k]}`).join(", ")+".":"";
         const covered=new Set(cand.flatMap(o=>o.fw.filter(e=>lowK.has(e.k)).flatMap(e=>e.socs.map(z=>e.k+"|"+z))));
         const thin=low.flatMap(w=>w.legs.filter(l=>l.Q>0.5&&!covered.has(w.k+"|"+l.s[0])&&(l.q?l.Q/l.q:1)<LOW).map(l=>`${sn2(l.s[0])} ${hm(w.c.p)} (${nf(l.Q)} ${T("ord")})`));
-        const rows=cand.map((o,j)=>{const es=o.fw.filter(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5),on=X.pick.includes(o.n);
+        /* tuyến đã tick: lịch chạy ngay bên dưới (thứ tự xe ghé, giờ tới, chất, rời, hạn), cùng số với mục Lịch chạy */
+        const meN=X.self?esc(short(X.self)):T("ttMe");
+        const ttOf=o=>{const ws=td.W.filter(w=>(w.shared||[]).some(n=>o.mem.includes(n))&&(w.tt||[]).length>1);if(!ws.length)return `<span class="meta">${L?"No shared wave on this day.":"Ngày này không có lượt đi chung."}</span>`;
+          return ws.map(w=>`<div class="ttl"><b class="cot">${hm(w.c.p)}</b> <span class="meta">${Object.entries(w.mix).map(([k2,n2])=>n2+"×"+k2).join(" + ")}</span> ${w.tt.map((z,i)=>{const sl=z.dl-z.dep;return `${i?"→ ":""}<span class="stop"><b>${z.me?meN:esc(short(z.n))}</b> <span class="meta">${L?"arr":"tới"} ${hm(z.arr)} · ${L?"load":"chất"} ${nf(z.dw)}′ · ${L?"leaves":"rời"} <b>${hm(z.dep)}</b>${sl<0?` <span class="chip late">${T("lateT")} ${nf(-sl)}′</span>`:""}</span></span>`;}).join(" ")} → <span class="stop">SOC <span class="meta">${hm(w.socArr)}</span></span></div>`).join("")
+            +`<button type="button" class="linkb" data-goto="tt">${L?"Full timetable ↓":"Xem lịch chạy đầy đủ ↓"}</button>`;};
+        const rows=cand.map((o,j)=>{const es=o.fw.filter(e=>lowK.has(e.k)&&e.fO<LOW&&e.add>0.5&&fills(e)),on=X.pick.includes(o.n);
           return `<tr${on?' style="background:var(--good-soft)"':""}><td><input type="checkbox" data-pick="${esc(o.n)}" aria-label="${L?"Share trucks with":"Gom chung xe với"} ${esc(o.mem.map(short).join(" + "))}"${on?" checked":""}></td>
             <td><b style="font-weight:600">${o.mem.map(q=>esc(short(q))).join(" + ")}</b><div class="meta">${nf(o.km,1)} km · <span class="chip ${o.mem.length>1?"mid":"ok"}">${o.mem.length>1?TX.rtShare(o.mem.length)[L]:T("rtSolo")}</span></div></td>
             <td class="wl">${es.map(e=>`<div><b>${hm(e.p)}</b> ${e.socs.map(sn2).join(", ")}: +<b>${nf(e.add)}</b> ${T("ord")} · ${L?"your trucks":"xe bạn"} ${nf(e.fO*100)}%, ${L?"theirs":"xe tuyến đó"} ${nf(e.fP*100)}% → ${L?"shared":"xe chung"} <b>${nf(e.f1*100)}%</b> · ${e.t0} → <b>${e.t1}</b> ${L?"trucks":"xe"}</div>`).join("")}</td>
             <td class="n">Est. +${mn(o.save)}<div class="meta">${L?"/month, whole route":"/tháng, cả tuyến"}</div></td>
-            <td>${o.slack==null?"–":(o.slack<0?`<span class="chip late">${T("lateT")} ${nf(-o.slack)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(o.slack)}′</span>`)}<div class="meta">${o.supOk?(L?"same Sup":"cùng Sup"):(L?"Sup to confirm":"cần Sup xác nhận")}</div></td></tr>`;}).join("");
+            <td>${o.slack==null?"–":(o.slack<0?`<span class="chip late">${T("lateT")} ${nf(-o.slack)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(o.slack)}′</span>`)}<div class="meta">${o.supOk?(L?"same Sup":"cùng Sup"):(L?"Sup to confirm":"cần Sup xác nhận")}</div></td></tr>`
+            +(on?`<tr style="background:var(--good-soft)"><td></td><td colspan="4"><div class="meta" style="font-weight:600;margin-bottom:2px">${L?`Run plan (${dn} day)`:`Lịch chạy (ngày ${dn})`}</div>${ttOf(o)}</td></tr>`:"");}).join("");
         box.innerHTML=head+(cand.length?`<div class="tw"><table><thead><tr><th>${L?"Use":"Tính"}</th><th>${L?"Route to collect":"Tuyến gom"}</th><th>${L?"Wave · SOC: added orders, fill, trucks":"Lượt · SOC: đơn gom thêm, độ đầy, số xe"}</th><th class="n">${L?"Saving":"Tiết kiệm"}</th><th>COT · Sup</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<p class="hint">${L?"No nearby route on the same SOC and wave keeps COT and saves money.":"Không có tuyến nào gần, chung SOC và lượt mà vẫn kịp COT và có lời."}</p>`)
           +(rejTxt?`<p class="hint">${rejTxt}</p>`:"")
           +(thin.length?`<p class="hint">${L?`Thin legs with no route to collect: ${thin.join(", ")}. Option: send these SOCs' TOs via the main SOC in the Chute board (re-sort cost is added).`:`Chặng ít đơn chưa có tuyến gom: ${thin.join(", ")}. Có thể gửi TO các SOC này qua SOC chính ở bảng Chute (tính thêm phí chia lại).`}</p>`:"")
@@ -905,6 +912,7 @@ $("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");i
 /* số người thực tế gõ ngay trong bảng Kế hoạch người: chạy lại khi đổi xong (Enter / rời ô / mũi tên), giữ con trỏ ở ô đang đứng */
 $("ppl").addEventListener("change",e=>{const t=e.target.dataset&&e.target.dataset.hc;if(t==null)return;const v=e.target.value.trim();X.hcIn[+t]=v===""?"":Math.max(0,Math.round(+v||0))||"";
   setTimeout(()=>{const a=document.activeElement,k=a&&a.dataset?a.dataset.hc:null;render();if(k!=null){const n=document.querySelector(`#ppl [data-hc="${k}"]`);if(n)n.focus();}},0);});
+$("fillSug").addEventListener("click",e=>{const g=e.target.closest("[data-goto]");if(g){const t=$(g.dataset.goto);if(t)(t.closest("section")||t).scrollIntoView({behavior:"smooth",block:"start"});}});
 $("fillSug").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
