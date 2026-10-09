@@ -268,7 +268,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
       <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div><div id="gcmp"></div></section>
       <div class="two">
         <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div><p class="hint" id="hcNote" style="margin:8px 0 0"></p></section>
-        <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="lang" role="group" id="cotday" style="width:max-content;margin-bottom:10px"></div><div class="tw"><table id="cot"></table></div></section>
+        <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="lang" role="group" id="cotday" style="width:max-content;margin-bottom:10px"></div><div class="tw"><table id="cot"></table></div><p class="hint" id="cotNote" style="margin:8px 0 0"></p></section>
       </div>
       <section class="panel sec"><h2><span data-t="oFlow"></span></h2><p class="sub" data-t="oFlowS"></p><div class="lang" role="group" id="flday" style="width:max-content;margin-bottom:10px"></div><div id="flow" class="flow"></div>
         <div class="legend" style="margin-top:8px"><span style="--c:var(--accent)" data-t="lgHo"></span><span style="--c:var(--navy)" data-t="lgDone"></span><span style="--c:var(--good)" data-t="lgTrk"></span><span style="--c:var(--bad)" data-t="lgCot"></span></div></section>
@@ -452,6 +452,10 @@ function drawChutes(){const dtn=T("dt"),CL=X.chutes[X.cuDay],shOf=n=>(X.socs.fin
      <div class="chips">${c.socs.length?c.socs.map(n=>`<span class="chip2${X.cuSel===n?" sel":""}" draggable="true" tabindex="0" role="button" data-soc="${esc(n)}" title="${esc(n)}">${esc(sn(n))} · ${nf(shOf(n))}%</span>`).join(""):`<span class="ph">${T("cuDrop")}</span>`}</div>
      <label class="eff" style="display:grid;gap:2px">${T("cuTo")}<select data-cuto="${i}">${X.socs.map(o=>`<option value="${esc(o.s)}"${o.s===c.to?" selected":""}>${esc(o.s)}</option>`).join("")}</select></label>
      <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`+(X.cuMsg?`<p class="hint" role="status" style="margin:0;color:var(--ink)">${esc(X.cuMsg)}</p>`:"");}
+/* % đơn mỗi lượt luôn cộng 100: sửa một lượt thì các lượt còn lại chia phần còn lại theo tỷ lệ cũ (2 lượt: lượt kia = 100 − x) */
+function shBal(el){const m=/^sh(\d+)$/.exec(el.id||"");if(!m||el.value.trim()==="")return;const n=REF.reg[X.R].cots.length,k=+m[1];if(+el.value>100)el.value=100;
+  const v=Math.max(0,+el.value||0),oth=[...Array(n).keys()].filter(j=>j!==k),old=oth.map(j=>Math.max(0,+$("sh"+j).value||0)),sum=old.reduce((a,b)=>a+b,0),rest=100-v;if(!oth.length)return;
+  const nv=oth.map((j,i)=>Math.round(sum>0?rest*old[i]/sum:rest/oth.length)),fix=rest-nv.reduce((a,b)=>a+b,0),bi=nv.indexOf(Math.max(...nv));nv[bi]+=fix;oth.forEach((j,i)=>{$("sh"+j).value=Math.max(0,nv[i]);});}
 function read(){
   const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);});
   X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
@@ -692,6 +696,10 @@ function render(){
   const CD=p.days.find(d=>d.t===X.ttd&&d.X>0)||pk,LT=p.late&&CD.t===pk.t;
   $("cotday").innerHTML=p.days.filter(d=>d.X>0).map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===CD.t}">${dt[d.t]}</button>`).join("");
   $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th class="n">${T("rollH")}</th><th>${T("slack")} · ${dt[CD.t]}</th>${LT?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(CD.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${w.hoEnd!=null?hm(w.hoEnd):"–"}${w.carryIn>0.5?`<div class="meta">+${nf(w.carryIn)} ${T("carryL")}</div>`:""}</td><td class="n">${hm(w.done)}</td><td class="n">${w.dep1!=null&&w.dep-w.dep1>2?hm(w.dep1)+"–":""}${hm(w.dep)}${w.cut?`<div class="meta" style="color:var(--warn)">${TX.cutL(w.cut)[L]}</div>`:""}</td><td class="n">${w.roll>0.5?`<span class="chip late">${nf(w.roll)}</span>`:"0"}</td><td>${chip(w.slack)}</td>${LT&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}${p.late.W[j].roll>0.5?`<div class="meta">${T("rollH")} ${nf(p.late.W[j].roll)}</div>`:""}</td>`:LT?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
+  /* model tự thêm người để kịp COT → đổi khung / % bàn giao hiện ở số người và phút dư; nhập số người thực tế mới thấy trễ / dồn với số người cố định */
+  { const dn=dt[CD.t];$("cotNote").textContent=p.lab==="pps"?"":CD.rec?(L?`Running on the entered ${CD.hc} people (${dn}); suggested ${CD.rec.hc}.`:`Đang chạy theo ${CD.hc} người nhập (${dn}); đề xuất ${CD.rec.hc} người.`)
+      :(L?`Staff are added automatically to meet COT: ${dn} ${CD.hc} people${CD.hc>CD.hc0?` (+${CD.hc-CD.hc0} because orders bunch into a short window)`:""}. Changing the handover window or wave % shows up in staff and spare minutes; to see lateness/rollover with a fixed headcount, type it in “Actual staff” (table 2).`
+        :`Model đang tự thêm người cho kịp COT: ${dn} ${CD.hc} người${CD.hc>CD.hc0?` (+${CD.hc-CD.hc0} vì hàng dồn vào khung ngắn)`:""}. Đổi khung / % bàn giao sẽ thấy ở số người và phút dư; muốn thấy trễ / dồn hàng với số người cố định, nhập ở dòng “Số người thực tế” (bảng 2).`); }
   /* lịch chạy đề xuất theo loại ngày */
   { const dts=p.days.filter(d=>d.X>0);if(X.ttd==null||!dts.some(d=>d.t===X.ttd))X.ttd=(dts.reduce((a,d)=>d.X>a.X?d:a,dts[0]||{t:0})).t;
     $("o8s").textContent=T("o8s");$("ttday").innerHTML=dts.map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===X.ttd}">${dt[d.t]}</button>`).join("");
@@ -743,8 +751,8 @@ $("ppl").addEventListener("change",e=>{const t=e.target.dataset&&e.target.datase
   setTimeout(()=>{const a=document.activeElement,k=a&&a.dataset?a.dataset.hc:null;render();if(k!=null){const n=document.querySelector(`#ppl [data-hc="${k}"]`);if(n)n.focus();}},0);});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
-$("f").addEventListener("input",e=>{if(e.target.id==="R")return;if(e.target.id==="preset"){if(e.target.value){applyPreset(e.target.value);drawForm();render();}else X.preset="";return;}if(X.preset){X.preset="";$("preset").value="";}read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
-$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.preset="";X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;fillRegion(false);drawForm();render();});
+$("f").addEventListener("input",e=>{if(e.target.id==="R")return;if(e.target.id==="preset"){if(e.target.value){applyPreset(e.target.value);drawForm();render();}else X.preset="";return;}if(X.preset){X.preset="";$("preset").value="";}shBal(e.target);read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
+$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.preset="";X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;X.hcIn=["","",""];fillRegion(false);drawForm();render();});
 document.querySelectorAll("header .lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
 drawForm();render();
 })();
