@@ -197,7 +197,8 @@ function nsPlan(ref, x) {
   const chainKm = ps => { let d = 0, prev = x.ll; ps.forEach(q => { d += hav(prev, q.ll); prev = q.ll; }); return d; };
   const chainP = ps => { let d = 0; ps.forEach((q, j) => { if (j) d += hav(ps[j - 1].ll, q.ll); }); return d; };
   /* tiền xe các tuyến đó đang chạy (không có seller mới): mỗi tuyến một đội xe, km đi vòng giữa các điểm của tuyến */
-  const aloneOf = (ps, kmS, wk) => { const g = {}; ps.forEach(o => (g[o.pj.rt] = g[o.pj.rt] || []).push(o)); return Object.values(g).reduce((a, L) => a + fleetU(L.map(o => ({ q: o.q, c: o.pj.c })), kmS, chainP(L.map(o => o.pj)), wk), 0); };
+  const aloneX = (ps, kmS, wk) => { const g = {}; ps.forEach(o => (g[o.pj.rt] = g[o.pj.rt] || []).push(o)); return Object.values(g).reduce((a, L) => { const f = fleetUx(L.map(o => ({ q: o.q, c: o.pj.c })), kmS, chainP(L.map(o => o.pj)), wk); return { c: a.c + f.c, t: a.t + f.t, u: a.u + (f.U || 0) }; }, { c: 0, t: 0, u: 0 }); };
+  const aloneOf = (ps, kmS, wk) => aloneX(ps, kmS, wk).c;
   /* lịch xe chung: điểm sẵn hàng trước lấy trước; tính ngược từ điểm cuối (như Core) để xe tới điểm sau vừa lúc hàng sẵn, không tới sớm rồi nằm chờ */
   const chainRun = stops => { stops.sort((a, b) => a.rd - b.rd);
     const dzs = stops.map(z => dwFix + dwRate * z.q), trs = stops.map((z, j) => j ? hav(stops[j - 1].ll, z.ll) / ref.dw.spd : 0), LD = [];
@@ -214,8 +215,8 @@ function nsPlan(ref, x) {
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q, tD, k, prt.length ? "tour" : gm), mix = {};
       if (prt.length) legs.forEach(l => { const z = l.s[0], kmS = (socs.find(o => o.s === z) || {}).km || 0;
         const ps = prt.map(pj => ({ pj, q: pj.ado * (pj.sh[k] || 0) * (pj.soc[z] || 0) })).filter(o => o.q > 0.5); if (!ps.length || !(l.Q > 0)) return;
-        const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k), alone = aloneOf(ps, kmS, k);
-        Object.assign(l, { c: Math.max(0, m.c - alone), t: m.t, mix: m.mix, q: m.t ? l.Q * m.t / Math.max(1e-9, m.U) : l.q, shared: ps.map(o => ({ n: o.pj.n, q: o.q, pj: o.pj })), fillAll: m.t ? m.U / m.t : 0 }); });
+        const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k), al = aloneX(ps, kmS, k), alone = al.c;
+        Object.assign(l, { c: Math.max(0, m.c - alone), tAlone: al.t, uAlone: al.u, t: m.t, mix: m.mix, q: m.t ? l.Q * m.t / Math.max(1e-9, m.U) : l.q, shared: ps.map(o => ({ n: o.pj.n, q: o.q, pj: o.pj })), fillAll: m.t ? m.U / m.t : 0 }); });
       /* chỗ tập kết không đủ chứa cả lượt: số xe ít nhất = ⌈đơn ÷ chỗ tập kết⌉ (xe phải lấy nhiều đợt); thêm xe cỡ nhỏ nhất đủ chở phần chia */
       let xs = 0; if (stage && legs.length) { const need = Math.ceil(Q / stage - 1e-9), t0 = legs.reduce((a, l) => a + l.t, 0);
         if (need > t0) { const L = legs.slice().sort((a, b) => b.Q - a.Q)[0], km = (socs.find(o => o.s === L.s[0]) || {}).km || 0, v = ksAt(km, k).find(u => u.q >= Q / need) || ksAt(km, k).slice(-1)[0];
@@ -368,11 +369,18 @@ function nsPlan(ref, x) {
       const oeNo = ps.some(q => q.solo) ? "solo" : ps.some(q => q.lock) ? "hub" : G.oe && x.sup && ps.some(q => q.sup && q.sup !== x.sup) ? "sup" : null;
       const o = { n: r.id, mem: ps.map(q => q.n), now: r.now, km: +km.toFixed(1), sup: ps[0].sup, hub: ps[0].hub, supOk: !!x.sup && ps.every(q => q.sup === x.sup), hubOk: !!x.hub && ps.some(q => q.hub === x.hub), oeNo, socs: cs, waves: ws.map(k => cots[k].p), ado: ps.reduce((a, q) => a + q.ado, 0), save: 0, slack: null };
       /* Est. lợi và COT: chạy lại đúng kế hoạch như khi tick tuyến này (cùng số xe, lịch chạy) — tiền xe seller mới đi riêng − tiền xe phần thêm khi đi chung, cả tháng; COT = mức dư nhỏ nhất ngày BAU */
-      if (cs.length && ws.length && runT.length) {
-        runT.forEach(d => { o.save += d.n * (day(d.X, 0, d.t, [], null, hcIn[d.t]).truck - day(d.X, 0, d.t, ps, null, hcIn[d.t]).truck); });
-        if (bau) { const y = day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) : null; } }
+      if (cs.length && ws.length && runT.length) { let yB = null, aB = null;
+        runT.forEach(d => { const a = day(d.X, 0, d.t, [], null, hcIn[d.t]), b = day(d.X, 0, d.t, ps, null, hcIn[d.t]); o.save += d.n * (a.truck - b.truck); if (d === bau) { yB = b; aB = a; } });
+        if (bau) { const y = yB || day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]), a = aB || day(bau.X, 0, bau.t, [], null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) : null;
+          /* GOM THÊM cho xe vơi (ngày BAU), mỗi lượt chung: đơn tuyến này gom thêm; độ đầy xe seller mới (chặng chung SOC), xe tuyến đó đang chạy riêng, và xe chở chung; số xe trước (cả hai bên) → sau */
+          o.fw = y.W.map(vb => { const sh2 = vb.legs.filter(l => l.shared && l.t), va = a.W.find(v => v.k === vb.k); if (!sh2.length || !va) return null;
+            const own = va.legs.filter(l => sh2.some(z => z.s[0] === l.s[0])), q0 = own.reduce((s0, l) => s0 + l.q, 0), Q0 = own.reduce((s0, l) => s0 + l.Q, 0), tO = own.reduce((s0, l) => s0 + l.t, 0);
+            const tP = sh2.reduce((s0, l) => s0 + (l.tAlone || 0), 0), uP = sh2.reduce((s0, l) => s0 + (l.uAlone || 0), 0), fO = q0 ? Q0 / q0 : 0, t1 = sh2.reduce((s0, l) => s0 + l.t, 0);
+            return { k: vb.k, p: cots[vb.k].p, socs: sh2.map(l => l.s[0]), add: sh2.reduce((s0, l) => s0 + l.shared.reduce((s1, z) => s1 + z.q, 0), 0), fO, fP: tP ? uP / tP : 0, f0: tO + tP ? (fO * tO + uP) / (tO + tP) : 0,
+              f1: t1 ? sh2.reduce((s0, l) => s0 + l.fillAll * l.t, 0) / t1 : 0, t0: tO + tP, t1 }; }).filter(Boolean); } }
       mrg.list.push(o); });
     mrg.list.forEach(o => { o.st = !o.socs.length || !o.waves.length ? "na" : o.oeNo ? "oe" : o.slack != null && o.slack < slackMin ? "late" : o.save <= 0 ? "nogain" : !o.supOk ? "check" : "go"; });
+    mrg.day = bau ? bau.t : null;
     const rk = { go: 0, check: 1, late: 2, oe: 3, nogain: 4, na: 5 }; mrg.list.sort((a, b) => rk[a.st] - rk[b.st] || b.save - a.save || a.km - b.km); }
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
   const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
