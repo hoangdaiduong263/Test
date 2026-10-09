@@ -51,6 +51,7 @@ input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .stale{opacity:.45;transition:opacity .2s}
 .sortb{font:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}.sortb[aria-pressed="true"]{color:var(--ink)}
 .curt td{vertical-align:top}
+.savebar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.savebar button[disabled]{opacity:.5;cursor:default}
 .busy{position:fixed;right:16px;bottom:16px;z-index:20;background:var(--panel);color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .fillsug{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.fillsug h3{font-size:14px;margin:0 0 4px}.fillsug .wl{font-size:12px;line-height:1.5}.fillsug .wl b{font-family:var(--f-num)}
 #ppl input.hcin{width:84px;font-weight:700;border-color:var(--accent)}
@@ -402,8 +403,7 @@ fillRegion(false);
 
 function drawForm(){
   document.querySelectorAll("[data-t]").forEach(el=>{el.textContent=T(el.dataset.t);});
-  { const G0=REF.reg[X.R],g=X.selfGrp?(G0.rts0||[])[+X.selfGrp.slice(1)]:null,mem=g?g.map(i=>G0.pts[i].n).filter(n=>n!==X.self):[];
-    $("selfNote").innerHTML=X.self?(L?`Running seller, profile from real data. `:`Seller đang chạy, hồ sơ dựng từ dữ liệu thật. `)+(mem.length?`<label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="selfPick"${X.pick.includes(X.selfGrp)?" checked":""}>${L?"as running: shared with":"tính như đang chạy: chung xe với"} ${mem.map(n=>esc(short(n))).join(", ")}</label>`:(L?"Runs alone today.":"Hiện đang đi riêng.")):""; }
+  drawSelf();
   $("lede").textContent=T("lede");$("sample").textContent=X.self?(L?"Running: ":"Đang chạy: ")+short(X.self):T("sample");
   $("lvi").setAttribute("aria-pressed",String(!L));$("len").setAttribute("aria-pressed",String(!!L));
   $("preset").innerHTML=`<option value="">${T("preNone")}</option>`+PRESETS.map(q=>`<option value="${q.id}"${X.preset===q.id?" selected":""}>${esc(L?q.en:q.vi)}</option>`).join("");
@@ -489,14 +489,52 @@ function profOf(q,R){const G=REF.reg[R],open=REF.P.open,a3=q.a3&&q.a3[0]>0?q.a3.
     osCap:"",hcIn:["","",""],slackMin:0,delay:20,area:"",dens:"",pick:[]};}
 /* mở một seller đang chạy trong trang đánh giá (như khi nhập seller mới) */
 function openSeller(q,R){const S=profOf(q,R);Object.assign(X,S,{preset:"",tab:"plan",cuSel:null,cuDay:0});const sh=S.socs.map(o=>({...o}));X.socs=null;fillRegion(false);
-  X.socs=sh;X.sh=S.sh.slice();X.win=S.win.map(w=>w.slice());X.open=S.open;X.ch=S.ch.slice();X.chutes=null;fillRegion(true);drawForm();render();window.scrollTo(0,0);}
+  X.socs=sh;X.sh=S.sh.slice();X.win=S.win.map(w=>w.slice());X.open=S.open;X.ch=S.ch.slice();X.chutes=null;fillRegion(true);
+  SELFBASE=snapS(X);const sv=savedOf(R,q.n);if(sv&&sv.s)Object.assign(X,JSON.parse(JSON.stringify(sv.s)));drawForm();render();window.scrollTo(0,0);}
+/* LƯU CÀI ĐẶT cho seller đang chạy: chỉ lưu các ô khác hồ sơ gốc (dữ liệu thật cập nhật thì phần không chỉnh vẫn theo dữ liệu mới).
+   Lưu chung cho mọi người mở trang (db, bộ "seller_settings", mỗi seller một bản); không có db (mở file trên máy) thì lưu trên trình duyệt này */
+const SKEYS=["ado","days","beta","socs","sh","open","win","ch","chutes","like","capK","dwFix","dwRate","tail","hoProf","hoN","late","hoRate","gates","gMode","gMove","lab","ban","maxK","bays","osCap","hcIn","slackMin","delay","area","dens","pick","ll","hub","sup"];
+const SLAB={ado:["ADO","ADO"],days:["số ngày","days"],beta:["% hàng to","bulky %"],socs:["SOC","SOCs"],sh:["% lượt","wave %"],open:["giờ bắt đầu","start time"],win:["khung bàn giao","handover window"],ch:["chute","chutes"],chutes:["chute/TO","chutes/TO"],like:["seller giống","similar seller"],capK:["sức chở","capacity"],dwFix:["xe đứng","dwell"],dwRate:["xe đứng","dwell"],tail:["kiểu nhả","release"],hoProf:["kiểu nhả","release"],hoN:["kiểu nhả","release"],late:["giao trễ","lateness"],hoRate:["tốc độ bàn giao","handover speed"],gates:["cổng","gates"],gMode:["cổng","gates"],gMove:["cổng","gates"],lab:["loại người","staff type"],ban:["cấm tải","truck ban"],maxK:["cỡ xe","truck size"],bays:["chỗ chất","bays"],osCap:["người tối đa","staff cap"],hcIn:["số người thực tế","actual staff"],slackMin:["dư COT","COT slack"],delay:["thử trễ","delay test"],area:["tập kết","staging"],dens:["tập kết","staging"],pick:["ghép xe","sharing"],ll:["toạ độ","location"],hub:["Hub","Hub"],sup:["Sup","Sup"]};
+const snapS=S=>Object.fromEntries(SKEYS.map(k=>[k,JSON.parse(JSON.stringify(S[k]??null))]));
+const diffS=(a,b)=>{const d={};SKEYS.forEach(k=>{if(JSON.stringify(a[k])!==JSON.stringify(b[k]))d[k]=a[k];});return d;};
+const labsOf=d=>[...new Set(Object.keys(d||{}).map(k=>(SLAB[k]||[k,k])[L]))].join(", ");
+let SELFBASE=null;const SAVE={db:null,user:null,ro:false,local:true,map:{},busy:false,msg:""};
+/* id bản lưu: vùng + tên seller (bỏ dấu, ký tự lạ) + mã băm ngắn để không trùng */
+function sid(R,n){let h=0;for(const c of R+"|"+n)h=(h*31+c.charCodeAt(0))>>>0;return (R+"__"+n).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[đĐ]/g,"d").replace(/[^A-Za-z0-9_\-.~:@+]+/g,"-").replace(/-+/g,"-").slice(0,120)+"~"+h.toString(36);}
+const savedOf=(R,n)=>SAVE.map[sid(R,n)]||null;
+function localLoad(){SAVE.local=true;try{SAVE.map=JSON.parse(localStorage.getItem("d2s-ns-saved")||"{}")||{};}catch(e){SAVE.map={};}onSaved();}
+function localStore(){try{localStorage.setItem("d2s-ns-saved",JSON.stringify(SAVE.map));return true;}catch(e){return false;}}
+async function initSave(){let db=null,user=null;try{if(window.claude&&claude.use)[db,user]=await Promise.all([claude.use("db"),claude.use("user")]);}catch(e){}
+  if(!db){localLoad();return;}SAVE.db=db;SAVE.user=user;SAVE.local=false;try{SAVE.ro=user?(await user.can("data.write"))===false:false;}catch(e){}
+  db.collection("seller_settings").onSnapshot(qs=>{const m={};qs.docs.forEach(d=>{if(d.exists)m[d.id]=d.data();});SAVE.map=m;onSaved();},e=>{console.warn("seller_settings:",e&&e.code);});}
+/* bản lưu thay đổi (mình hoặc người khác lưu): tính lại bảng seller đang chạy; không tự áp vào form đang chỉnh */
+function onSaved(){for(const k in CUR)delete CUR[k];if(X.tab==="cur")drawCur();drawSelf();}
+async function saveSelf(){if(!X.self||!SELFBASE||SAVE.busy)return;const id=sid(X.R,X.self),d=diffS(snapS(X),SELFBASE);SAVE.busy=true;SAVE.msg="";drawSelf();
+  try{if(!Object.keys(d).length){await delSaved(id);}
+    else{const body={n:X.self,R:X.R,s:JSON.parse(JSON.stringify(d)),at:new Date().toISOString(),v:1};
+      if(SAVE.db){const uid=SAVE.user?await SAVE.user.id():null;if(uid)body.by=uid;await SAVE.db.collection("seller_settings").doc(id).set(body);SAVE.map[id]=body;onSaved();}
+      else{SAVE.map[id]=body;if(!localStore())SAVE.msg=L?"Could not save in this browser.":"Trình duyệt không cho lưu.";onSaved();}}}
+  catch(e){const c=e&&e.code;if(c==="invalid_argument")SAVE.ro=true;SAVE.msg=c==="quota_exceeded"?(L?"Storage is full.":"Kho lưu đã đầy."):c==="invalid_argument"?(L?"You can view but not save on this page.":"Bạn chỉ có quyền xem, không lưu được."):(L?"Could not save, try again.":"Chưa lưu được, thử lại.");}
+  SAVE.busy=false;drawSelf();}
+async function delSaved(id){if(SAVE.db)await SAVE.db.collection("seller_settings").doc(id).delete();delete SAVE.map[id];if(!SAVE.db)localStore();onSaved();}
+async function resetSelf(){if(!X.self||SAVE.busy)return;const R=X.R,n=X.self,q=REF.reg[R].pts.find(z=>z.n===n);SAVE.busy=true;try{await delSaved(sid(R,n));}catch(e){SAVE.msg=L?"Could not reset, try again.":"Chưa xoá được, thử lại.";}SAVE.busy=false;if(q)openSeller(q,R);else drawSelf();}
+function drawSelf(){const el=$("selfNote");if(!el)return;if(!X.self){el.innerHTML="";return;}
+  const G0=REF.reg[X.R],g=X.selfGrp?(G0.rts0||[])[+X.selfGrp.slice(1)]:null,mem=g?g.map(i=>G0.pts[i].n).filter(n=>n!==X.self):[],sv=savedOf(X.R,X.self);
+  const cur=SELFBASE?diffS(snapS(X),SELFBASE):{},dirty=JSON.stringify(cur)!==JSON.stringify(sv&&sv.s?sv.s:{});
+  const when=sv&&sv.at?(d=>isNaN(d)?"":`${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`)(new Date(sv.at)):"";
+  el.innerHTML=(L?`Running seller, profile from real data. `:`Seller đang chạy, hồ sơ dựng từ dữ liệu thật. `)+(mem.length?`<label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="selfPick"${X.pick.includes(X.selfGrp)?" checked":""}>${L?"as running: shared with":"tính như đang chạy: chung xe với"} ${mem.map(n=>esc(short(n))).join(", ")}</label>`:(L?"Runs alone today.":"Hiện đang đi riêng."))
+    +`<span class="savebar"><button type="button" class="ghost" data-ssave${SAVE.ro||SAVE.busy||!dirty?" disabled":""}>${SAVE.busy?(L?"Saving…":"Đang lưu…"):SAVE.local?(L?"Save (this browser)":"Lưu (trên máy này)"):(L?"Save settings":"Lưu cài đặt")}</button>${sv?`<button type="button" class="ghost" data-sreset${SAVE.ro||SAVE.busy?" disabled":""}>${L?"Back to data profile":"Về hồ sơ gốc"}</button>`:""}
+      <span class="meta">${dirty?`<b style="color:var(--warn)">${L?"Unsaved changes":"Có thay đổi chưa lưu"}</b>${Object.keys(cur).length?`: ${esc(labsOf(cur))}`:""}`:sv?`${L?"Saved":"Đã lưu"} ${esc(when)}<span class="sby"></span>${Object.keys(sv.s||{}).length?` · ${L?"changed":"đã chỉnh"}: ${esc(labsOf(sv.s))}`:""}`:(L?"Using the data profile.":"Đang dùng hồ sơ gốc.")}${SAVE.ro?` · ${L?"view only":"chỉ xem"}`:""}${SAVE.msg?` · <b style="color:var(--bad)">${esc(SAVE.msg)}</b>`:""}</span></span>`;
+  if(sv&&sv.by&&SAVE.user)SAVE.user.profiles([sv.by]).then(ps=>{const b=el.querySelector(".sby");if(b&&ps[sv.by]&&ps[sv.by].name)b.textContent=` · ${ps[sv.by].name}`;}).catch(()=>{});}
 const CUR={};
 function drawCur(){const R=X.curR||X.R,G=REF.reg[R],dtn=T("dt"),V=(vi,en)=>L?en:vi;
-  if(!CUR[R])CUR[R]=G.pts.filter(q=>q.ado>0).map(q=>{const S=profOf(q,R);let p=null,pc=null;try{p=nsPlan(REF,Object.assign(planIn(S),{lite:true}));if(S.selfGrp)pc=nsPlan(REF,Object.assign(planIn(S),{lite:true,pick:[S.selfGrp]}));}catch(e){console.error(q.n,e);}if(!p)return null;
+  if(!CUR[R])CUR[R]=G.pts.filter(q=>q.ado>0).map(q=>{const sv=savedOf(R,q.n),S=Object.assign(profOf(q,R),sv&&sv.s?JSON.parse(JSON.stringify(sv.s)):{}),pk0=(S.pick||[]).filter(z=>z!==S.selfGrp);let p=null,pc=null;
+    /* đi riêng: bỏ nhóm đang đi chung (kể cả khi đã lưu tick "như đang chạy"); như đang chạy: thêm nhóm đó */
+    try{p=nsPlan(REF,Object.assign(planIn(S),{lite:true,pick:pk0}));if(S.selfGrp)pc=nsPlan(REF,Object.assign(planIn(S),{lite:true,pick:pk0.concat([S.selfGrp])}));}catch(e){console.error(q.n,e);}if(!p)return null;
     const grp=S.selfGrp?G.rts0[+S.selfGrp.slice(1)].map(i=>G.pts[i].n).filter(n=>n!==q.n):[];
     const d=p.days[0],tr=(d.W||[]).flatMap(w=>w.trk||[]),cap=tr.reduce((a,z)=>a+(z.fill>0?z.q/z.fill:0),0),ld=tr.reduce((a,z)=>a+(z.q||0),0);
-    return {q,p,save:p.month.net,cpo:d.X?d.cost/d.X:0,trucks:d.trucks,fill:cap?ld/cap:0,hc:d.hc,worst:d.worst,roll:d.roll||0,vd:p.verdict,grp,saveC:pc?pc.month.net:null,vdC:pc?pc.verdict:null,cotC:pc?pc.ok.cot:null};}).filter(Boolean);
-  const L0=CUR[R],k=X.curSort,dir=k==="name"?1:-1,val=o=>k==="name"?short(o.q.n):k==="ado"?o.q.a3?o.q.a3[0]:o.q.ado:k==="fill"?o.fill:k==="cpo"?-o.cpo:k==="saveC"?(o.saveC??o.save):o.save;
+    return {q,p,save:p.month.net,cpo:d.X?d.cost/d.X:0,trucks:d.trucks,fill:cap?ld/cap:0,hc:d.hc,worst:d.worst,roll:d.roll||0,vd:p.verdict,sv,ado:S.ado,grp,saveC:pc?pc.month.net:null,vdC:pc?pc.verdict:null,cotC:pc?pc.ok.cot:null};}).filter(Boolean);
+  const L0=CUR[R],k=X.curSort,dir=k==="name"?1:-1,val=o=>k==="name"?short(o.q.n):k==="ado"?o.ado[0]:k==="fill"?o.fill:k==="cpo"?-o.cpo:k==="saveC"?(o.saveC??o.save):o.save;
   const rows=L0.slice().sort((a,b)=>{const x=val(a),y=val(b);return typeof x==="string"?x.localeCompare(y)*dir:(y-x)*(k==="name"?-1:1);});
   const n={go:0,cond:0,no:0};L0.forEach(o=>n[o.vd]++);const tot=L0.reduce((a,o)=>a+o.save,0);
   const vdc={go:["ok",V("Nên chạy","Run")],cond:["mid",V("Theo dõi","Watch")],no:["late",V("Chưa đạt","Not yet")]};
@@ -507,7 +545,7 @@ function drawCur(){const R=X.curR||X.R,G=REF.reg[R],dtn=T("dt"),V=(vi,en)=>L?en:
     <div class="lang" role="group" aria-label="${V("Vùng","Region")}" style="width:max-content;margin-bottom:10px">${Object.keys(REF.reg).map(r=>`<button type="button" data-creg="${r}" aria-pressed="${r===R}">${r}</button>`).join("")}</div>
     <p class="meta" style="margin:0 0 8px">${L0.length} seller · <span class="chip ok">${n.go} ${vdc.go[1]}</span> <span class="chip mid">${n.cond} ${vdc.cond[1]}</span> <span class="chip late">${n.no} ${vdc.no[1]}</span> · ${V("Est. tổng nếu mỗi seller đi riêng, so với FM pickup","Est. total if each seller runs alone, vs FM pickup")}: <b class="${tot>=0?"pos":"neg"}">${tot>=0?"+":"−"}${mn(Math.abs(tot))}${V("/tháng","/month")}</b></p>
     <div class="tw"><table class="curt"><thead><tr>${th("name","Seller")}${th("ado",`ADO ${dtn.join(" / ")}`,"n")}<th>${V("Kết luận","Verdict")}</th>${th("save",V("Est. tiết kiệm / tháng · đi riêng","Est. saving / month · alone"),"n")}${th("saveC",V("Như đang chạy (đi chung)","As running (shared)"),"n")}${th("cpo",V("D2S / đơn","D2S / order"),"n")}<th class="n">${V("Xe / ngày","Trucks / day")}</th>${th("fill",V("Độ đầy","Fill"),"n")}<th class="n">${V("Người","Staff")}</th><th>COT</th><th></th></tr></thead>
-    <tbody>${rows.map(o=>{const q=o.q,a=q.a3&&q.a3[0]>0?q.a3:[q.ado,q.ado,q.ado];return `<tr><td><b style="font-weight:600">${esc(short(q.n))}</b><div class="meta">${esc((q.hub||"").replace(/ Hub$/,"").replace(/^\d+-\w+ /,"")||"–")} · ${esc(q.sup||"–")}</div></td>
+    <tbody>${rows.map(o=>{const q=o.q,a=o.ado;return `<tr><td><b style="font-weight:600">${esc(short(q.n))}</b>${o.sv&&o.sv.s&&Object.keys(o.sv.s).length?` <span class="chip mid" title="${esc(labsOf(o.sv.s))}">${V("đã chỉnh","edited")}</span><div class="meta">${V("chỉnh","changed")}: ${esc(labsOf(o.sv.s))}</div>`:""}<div class="meta">${esc((q.hub||"").replace(/ Hub$/,"").replace(/^\d+-\w+ /,"")||"–")} · ${esc(q.sup||"–")}</div></td>
       <td class="n">${a.map(v=>nf(v)).join(" / ")}</td><td><span class="chip ${vdc[o.vd][0]}">${vdc[o.vd][1]}</span></td>
       <td class="n"><b class="${o.save>=0?"pos":"neg"}">${o.save>=0?"+":"−"}${mn(Math.abs(o.save))}</b></td>
       <td class="n">${o.saveC==null?`<span class="meta">${V("đang đi riêng","runs alone")}</span>`:`<b class="${o.saveC>=0?"pos":"neg"}">${o.saveC>=0?"+":"−"}${mn(Math.abs(o.saveC))}</b> <span class="chip ${vdc[o.vdC][0]}">${vdc[o.vdC][1]}</span><div class="meta">${V("chung với","with")} ${o.grp.map(n=>esc(short(n))).join(", ")}</div>`}</td><td class="n">${nf(o.cpo)}<div class="meta">FM ${nf(o.p.fmU)}</div></td>
@@ -643,7 +681,7 @@ function fullRun(){busy(true);clearTimeout(FT);FT=setTimeout(()=>{const inp=LAST
     /* luồng nền chưa từng trả lời trong 4 giây (bị chặn âm thầm) → bỏ, tính ở luồng chính */
     clearTimeout(WK.dog);if(!WK.ok)WK.dog=setTimeout(()=>{if(WK.busy&&!WK.ok&&WK.w)WK.w.onerror({message:"no response"});},4000);return;}
   let p=null;try{p=nsPlan(REF,inp);}catch(e){console.error(e);}if(id!==RSEQ)return;if(p)draw(p);busy(false);},WK.url?120:250);}
-function render(){LASTIN=planIn();let p;try{p=nsPlan(REF,Object.assign({},LASTIN,{lite:true}));}catch(e){console.error(e);return;}draw(p);RSEQ++;DRAWN=RSEQ;fullRun();}
+function render(){if(X.self)drawSelf();LASTIN=planIn();let p;try{p=nsPlan(REF,Object.assign({},LASTIN,{lite:true}));}catch(e){console.error(e);return;}draw(p);RSEQ++;DRAWN=RSEQ;fullRun();}
 function spawn(){if(WK.w)try{WK.w.terminate();}catch(e){}WK.busy=false;const w=new Worker(WK.url);WK.w=w;
   const off=why=>{console.warn("worker off:",why);try{w.terminate();}catch(e){}WK.url=null;WK.w=null;WK.busy=false;if(LASTIN)fullRun();};
   w.onmessage=e=>{if(w!==WK.w)return;const d=e.data;WK.busy=false;WK.ok=true;clearTimeout(WK.dog);if(d.err){off(d.err);return;}if(d.id===RSEQ){draw(d.p);busy(false);}};
@@ -853,6 +891,7 @@ $("chs").addEventListener("dragleave",e=>{const c=e.target.closest("[data-chu]")
 $("chs").addEventListener("drop",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();const n=e.dataTransfer.getData("text/plain");if(!n)return;cuEdit(L=>{L.forEach(q=>{q.socs=q.socs.filter(x=>x!==n);});L[+c.dataset.chu].socs.push(n);});});
 $("f").addEventListener("submit",e=>e.preventDefault());
 $("upd").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;X.tab=b.dataset.go;render();window.scrollTo(0,0);});
+$("selfNote").addEventListener("click",e=>{if(e.target.closest("[data-ssave]"))saveSelf();else if(e.target.closest("[data-sreset]"))resetSelf();});
 $("cur").addEventListener("click",e=>{const r=e.target.closest("[data-creg]");if(r){X.curR=r.dataset.creg;drawCur();return;}
   const so=e.target.closest("[data-csort]");if(so){X.curSort=so.dataset.csort;drawCur();return;}
   const op=e.target.closest("[data-copen]");if(op){const R=X.curR||X.R,q=REF.reg[R].pts.find(z=>z.n===op.dataset.copen);if(q)openSeller(q,R);}});
@@ -867,8 +906,8 @@ $("fillSug").addEventListener("change",e=>{const n=e.target.dataset&&e.target.da
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R")return;if(e.target.id==="selfPick"){X.pick=e.target.checked?[...new Set(X.pick.concat([X.selfGrp]))]:X.pick.filter(q=>q!==X.selfGrp);render();return;}if(e.target.id==="preset"){if(e.target.value){applyPreset(e.target.value);drawForm();render();}else X.preset="";return;}if(X.preset){X.preset="";$("preset").value="";}shBal(e.target);read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
-$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.preset="";X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;X.hcIn=["","",""];X.self="";X.selfGrp="";fillRegion(false);drawForm();render();});
+$("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.preset="";X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;X.hcIn=["","",""];X.self="";X.selfGrp="";SELFBASE=null;fillRegion(false);drawForm();render();});
 document.querySelectorAll("header .lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
-mkWorker();drawForm();render();
+mkWorker();drawForm();render();initSave();
 })();
 </script>
