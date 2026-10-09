@@ -59,6 +59,16 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 .kpi .v{font:600 22px var(--f-num);letter-spacing:-.02em}
 .kpi .s{font-size:12px;color:var(--ink2)}
 .kpi.hero{background:var(--navy-soft)}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.flow figure{margin:0;display:grid;gap:4px;min-width:0}
+.flow figcaption{font-size:12px;color:var(--ink2)}.flow figcaption b{color:var(--ink);font-weight:600}
+.flow svg{width:100%;height:auto;display:block}
+.flow .ax{stroke:var(--line);stroke-width:1}.flow .tx{fill:var(--ink2);font:10px var(--f-num)}
+.flow .la{fill:none;stroke:var(--accent);stroke-width:2}.flow .lp{fill:none;stroke:var(--navy);stroke-width:2}
+.flow .cot{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:4 3}.flow .ct{fill:var(--bad);font:600 10px var(--f-num)}
+.flow .tk{fill:var(--good)}.flow .tk.cut{fill:var(--warn)}.flow .tl{fill:var(--ink);font:600 9.5px var(--f-num)}
+.flow .rl{fill:var(--bad);font:600 11px var(--f-ui)}
+.gcmp{margin-top:10px;font-size:12.5px}.gcmp table{width:100%;border-collapse:collapse}.gcmp td,.gcmp th{padding:5px 8px;border-top:1px solid var(--line);text-align:left}.gcmp th{font-size:11px;color:var(--ink2);font-weight:600}.gcmp .n{text-align:right;font-family:var(--f-num)}
 .inputs:not(.adv-on) .adv{display:none}
 .pre{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 8px;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .pre label{font-size:12px;font-weight:600;color:var(--navy)}
@@ -203,8 +213,19 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
         <div class="socs" id="socs"></div>
         <p class="hint" id="sochint"></p>
         <div id="waves" class="grid0" style="display:grid;gap:6px"></div>
-        <div class="row adv"><label for="tail" data-t="tailL"></label><input type="number" id="tail" min="0" max="100" step="5"></div>
         <div class="trio adv" style="grid-template-columns:repeat(2,minmax(0,1fr))"><label for="dwFix"><span data-t="dwFixL"></span><input type="number" id="dwFix" min="0" step="1"></label><label for="dwRate"><span data-t="dwRateL"></span><input type="number" id="dwRate" min="0" step="0.5"></label></div>
+      </div>
+      <div class="grp">
+        <h3><b data-t="g1b"></b></h3>
+        <div class="row"><label for="hoProf" data-t="hoProfL"></label><select id="hoProf"></select></div>
+        <div class="row" id="rowTail"><label for="tail" data-t="tailL"></label><input type="number" id="tail" min="0" max="100" step="5"></div>
+        <div class="row" id="rowHoN"><label for="hoN" data-t="hoNL"></label><input type="number" id="hoN" min="2" max="12" step="1"></div>
+        <div class="row"><label for="late" data-t="lateL"></label><input type="number" id="late" min="0" step="5"></div>
+        <div class="row"><label for="hoRate" data-t="hoRateL"></label><input type="number" id="hoRate" min="0" step="50"></div>
+        <div class="row"><label for="gates" data-t="gatesL"></label><input type="number" id="gates" min="1" max="12" step="1"></div>
+        <div class="row" id="rowGm"><label for="gMode" data-t="gModeL"></label><select id="gMode"></select></div>
+        <div class="row adv" id="rowGmv"><label for="gMove" data-t="gMoveL"></label><input type="number" id="gMove" min="0" step="1"></div>
+        <p class="hint" id="hoNote"></p>
       </div>
       <div class="grp">
         <h3><b data-t="g2"></b></h3>
@@ -241,11 +262,13 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
     <div class="out">
       <section class="panel vdp" id="vd"></section>
       <div class="verdict" id="kpi"></div>
-      <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div></section>
+      <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div><div id="gcmp"></div></section>
       <div class="two">
         <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div></section>
         <section class="panel sec"><h2><i>3</i><span data-t="o3"></span></h2><p class="sub" data-t="o3s"></p><div class="tw"><table id="cot"></table></div></section>
       </div>
+      <section class="panel sec"><h2><span data-t="oFlow"></span></h2><p class="sub" data-t="oFlowS"></p><div class="lang" role="group" id="flday" style="width:max-content;margin-bottom:10px"></div><div id="flow" class="flow"></div>
+        <div class="legend" style="margin-top:8px"><span style="--c:var(--accent)" data-t="lgHo"></span><span style="--c:var(--navy)" data-t="lgDone"></span><span style="--c:var(--good)" data-t="lgTrk"></span><span style="--c:var(--bad)" data-t="lgCot"></span></div></section>
       <section class="panel sec"><h2><i>4</i><span data-t="o4"></span></h2><p class="sub" id="o4s"></p><div class="bars" id="bars"></div>
         <div class="legend" style="margin-top:10px"><span style="--c:var(--navy)" data-t="lgT"></span><span style="--c:var(--accent)" data-t="lgP"></span><span style="--c:var(--warn)" data-t="lgS"></span><span style="--c:var(--ink)" data-t="lgF"></span></div></section>
       <section class="panel sec"><h2><span data-t="o8"></span></h2><p class="sub" id="o8s"></p><div class="lang" role="group" id="ttday" style="width:max-content;margin-bottom:10px"></div><div id="tt" style="display:grid;grid-template-columns:minmax(0,1fr);gap:14px"></div></section>
@@ -282,6 +305,12 @@ const TX={
  hvBanL:["5T/8T không được rời lượt này (cấm tải)","5T/8T cannot leave in this wave (truck ban)"], hvWaitL:t=>[`xe nặng chờ tới ${t} mới được rời`,`heavy truck waits until ${t}`],
  askBan:["Giờ cấm tải xe 5T/8T tại điểm: chưa có điểm D2S gần đủ dữ liệu","5T/8T ban hours at the site: no nearby D2S point with enough data"],
  tabUpd:["Cập nhật","Update"], preL:["Ví dụ","Example"], preNone:["Tự nhập seller mới","Enter a new seller"], advOn:["Hiện tuỳ chỉnh nâng cao","Show advanced settings"], advOff:["Ẩn tuỳ chỉnh nâng cao","Hide advanced settings"],
+ g1b:["Bàn giao hàng","Handover"], hoProfL:["Seller nhả hàng","Seller releases orders"], hoP:{even:["Đều trong khung","Evenly in the window"],end:["Dồn cuối khung","Bunched at the end"],lump:["Một cục cuối khung","One lump at window end"],batch:["Theo đợt","In batches"]},
+ hoNL:["Số đợt mỗi lượt","Batches per wave"], lateL:["Seller thường giao trễ (phút)","Seller usually late (min)"], hoRateL:["Tốc độ bàn giao mỗi cổng (đơn/giờ)","Handover speed per gate (orders/h)"], gatesL:["Số cổng bàn giao","Handover gates"],
+ gModeL:["Xe lấy hàng nhiều cổng","Trucks with several gates"], gModes:{auto:["Tự chọn cách rẻ hơn","Pick the cheaper way"],tour:["1 xe đi vòng các cổng","One truck tours the gates"],each:["Mỗi cổng xe riêng","A truck per gate"]}, gMoveL:["Xe chuyển cổng (phút)","Gate-to-gate move (min)"],
+ rollH:["Dồn lượt sau","Rolled over"], carryL:["đơn dồn từ lượt trước","orders rolled in"], cutL:n=>[`${n} xe đóng tải sớm vì tới COT`,`${n} truck(s) closed early at COT`],
+ oFlow:["Hàng về, xử lý và xe rời","Orders in, processed and trucks out"], oFlowS:["Đường cam: hàng seller đã giao (luỹ kế). Đường xanh đậm: hàng đã xử lý xong. Mỗi chấm là một xe rời; chấm vàng là xe phải đóng tải sớm vì tới COT, ghi % đầy. Phần chưa kịp dồn sang lượt sau.","Orange: orders handed over (cumulative). Navy: orders processed. Each dot is a truck leaving; amber dots closed early at COT, with % full. What is not ready rolls to the next wave."],
+ lgHo:["Hàng đã giao","Handed over"], lgDone:["Đã xử lý","Processed"], lgTrk:["Xe rời","Truck out"], lgCot:["Hạn COT","COT"],
  mHow:["Tick ô Ghép để tính kế hoạch chạy chung xe: kế hoạch xe, chi phí, giờ COT, lịch chạy và kết luận phía trên sẽ tính lại. Tiền xe của seller mới = tiền xe chung − tiền xe tuyến đó đang trả.","Tick Share to plan shared trucks: the truck plan, cost, COT times, timetable and recommendation above are recomputed. New seller's truck cost = shared cost − what that route pays today."],
  mNeed:["Nhập toạ độ để tìm điểm ghép được.","Enter a location to find points to share with."], mNone:["Không có điểm D2S nào trong 30 km.","No running D2S point within 30 km."],
  mSt:{go:["Nên thử ghép","Try sharing"],check:["Cần OE xem: khác Sup","OE review: other Sup"],late:["Trễ COT","Misses COT"],oe:["Không ghép","Not allowed"],nogain:["Không lợi","No gain"],na:["Khác SOC / lượt","Other SOC / wave"]},
@@ -294,7 +323,7 @@ const TX={
  vdL:["Kết luận cho Ops","Recommendation for Ops"], vdGo:["Nên chạy D2S","Run D2S"], vdCond:["Chạy được, có điều kiện","Run D2S with conditions"], vdNo:["Chưa nên chạy D2S","Do not run D2S yet"],
  ckProfit:["Lời so với FM pickup cả tháng","Cheaper than FM pickup over the month"], ckThr:["Mỗi loại ngày đều lời ở ADO đang nhập","Every day type is profitable at the entered ADO"], ckCot:["Kịp COT mọi loại ngày, đủ mức dư yêu cầu","Meets COT on every day type, with required slack"],
  ckPpl:["Đủ người trong số cấp được","Enough staff within the cap"], ckDelay:d=>[`Seller giao trễ ${d}′ vẫn kịp COT (ngày đông)`,`Still meets COT if seller is ${d}′ late (peak day)`],
- askH:["Cần xác nhận trước khi chạy","Confirm before go-live"], askTail:["Giờ bàn giao thật: đang giả định đơn về đều trong khung","Real handover times: orders assumed to arrive evenly"],
+ askH:["Cần xác nhận trước khi chạy","Confirm before go-live"], askTail:["Seller nhả hàng thế nào, tốc độ bàn giao, số cổng: đang giả định nhả đều, không giới hạn tốc độ, 1 cổng","How the seller releases orders, handover speed, gates: assumed even, unlimited, 1 gate"],
  askDw:["Thời gian chất xe: đang dùng trung vị toàn mạng","Loading time: using the network median"], askCap:["Đơn/xe: đang mượn seller giống, chưa có số seller báo","Orders per truck: borrowed from similar sellers, none reported"],
  askArea:["Chỗ tập kết và mật độ: chưa nhập, chưa tính","Staging area and density: not entered, not modelled"], askPpl:["Năng suất người: 2.000 đơn/người/ngày là giả định","Staff productivity: 2,000 orders/person/day is assumed"],
  o6:["Model mix","Model mix"], soon:["sắp có","coming"], o6s:["Đầu ra dự kiến: chọn D2S, FM pickup hay kết hợp theo loại ngày cho từng seller. Chưa tính trong bản này.","Planned output: choose D2S, FM pickup or a hybrid by day type for each seller. Not computed in this version."],
@@ -343,14 +372,14 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 const short=n=>n.replace(/^(HN|HCM|South|North)\s*(SPC|Seller|Seller_)?[-_ ]*/i,"");
 
 /* hồ sơ ví dụ */
-const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],ban:"auto",tab:MODE==="walk"?"upd":"plan",preset:"",adv:false,chutes:null,cuDay:0,cuSame:true,cuSel:null,tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
+const X={R:"South",socs:null,open:480,win:null,ado:[4000,6400,10000],days:[25,4,1],beta:35,sh:null,maxK:"8T",bays:4,ch:null,st:null,like:"",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",pick:[],hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:"",ban:"auto",tab:MODE==="walk"?"upd":"plan",preset:"",adv:false,chutes:null,cuDay:0,cuSame:true,cuSel:null,tail:0,dwFix:"",dwRate:"",capOv:"",lab:"fte",osCap:"",slackMin:0,delay:20,area:"",dens:""};
 /* VÍ DỤ CÓ SẴN (để demo; số là ví dụ, không phải seller thật) */
 const PRESETS=[
   {id:"big",vi:"Seller lớn · South · đi 3 SOC",en:"Large seller · South · 3 SOCs",R:"South",ll:"10.83, 106.92",hub:"61-DNI Phuoc Tan Hub",sup:"Bùi Kiều Khoa Duy",ado:[4000,6400,10000],beta:35},
   {id:"small",vi:"Seller nhỏ · HCM · 600 đơn/ngày",en:"Small seller · HCMC · 600 orders/day",R:"HCM",ll:"10.87, 106.58",hub:"50-HCM Hoc Mon Hub",sup:"Nguyễn Thị Phượng Liên",ado:[600,900,1500],beta:20,soc:{"BD A Mega SOC":100}},
   {id:"mcl",vi:"Seller lớn gần kho MCL Bình Tân · cấm tải",en:"Large seller next to MCL Binh Tan · truck ban",R:"HCM",ll:"10.8195, 106.6145",hub:"51-HCM Binh Tan/Binh Hung Hoa B Hub",sup:"Phan Văn Trưng",ado:[6000,9000,15000],beta:40,soc:{"BD A Mega SOC":80,"BD B Mega SOC":20}}];
 function applyPreset(id){const q=PRESETS.find(x=>x.id===id);X.preset=id;if(!q)return;
-  Object.assign(X,{R:q.R,ll:q.ll,hub:q.hub,sup:q.sup,ado:q.ado.slice(),days:[25,4,1],beta:q.beta,like:"",pick:[],chutes:null,ch:null,tail:0,dwFix:"",dwRate:"",capOv:"",osCap:"",slackMin:0,delay:20,area:"",dens:"",lab:"fte",ban:"auto",maxK:"8T",bays:4});
+  Object.assign(X,{R:q.R,ll:q.ll,hub:q.hub,sup:q.sup,ado:q.ado.slice(),days:[25,4,1],beta:q.beta,like:"",pick:[],chutes:null,ch:null,tail:0,dwFix:"",dwRate:"",capOv:"",osCap:"",slackMin:0,delay:20,area:"",dens:"",lab:"fte",ban:"auto",maxK:"8T",bays:4,hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:""});
   X.socs=null;fillRegion(false);if(q.soc){X.socs.forEach(o=>{o.sh=q.soc[o.s]||0;});const c=X.socs.filter(o=>o.sh>=5).length;X.ch=[c,c,c];X.chutes=null;fillRegion(true);}}
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
@@ -379,6 +408,9 @@ function drawForm(){
   $("bays").value=X.bays;
   $("ll").value=X.ll;
   fillHS();
+  $("hoProf").innerHTML=["even","end","lump","batch"].map(k=>`<option value="${k}"${X.hoProf===k?" selected":""}>${TX.hoP[k][L]}</option>`).join("");
+  $("gMode").innerHTML=["auto","tour","each"].map(k=>`<option value="${k}"${X.gMode===k?" selected":""}>${TX.gModes[k][L]}</option>`).join("");
+  $("hoN").value=X.hoN;$("late").value=X.late;$("hoRate").value=X.hoRate;$("hoRate").placeholder="∞";$("gates").value=X.gates;$("gMove").value=X.gMove;$("gMove").placeholder=String(NS_GATE.move);
   $("tail").value=X.tail;$("dwFix").value=X.dwFix;$("dwRate").value=X.dwRate;$("dwFix").placeholder=nf(REF.dw.fix,1);$("dwRate").placeholder=nf(REF.dw.rate*100,1);
   $("capOv").value=X.capOv;$("osCap").value=X.osCap;$("slackMin").value=X.slackMin;$("delay").value=X.delay;$("area").value=X.area;$("dens").value=X.dens;
   $("lab").innerHTML=[["fte",T("labF")],["hub",T("labH")],["pps",T("labP")]].map(([k,l])=>`<option value="${k}"${X.lab===k?" selected":""}>${l}</option>`).join("");
@@ -422,7 +454,7 @@ function read(){
   X.beta=Math.min(100,Math.max(0,+$("beta").value||0));X.like=$("like").value;
   X.maxK=$("maxK").value;X.bays=Math.max(1,Math.round(+$("bays").value||1));
   const num=id=>{const v=$(id).value.trim();return v===""?"":Math.max(0,+v||0);};
-  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
+  X.tail=+num("tail")||0;X.dwFix=num("dwFix");X.dwRate=num("dwRate");X.capOv=num("capOv");X.osCap=num("osCap");X.slackMin=+num("slackMin")||0;X.delay=+num("delay")||0;X.area=num("area");X.dens=num("dens");X.lab=$("lab").value;X.ban=$("ban").value;X.hoProf=$("hoProf").value;X.hoN=Math.max(2,Math.round(+$("hoN").value||3));X.late=+num("late")||0;X.hoRate=num("hoRate");X.gates=Math.max(1,Math.round(+$("gates").value||1));X.gMode=$("gMode").value;X.gMove=num("gMove");X.ll=$("ll").value;X.hub=$("hub").value;X.sup=$("sup").value;
 }
 /* TAB CẬP NHẬT (bản trình bày): tiến độ, lộ trình theo mốc ETA (vẽ đúng tỷ lệ ngày), việc tiếp theo; dải số "model dựa trên" lấy từ REF */
 function drawUpd(){const V=(vi,en)=>L?en:vi,d8=REF.dates||[],G=Object.values(REF.reg),C=(k,t)=>`<span class="chip ${k}">${t}</span>`;
@@ -466,9 +498,9 @@ function drawAsm(p){const G=REF.reg[X.R],P=REF.P,dw=REF.dw,fm=REF.fm,V=(vi,en)=>
   out.push(`<p class="lead">${V(`Mọi số và luật New Seller đang dùng cho vùng <b>${esc(X.R)}</b>. Số học từ chuyến xe thật ${d8.length?`${d8[0]} → ${d8[1]} (${d8[2]} ngày)`:""} của mạng D2S hiện nay; các mục "Giả định" là số chưa đo tại điểm, cần Ops xác nhận. Đổi vùng ở tab Đánh giá seller.`,`Every number and rule New Seller uses for <b>${esc(X.R)}</b>. Learned from real D2S trips ${d8.length?`${d8[0]} → ${d8[1]} (${d8[2]} days)`:""}; items marked "Assumption" are not yet measured on site and need Ops confirmation. Change region on the Assess tab.`)}</p>`);
   /* tổng quan: model xét những gì (cho người nghe trình bày) — mỗi nhóm: xét gì, đầu vào nào, ra số gì */
   const C6=[[V("Chi phí so với FM pickup","Cost against FM pickup"),V("Tiền xe + tiền người + tiền SOC chia lại, so với đơn giá FM pickup theo % hàng to","Truck + labour + SOC re-sort cost, against the FM pickup unit cost for the bulky mix"),V("ADO từng loại ngày, số ngày, % hàng to","ADO by day type, days, bulky %"),V("Est. lời/tháng, đ/đơn, ngưỡng hoà vốn từng loại ngày","Est. monthly gain, cost/order, break-even by day type")],
-    [V("Xe","Trucks"),V("Một xe chở được bao nhiêu đơn của seller này (học từ seller giống), cỡ xe rẻ nhất mỗi lượt, giá theo vùng và km","How many of this seller's orders fit (learned from similar sellers), cheapest sizes per wave, price by region and km"),V("% hàng to, seller tương tự, cỡ xe tối đa, km tới SOC, chỗ tập kết","Bulky %, similar seller, max size, km to SOC, staging area"),V("Số xe, cỡ xe, độ đầy mỗi lượt","Trucks, sizes, fill per wave")],
-    [V("Người","People"),V("Năng suất theo số chute và % hàng to; FTE riêng, nhóm Hub hay rider PPS; số người cấp được","Productivity by chutes and bulky %; own FTE, hub team or PPS rider; staff cap"),V("Số chute, cách dùng người, giới hạn người","Chutes, staffing mode, staff cap"),V("Số người, có thiếu người không","Headcount, shortfall")],
-    [V("Giờ và COT","Time and COT"),V("Hàng về trong khung bàn giao, dồn cuối khung, thời gian chất xe, số chỗ chất, hạn COT; thử seller giao trễ","Handover window and bunching, loading time, loading bays, COT; seller-delay test"),V("Khung giờ, % dồn cuối, thời gian chất, dư COT tối thiểu, phút trễ","Windows, bunching %, loading time, min slack, delay minutes"),V("Giờ xe rời, phút dư hoặc trễ từng lượt","Departure, slack or lateness per wave")],
+    [V("Xe","Trucks"),V("Một xe chở được bao nhiêu đơn của seller này (học từ seller giống), cỡ xe rẻ nhất mỗi lượt, giá theo vùng và km; nhiều cổng thì 1 xe đi vòng hay mỗi cổng xe riêng","How many of this seller's orders fit (learned from similar sellers), cheapest sizes per wave, price by region and km; with several gates, one touring truck or a truck per gate"),V("% hàng to, seller tương tự, cỡ xe tối đa, km tới SOC, chỗ tập kết","Bulky %, similar seller, max size, km to SOC, staging area"),V("Số xe, cỡ xe, độ đầy mỗi lượt","Trucks, sizes, fill per wave")],
+    [V("Người","People"),V("Năng suất theo số chute và % hàng to; FTE riêng, nhóm Hub hay rider PPS; mỗi cổng bàn giao ≥ 1 người; số người cấp được","Productivity by chutes and bulky %; own FTE, hub team or PPS rider; ≥ 1 person per handover gate; staff cap"),V("Số chute, cách dùng người, số cổng, giới hạn người","Chutes, staffing mode, gates, staff cap"),V("Số người, có thiếu người không","Headcount, shortfall")],
+    [V("Bàn giao, giờ và COT","Handover, time and COT"),V("Seller nhả hàng thế nào (đều, dồn cuối, một cục, theo đợt), tốc độ × số cổng, giao trễ; xử lý, chất xe, số chỗ chất; tới COT xe phải đóng tải giữa chừng (xe vơi), hàng dồn lượt sau","How the seller releases orders (even, bunched, one lump, batches), speed × gates, lateness; processing, loading, bays; at COT trucks close part-empty and orders roll over"),V("Kiểu nhả hàng, tốc độ, số cổng, phút trễ, khung giờ, thời gian chất, dư COT","Release pattern, speed, gates, lateness, windows, loading time, slack"),V("Giờ xe rời, xe vơi, đơn dồn lượt sau, phút dư hoặc trễ","Departures, part-empty trucks, rolled orders, slack or lateness")],
     [V("SOC và mạng lưới","SOCs and network"),V("Đi những SOC nào; chute nào là TO đi đâu (chuyển tiếp hay chia lại); ghép chung xe với tuyến D2S đang chạy gần đó","Which SOCs; which chute is a TO to where (transit or re-sort); sharing trucks with nearby running routes"),V("Bảng SOC, bảng chute/TO, toạ độ, Hub, Sup","SOC table, chute/TO board, coordinates, hub, Sup"),V("Đội xe mỗi TO, tiền chia lại, gợi ý ghép + lịch chạy","Fleet per TO, re-sort cost, merge suggestions + timetable")],
     [V("Ràng buộc vận hành","Operating constraints"),V("Cấm tải xe nặng suy từ giờ chạy thật của điểm gần; luật OE (cùng Sup, giữ tuyến ghé hub); Sup và Hub phụ trách","Heavy-truck bans from real hours of nearby points; OE rules (same Sup, hub-kept routes); responsible Sup and hub"),V("Toạ độ, Hub, Sup, luật cấm tải","Coordinates, hub, Sup, ban rule"),V("Lượt bị chặn xe nặng, tuyến không được ghép","Waves without heavy trucks, routes not allowed to merge")]];
   out.push(`<section class="panel sec"><h2><span>${V("Model xét những gì khi đánh giá một seller","What the model weighs for a new seller")}</span></h2><p class="sub">${V("Một hồ sơ seller đi qua 6 nhóm yếu tố, rồi ra một kết luận: nên chạy D2S, chạy có điều kiện, hay chưa nên.","A seller profile goes through 6 groups of factors and ends in one call: run D2S, run with conditions, or not yet.")}</p>
@@ -489,7 +521,11 @@ function drawAsm(p){const G=REF.reg[X.R],P=REF.P,dw=REF.dw,fm=REF.fm,V=(vi,en)=>
     +tb(H3,[R(V("Xe rời sau khi hàng xong","Truck leaves after goods ready"),`${n(P.closeMin)}′`,V("Như mô phỏng Core","As in Core simulation")),
       R(V("Thời gian chất một xe","Loading time per truck"),V(`${nf(dw.fix,1)}′ + ${nf(dw.rate*100,1)}′ mỗi 100 đơn`,`${nf(dw.fix,1)}′ + ${nf(dw.rate*100,1)}′ per 100 orders`),V("Trung vị toàn mạng; nhập số điểm thì dùng số điểm","Network median; site figure overrides")),
       R(V("Người bắt đầu làm","Staff start"),hm(P.open),V("Giả định; sửa ở ô giờ bắt đầu","Assumption; edit in the start-time field")),
-      R(V("Seller dồn hàng cuối khung","Handover bunching"),`${n(X.tail)}%`,V("Giả định 0% (đơn về đều); cần giờ bàn giao thật","Assumption 0% (even flow); needs real handover times"))])));
+      R(V("Seller nhả hàng","How the seller releases orders"),TX.hoP[p.ho.prof][L]+(p.ho.prof==="end"?` · ${n(p.ho.tail)}% ${V("trong 60′ cuối","in the last 60′")}`:p.ho.prof==="batch"?` · ${n(p.ho.hoN)} ${V("đợt","batches")}`:""),V("Giả định nhả đều nếu chưa nhập; cần giờ bàn giao thật","Even release unless entered; needs real handover times")),
+      R(V("Tốc độ bàn giao","Handover speed"),p.ho.hoRate?V(`${nf(p.ho.hoRate)} đơn/giờ mỗi cổng × ${p.gates} cổng = ${nf(p.ho.hoRate*p.gates)} đơn/giờ`,`${nf(p.ho.hoRate)} orders/h per gate × ${p.gates} gates = ${nf(p.ho.hoRate*p.gates)} orders/h`):V("Không giới hạn","No limit"),V("Hàng nhả chậm thì về sau cuối khung, xử lý và xe rời muộn theo","Slow release pushes handover past the window end")),
+      R(V("Seller thường giao trễ","Seller usually late"),`${n(p.ho.late)}′ ${V("mọi ngày","every day")}`,V("Dời cả khung bàn giao; ô “Thử seller giao trễ” là phép thử thêm trên ngày đông nhất","Shifts the whole window; the delay test adds more on the peak day")),
+      R(V("Cổng bàn giao","Handover gates"),p.gates>1?V(`${p.gates} cổng · tối thiểu ${p.gates} người · ${TX.gModes[p.gm][L]}${p.gm==="tour"?` (+${nf(p.ho.gMove)}′ mỗi cổng thêm)`:""}`,`${p.gates} gates · at least ${p.gates} people · ${TX.gModes[p.gm][L]}${p.gm==="tour"?` (+${nf(p.ho.gMove)}′ per extra gate)`:""}`):V("1 cổng","1 gate"),V("Mỗi cổng ≥ 1 người. 1 xe đi vòng: cộng giờ chuyển cổng vào thời gian chất. Mỗi cổng xe riêng: đội xe cho phần mỗi cổng (nhiều xe, vơi hơn). Tự chọn: ít dồn hàng hơn, rồi rẻ hơn. Giờ chuyển cổng là giả định","≥ 1 person per gate. Touring truck: move time added to loading. Truck per gate: fleet per gate's share (more, emptier trucks). Auto: less rollover, then cheaper. Move time is an assumption")),
+      R(V("Tới hạn COT","At COT"),V("Xe đầy thì đi (xe lớn trước); tới hạn COT xe phải đóng tải với hàng đã xử lý xong (xe vơi), phần còn lại dồn sang lượt sau; lượt sau thiếu chỗ thì gọi thêm xe (tính tiền); hàng dồn của lượt cuối sang lượt đầu hôm sau","Trucks leave when full (largest first); at COT they close with what is processed (part-empty) and the rest rolls to the next wave; extra trucks are booked if the next wave lacks room (costed); last-wave rollover goes to the next morning"),V("Mô phỏng theo bước 5′; COT là ràng buộc cứng (không cho xe rời trễ)","5-minute simulation; COT is a hard limit (no late departures)"))])));
   out.push(sec(V("Người","People"),"",tb(H3,[
     R(V("Năng suất sort","Sort productivity"),V(`${nf(P.prodBase)} đơn/người/ngày (1 chute, 10% hàng to); −${P.prodChute}% mỗi chute thêm; −${P.prodBulky}% mỗi 10 điểm % hàng to lệch 10%`,`${nf(P.prodBase)} orders/person/day (1 chute, 10% bulky); −${P.prodChute}% per extra chute; −${P.prodBulky}% per 10 pts of bulky away from 10%`),V("<b>Giả định</b>, chưa hiệu chỉnh bằng chấm công (đang chờ dữ liệu)","<b>Assumption</b>, not yet calibrated with attendance (data pending)")),
     R(V("Việc không sort","Non-sort work"),V(`${nf(P.prodHand)} đơn/người/ngày · ${P.fteH} giờ làm/ngày`,`${nf(P.prodHand)} orders/person/day · ${P.fteH} hours/day`),V("Giả định","Assumption")),
@@ -537,10 +573,15 @@ function banText(b){const W=a=>(a||[]).map(([x,y])=>hm(x)+"–"+hm(y)).join(", "
   if(X.R==="HN"||X.R==="HCM")return L?`Outside the inner-city zone (${nf(b.kc,1)} km from centre) → no limit.`:`Ngoài vùng nội đô (cách trung tâm ${nf(b.kc,1)} km) → không ràng buộc.`;
   return L?"No time-based truck ban seen in this region's trip data → no limit.":"Chuyến xe thật của vùng không cho thấy cấm tải theo giờ → không ràng buộc.";}
 function render(){
-  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,chutes:X.chutes,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,ban:X.ban,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
+  const p=nsPlan(REF,{R:X.R,socs:X.socs,open:X.open,win:X.win,ado:X.ado,days:X.days,beta:X.beta/100,sh:X.sh,maxK:X.maxK,bays:X.bays,ch:X.ch,chutes:X.chutes,like:X.like||null,tail:X.tail,dwFix:X.dwFix,dwRate:X.dwRate,capOv:X.capOv,lab:X.lab,ban:X.ban,hoProf:X.hoProf,hoN:X.hoN,late:X.late,hoRate:X.hoRate,gates:X.gates,gMode:X.gMode,gMove:X.gMove,osCap:X.osCap,slackMin:X.slackMin,delay:X.delay,area:X.area,dens:X.dens,ll:(m=>m?[+m[1],+m[2]]:null)(/^\s*(-?\d+(?:\.\d+)?)\s*[,; ]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(X.ll||"")),hub:X.hub,sup:X.sup,pick:X.pick});
   /* gán chute: SOC × loại ngày; SOC chính luôn có chute; SOC không chute → túi chung trong chute SOC chính, đi xe SOC chính, SOC chính chia lại */
   drawChutes();
   $("banNote").textContent=banText(p.ban);
+  $("rowTail").hidden=X.hoProf!=="end";$("rowHoN").hidden=X.hoProf!=="batch";$("rowGm").hidden=$("rowGmv").hidden=X.gates<=1;
+  { const pkd=p.days.reduce((a,d)=>d.X>a.X?d:a,p.days[0]),wq=pkd&&pkd.W.length?pkd.W.reduce((a,w)=>w.Q>a.Q?w:a,pkd.W[0]):null,parts=[];
+    if(p.ho.hoRate){const tot=p.gates*p.ho.hoRate;parts.push(L?`Total handover speed ${p.gates} × ${nf(p.ho.hoRate)} = ${nf(tot)} orders/h${wq?`; the largest wave (${T("dt")[pkd.t]}, ${nf(wq.Q)} orders) needs ${nf(wq.Q/tot,1)} h to hand over.`:"."}`:`Tổng tốc độ bàn giao ${p.gates} × ${nf(p.ho.hoRate)} = ${nf(tot)} đơn/giờ${wq?`; lượt lớn nhất (${T("dt")[pkd.t]}, ${nf(wq.Q)} đơn) cần ${nf(wq.Q/tot,1)} giờ để giao hết.`:"."}`);}
+    if(p.gates>1&&p.gateCmp){const g=p.gateCmp,nm=k=>TX.gModes[k][L],o=g.pick==="tour"?"each":"tour",d=g[o].cost-g[g.pick].cost;parts.push(L?`${p.gates} gates: at least ${p.gates} people. Using “${nm(g.pick)}”${d>0?`, Est. ${mn(d)}/month cheaper than “${nm(o)}”`:""}.`:`${p.gates} cổng: tối thiểu ${p.gates} người. Đang dùng “${nm(g.pick)}”${d>0?`, Est. rẻ hơn “${nm(o)}” ${mn(d)}/tháng`:""}.`);}
+    $("hoNote").textContent=parts.join(" "); }
   $("plan").hidden=X.tab!=="plan";$("asm").hidden=X.tab!=="asm";$("upd").hidden=X.tab!=="upd";if(X.tab==="upd")drawUpd();document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===X.tab)));
   if(X.tab==="asm")drawAsm(p);
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
@@ -548,9 +589,10 @@ function render(){
   /* phiếu kết luận cho Ops */
   { const ck=(ok,txt)=>`<li><b class="${ok?"y":"n"}">${ok?(L?"Pass":"Đạt"):(L?"Fail":"Chưa")}</b><span>${txt}</span></li>`;
     const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");if(!p.ok.thr)why.push(L?"a day type loses money at the entered ADO":"có loại ngày lỗ ở ADO đang nhập");if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.verdict==="cond")why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
+    p.days.filter(d=>d.X>0&&d.n>0&&d.roll>0.5).forEach(d=>why.push(L?`${T("dt")[d.t]}: ${nf(d.roll)} orders/day roll to the next wave`:`${T("dt")[d.t]}: dồn ${nf(d.roll)} đơn/ngày sang lượt sau`));
     if(p.picked.length)why.push((L?"planned with shared trucks: ":"đang tính chạy chung xe với ")+p.picked.map(short).join(", "));
     const bm=(p.mrg.list||[]).find(o=>o.st==="go"&&!X.pick.includes(o.n));if(bm&&!p.picked.length)why.push((L?"can share trucks with ":"có thể ghép xe với ")+bm.mem.map(short).join(" + ")+" (Est. +"+mn(bm.save)+(L?"/month)":"/tháng)"));
-    const ask=[];if(!X.tail)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));if(p.ban.m==="unk")ask.push(T("askBan"));
+    const ask=[];if(X.hoProf==="even"&&!X.hoRate&&X.gates<=1)ask.push(T("askTail"));if(X.dwFix===""&&X.dwRate==="")ask.push(T("askDw"));if(X.capOv==="")ask.push(T("askCap"));if(X.area===""||X.dens==="")ask.push(T("askArea"));if(X.lab!=="pps")ask.push(T("askPpl"));if(p.ban.m==="unk")ask.push(T("askBan"));
     $("vd").className="panel vdp "+p.verdict;
     $("vd").innerHTML=`<div class="vd-h"><span class="l">${T("vdL")}</span><span class="t">${T(p.verdict==="go"?"vdGo":p.verdict==="cond"?"vdCond":"vdNo")}</span><p>${why.length?esc(why.join(" · ")):(L?"All checks pass on the inputs below.":"Mọi điều kiện đạt với hồ sơ đang nhập.")}</p></div>
       <ul class="chk">${ck(p.ok.profit,T("ckProfit"))}${ck(p.ok.thr,T("ckThr"))}${ck(p.ok.cot,T("ckCot"))}${ck(p.ok.people,T("ckPpl"))}${p.dly?ck(p.ok.delay,TX.ckDelay(p.dly)[L]):""}</ul>
@@ -582,7 +624,25 @@ function render(){
   /* COT: ngày đông nhất */
   const pk=D.reduce((a,d)=>d.X>a.X?d:a,D[0]||b);
   const chip=s=>s<0?`<span class="chip late">${T("lateT")} ${nf(-s)}′</span>`:s<20?`<span class="chip mid">${T("tight")} ${nf(s)}′</span>`:`<span class="chip ok">${T("safe")} ${nf(s)}′</span>`;
-  $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th>${T("slack")} · ${dt[pk.t]}</th>${p.late?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(pk.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${hm(w.c.b)}</td><td class="n">${hm(w.done)}</td><td class="n">${hm(w.dep)}${w.batch>1?`<div class="meta">${T("batch")} ${w.batch} ${T("batches")}</div>`:""}</td><td>${chip(w.slack)}</td>${p.late&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}</td>`:p.late?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
+  /* hàng về / xử lý / xe rời theo giờ — ngày đang chọn ở lịch chạy (X.ttd) */
+  { const dts=p.days.filter(d=>d.X>0);if(X.ttd==null||!dts.some(d=>d.t===X.ttd))X.ttd=(dts.reduce((a,d)=>d.X>a.X?d:a,dts[0]||{t:0})).t;
+    $("flday").innerHTML=dts.map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===X.ttd}">${dt[d.t]}</button>`).join("");
+    const D1=p.days.find(d=>d.t===X.ttd);
+    $("flow").innerHTML=(D1?D1.W:[]).map(w=>{const cv=w.curve||[];if(!cv.length)return "";const W0=320,H0=150,ml=40,mr=8,mt=14,mb=22,x0=Math.min(cv[0][0],w.a),x1=w.c.p+30,ym=Math.max(1,w.Qt,...cv.map(c=>c[1]))*1.08;
+      const X_=t=>ml+(t-x0)/(x1-x0)*(W0-ml-mr),Y_=q=>H0-mb-q/ym*(H0-mt-mb),pl=k=>cv.map(c=>`${X_(c[0]).toFixed(1)},${Y_(c[k]).toFixed(1)}`).join(" ");
+      const ticks=[];for(let t=Math.ceil(x0/120)*120;t<=x1;t+=120)if(X_(t)<=W0-mr-14)ticks.push(t);
+      const tr=(w.trk||[]).slice().sort((a,b)=>a.dep-b.dep);
+      return `<figure><figcaption><b>${L?"Wave":"Lượt"} ${hm(w.c.p)}</b> · ${nf(w.Q)} ${T("ord")}${w.carryIn>0.5?` + ${nf(w.carryIn)} ${T("carryL")}`:""} · ${tr.length} ${L?"trucks":"xe"}${w.cut?`, ${w.cut} ${L?"closed early":"đóng tải sớm"}`:""}${w.roll>0.5?` · <span style="color:var(--bad);font-weight:600">${L?"rolls":"dồn"} ${nf(w.roll)} ${T("ord")}</span>`:""}</figcaption>
+       <svg viewBox="0 0 ${W0} ${H0}" role="img" aria-label="${L?"Wave":"Lượt"} ${hm(w.c.p)}: ${T("rollH")} ${nf(w.roll)}">
+        <line class="ax" x1="${ml}" y1="${H0-mb}" x2="${W0-mr}" y2="${H0-mb}"/><line class="ax" x1="${ml}" y1="${mt}" x2="${ml}" y2="${H0-mb}"/>
+        <text class="tx" x="${ml-4}" y="${Y_(w.Qt)+3}" text-anchor="end">${nf(w.Qt)}</text><line class="ax" x1="${ml}" y1="${Y_(w.Qt)}" x2="${W0-mr}" y2="${Y_(w.Qt)}" style="stroke-dasharray:2 3"/><text class="tx" x="${ml-4}" y="${H0-mb+3}" text-anchor="end">0</text>
+        ${ticks.map(t=>`<text class="tx" x="${X_(t)}" y="${H0-6}" text-anchor="middle">${hm(t)}</text>`).join("")}
+        <polyline class="la" points="${pl(1)}"/><polyline class="lp" points="${pl(2)}"/>
+        <line class="cot" x1="${X_(w.c.p)}" y1="${mt}" x2="${X_(w.c.p)}" y2="${H0-mb}"/><text class="ct" x="${X_(w.c.p)-3}" y="${mt+8}" text-anchor="end">COT</text>
+        ${tr.map((z,i)=>`<circle class="tk${z.cut?" cut":""}" cx="${X_(Math.min(z.dep,x1)).toFixed(1)}" cy="${H0-mb-4-(i%3)*9}" r="3.5"/>${z.cut?`<text class="tl" x="${(X_(Math.min(z.dep,x1))-6).toFixed(1)}" y="${H0-mb-1-(i%3)*9}" text-anchor="end">${nf(z.fill*100)}%</text>`:""}`).join("")}
+       </svg></figure>`;}).join(""); }
+  { const g=p.gateCmp;$("gcmp").innerHTML=g?`<div class="gcmp"><table><thead><tr><th>${p.gates} ${L?"gates":"cổng"}</th><th class="n">${L?"Trucks + labour / month":"Tiền xe + người / tháng"}</th><th class="n">${L?"Truck trips / month":"Chuyến xe / tháng"}</th><th class="n">${L?"Orders rolled / month":"Đơn dồn / tháng"}</th><th></th></tr></thead><tbody>${["tour","each"].map(k=>`<tr${g.pick===k?' style="background:var(--navy-soft)"':""}><td>${TX.gModes[k][L]}</td><td class="n">${mn(g[k].cost)}</td><td class="n">${nf(g[k].trucks)}</td><td class="n">${nf(g[k].roll)}</td><td>${g.pick===k?`<span class="chip ok">${L?"in use":"đang dùng"}</span>`:""}${g.best===k&&g.pick!==k?`<span class="chip mid">${L?"better":"tốt hơn"}</span>`:""}</td></tr>`).join("")}</tbody></table></div>`:""; }
+  $("cot").innerHTML=`<thead><tr><th>${T("dlC")}</th><th class="n">${T("hoEnd")}</th><th class="n">${T("doneL")}</th><th class="n">${T("dep")}</th><th class="n">${T("rollH")}</th><th>${T("slack")} · ${dt[pk.t]}</th>${p.late?`<th>${TX.laneLate(p.dly)[L]}</th>`:""}</tr></thead><tbody>${(pk.W||[]).map((w,j)=>`<tr><td class="cot">${hm(w.c.p)}</td><td class="n">${w.hoEnd!=null?hm(w.hoEnd):"–"}${w.carryIn>0.5?`<div class="meta">+${nf(w.carryIn)} ${T("carryL")}</div>`:""}</td><td class="n">${hm(w.done)}</td><td class="n">${w.dep1!=null&&w.dep-w.dep1>2?hm(w.dep1)+"–":""}${hm(w.dep)}${w.cut?`<div class="meta" style="color:var(--warn)">${TX.cutL(w.cut)[L]}</div>`:""}</td><td class="n">${w.roll>0.5?`<span class="chip late">${nf(w.roll)}</span>`:"0"}</td><td>${chip(w.slack)}</td>${p.late&&p.late.W[j]?`<td>${chip(p.late.W[j].slack)}${p.late.W[j].roll>0.5?`<div class="meta">${T("rollH")} ${nf(p.late.W[j].roll)}</div>`:""}</td>`:p.late?"<td>–</td>":""}</tr>`).join("")}</tbody>`;
   /* lịch chạy đề xuất theo loại ngày */
   { const dts=p.days.filter(d=>d.X>0);if(X.ttd==null||!dts.some(d=>d.t===X.ttd))X.ttd=(dts.reduce((a,d)=>d.X>a.X?d:a,dts[0]||{t:0})).t;
     $("o8s").textContent=T("o8s");$("ttday").innerHTML=dts.map(d=>`<button type="button" data-ttd="${d.t}" aria-pressed="${d.t===X.ttd}">${dt[d.t]}</button>`).join("");
@@ -625,6 +685,7 @@ $("chs").addEventListener("drop",e=>{const c=e.target.closest("[data-chu]");if(!
 $("f").addEventListener("submit",e=>e.preventDefault());
 $("upd").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;X.tab=b.dataset.go;render();window.scrollTo(0,0);});
 $("tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(!b)return;X.tab=b.dataset.tab;render();});
+$("flday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("ttday").addEventListener("click",e=>{const b=e.target.closest("[data-ttd]");if(!b)return;X.ttd=+b.dataset.ttd;render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
