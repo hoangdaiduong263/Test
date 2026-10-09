@@ -7,6 +7,8 @@ const NS_KS = ["VAN", "1T25", "1T9", "5T", "8T"];
    HCM: luật theo cụm điểm (≤ 2 km) trong ~15 km quanh trung tâm, suy từ giờ xe nặng thật: xe nặng chạy cả 16–21h → không ràng buộc;
    có ≥ 3 chuyến nặng nhưng né 16–21h → chỉ các khung đã thấy xe nặng chạy (9–16h, 21–06h); gần như không xe nặng mà ≥ 40% đợt phải chồng nhiều xe nhẹ → chỉ 22:00–06:00 (QĐ 23/2018);
    còn lại → chưa đủ dữ liệu (cảnh báo, không ràng buộc). South, North: không thấy dấu hiệu cấm theo giờ.
+   HCM (TS cập nhật 10/2026): vùng cấm theo ranh giới TS (poly, vẽ lại từ bản đồ TS, sai ~0,5–1 km, chờ file ranh giới) — xe từ 1T9 trở lên (1T9, 5T, 8T) cấm 06:00–22:00;
+   ban ngày chỉ VAN, 1T25. Thay luật suy từ giờ chạy thật ở trên cho HCM.
    Seller mới: theo điểm D2S gần nhất (≤ near km) có luật; HN ngoài bán kính đó thì theo vùng */
 /* cổng bàn giao: phút xe chuyển sang cổng kế tiếp (giả định, chưa đo) */
 const NS_GATE = { move: 10 };
@@ -16,7 +18,13 @@ const NS_HCMAX = 1000;
 const NS_LATE = 12;
 const NS_BAN = { heavy: ["5T", "8T"], clKm: 2, near: 3,
   HN: { zone: 1, c: [21.0285, 105.8542], r: 14.5, allow: [[1260, 1800]] },
-  HCM: { c: [10.7724, 106.698], r: 15, allow: [[1320, 1800]] } };
+  HCM: { c: [10.7724, 106.698], r: 15, allow: [[1320, 1800]], heavy: ["1T9", "5T", "8T"], src: "TS 10/2026",
+    poly: [[10.6892,106.5948],[10.7144,106.5918],[10.7523,106.5905],[10.7859,106.5897],[10.8111,106.5918],[10.828,106.5961],[10.8427,106.6033],[10.8582,106.616],[10.8616,106.6352],[10.8624,106.665],[10.8616,106.699],[10.8692,106.716],[10.8734,106.733],[10.8751,106.7586],[10.8776,106.8002],[10.8658,106.8011],[10.849,106.7905],[10.8322,106.782],[10.8195,106.7713],[10.809,106.7607],[10.7943,106.7586],[10.7817,106.7637],[10.7741,106.7705],[10.7544,106.7564],[10.7397,106.7394],[10.7304,106.7181],[10.727,106.699],[10.7262,106.6735],[10.7237,106.6565],[10.7144,106.6437],[10.7018,106.6267]] } };
+/* điểm (lat, lng) trong đa giác; khoảng cách (km) tới ranh */
+const nsInPoly = (p, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [yi, xi] = poly[i], [yj, xj] = poly[j]; if (((yi > p[0]) !== (yj > p[0])) && (p[1] < (xj - xi) * (p[0] - yi) / (yj - yi) + xi)) c = !c; } return c; };
+const nsEdgeKm = (p, poly) => { const kx = 111.32 * Math.cos(p[0] * Math.PI / 180), ky = 110.57; let m = 1e9;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const ax = (poly[j][1] - p[1]) * kx, ay = (poly[j][0] - p[0]) * ky, bx = (poly[i][1] - p[1]) * kx, by = (poly[i][0] - p[0]) * ky, dx = bx - ax, dy = by - ay;
+    const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1))); m = Math.min(m, Math.hypot(ax + t * dx, ay + t * dy)); } return m; };
 const nsKm = (a, b) => { const r = v => v * Math.PI / 180, dLa = r(b[0] - a[0]), dLo = r(b[1] - a[1]); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLo / 2) ** 2; return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h))); };
 /* phân vị p (0–100) có nội suy */
 const nsPct = (a, p) => { const b = a.filter(x => x != null && isFinite(x)).sort((x, y) => x - y); if (!b.length) return null; const r = (b.length - 1) * p / 100, i = Math.floor(r); return b[i] + (b[Math.min(b.length - 1, i + 1)] - b[i]) * (r - i); };
@@ -96,6 +104,7 @@ function nsRef(C, REF) {
       const ev = { nH: hv.length, n16, w, stk, pts: js.length };
       js.forEach(j => { const q = reg[R].pts[j], kc = q.ll && bz && bz.c ? nsKm(q.ll, bz.c) : null; let b;
         if (!bz || !q.ll) b = { m: "free" };
+        else if (bz.poly) { const ins = nsInPoly(q.ll, bz.poly), dE = +nsEdgeKm(q.ll, bz.poly).toFixed(1); b = ins ? { m: "poly", allow: bz.allow, hv: bz.heavy, dE } : { m: "free", poly: 1, dE }; }
         else if (bz.zone) b = kc <= bz.r ? { m: "zone", allow: bz.allow } : { m: "free" };
         else if (kc > bz.r) b = { m: "free" };
         else if (hv.length >= 10 && n16 / hv.length >= 0.2) b = { m: "free" };
@@ -198,9 +207,9 @@ function nsPlan(ref, x) {
   /* khoảng cách (chim bay × 1,3 như Core khi chưa có đường bộ) và đội xe rẻ nhất cho nhiều seller chung xe: mỗi seller chiếm q ÷ sức chở của chính nó */
   const R6 = 6371, hav = (a, b) => { const r = v => v * Math.PI / 180, dLa = r(b[0] - a[0]), dLo = r(b[1] - a[1]); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLo / 2) ** 2; return 2 * R6 * Math.asin(Math.min(1, Math.sqrt(h))) * 1.3; };
   const KS2 = NS_KS.slice(0, mi + 1), capN = cap.map(Math.round);
-  /* noHv: xe đi chung qua điểm đang bị cấm xe nặng ở giờ xe rời của điểm đó → chỉ xe nhẹ */
+  /* noHv: các cỡ xe bị cấm ở điểm ghép (giờ xe rời của điểm đó) → không dùng các cỡ đó cho xe chung */
   const fleetUx = (loads, km, dt, wk, noHv) => { let best = null; const kmI0 = kmI(km);
-    const one = KS2.filter(k => (wk == null || hvOk[wk] || !HV.has(k)) && !(noHv && HV.has(k))).map(k => { const j = NS_KS.indexOf(k); const U = loads.reduce((a, l) => a + (l.c[j] > 0 ? l.q / l.c[j] : 1e9), 0); return { k, U, p: G.price[k][kmI0] + (G.pkm[k] || 0) * (dt || 0) }; }).filter(o => o.U < 1e8);
+    const one = KS2.filter(k => (wk == null || hvOk[wk] || !HV.has(k)) && !(noHv && noHv.has(k))).map(k => { const j = NS_KS.indexOf(k); const U = loads.reduce((a, l) => a + (l.c[j] > 0 ? l.q / l.c[j] : 1e9), 0); return { k, U, p: G.price[k][kmI0] + (G.pkm[k] || 0) * (dt || 0) }; }).filter(o => o.U < 1e8);
     if (!one.length || loads.every(l => !(l.q > 0))) return { c: 0, t: 0, mix: {}, U: 0 };
     const add = (c, t, mix, U) => { if (!best || c < best.c - 1 || (Math.abs(c - best.c) <= 1 && t < best.t)) best = { c, t, mix, U }; };
     for (const m of one) { const n = Math.floor(m.U - 1e-9); add((n + 1) * m.p, n + 1, { [m.k]: n + 1 }, m.U);
@@ -237,10 +246,11 @@ function nsPlan(ref, x) {
   const ban = (() => { const bz = NS_BAN[x.R]; if (x.ban === "off") return { m: "off" }; if (!llOk || !bz) return { m: llOk ? "free" : "noll" };
     const near = G.pts.filter(q => q.ll && q.ban).map(q => ({ q, km: nsKm(x.ll, q.ll) })).filter(o => o.km <= NS_BAN.near).sort((a, b) => a.km - b.km);
     const kc = nsKm(x.ll, bz.c), src = near.find(o => o.q.ban.m !== "unk");
+    if (bz.poly) { const dE = +nsEdgeKm(x.ll, bz.poly).toFixed(1); return nsInPoly(x.ll, bz.poly) ? { m: "poly", allow: bz.allow, hv: bz.heavy, dE, src: bz.src } : { m: "free", poly: 1, dE, src: bz.src }; }
     if (bz.zone) return kc <= bz.r ? { m: "zone", allow: bz.allow, kc } : { m: "free", kc };
     if (src) return Object.assign({}, src.q.ban, { from: src.q.n, fromKm: +src.km.toFixed(1), kc });
     return kc <= bz.r ? { m: "unk", kc, from: near[0] ? near[0].q.n : null, fromKm: near[0] ? +near[0].km.toFixed(1) : null } : { m: "free", kc }; })();
-  const AL = ban.allow || null, HV = new Set(NS_BAN.heavy);
+  const AL = ban.allow || null, HV = new Set(ban.hv || NS_BAN.heavy);
   /* giờ sớm nhất ≥ t mà xe nặng được rời (khung có thể qua nửa đêm: phút > 1440) */
   const nextOk = t => { if (!AL) return t; let b = null; for (const [a, z] of AL) for (const o of [0, -1440, 1440]) { const A = a + o, Z = z + o; const c = t >= A && t < Z ? t : t < A ? A : null; if (c != null && (b == null || c < b)) b = c; } return b == null ? 1e9 : b; };
   /* lượt k: xe nặng dùng được nếu từ lúc hàng xong (≈ cuối khung bàn giao + 5′) tới hạn COT có khung được rời */
@@ -249,9 +259,11 @@ function nsPlan(ref, x) {
   const chainP = ps => { let d = 0; ps.forEach((q, j) => { if (j) d += hav(ps[j - 1].ll, q.ll); }); return d; };
   /* tiền xe các tuyến đó đang chạy (không có seller mới): mỗi tuyến một đội xe, km đi vòng giữa các điểm của tuyến */
   /* điểm đang chạy bị cấm xe nặng ở giờ xe rời thật của lượt đó (luật cấm tải của chính điểm) */
-  const hvBanAt = (pj, t, k) => { const al = pj.ban && pj.ban.allow; if (!al) return false; const d = depOf(pj, t, k); if (d == null) return false;
-    return !al.some(([a, z]) => [0, -1440, 1440].some(o => d >= a + o && d < z + o)); };
-  const aloneX = (ps, kmS, wk, t) => { const g = {}; ps.forEach(o => (g[o.pj.rt] = g[o.pj.rt] || []).push(o)); return Object.values(g).reduce((a, L) => { const f = fleetUx(L.map(o => ({ q: o.q, c: o.pj.c })), kmS, chainP(L.map(o => o.pj)), wk, L.some(o => hvBanAt(o.pj, t, wk))); return { c: a.c + f.c, t: a.t + f.t, u: a.u + (f.U || 0) }; }, { c: 0, t: 0, u: 0 }); };
+  const hvBanAt = (pj, t, k) => { const al = pj.ban && pj.ban.allow; if (!al) return null; const d = depOf(pj, t, k); if (d == null) return null;
+    return al.some(([a, z]) => [0, -1440, 1440].some(o => d >= a + o && d < z + o)) ? null : (pj.ban.hv || NS_BAN.heavy); };
+  /* các cỡ xe bị cấm ở các điểm ghép (giờ xe rời thật của lượt k); null = không cấm */
+  const noHvOf = (L, t, k) => { const s2 = new Set(L.flatMap(o => hvBanAt(o.pj, t, k) || [])); return s2.size ? s2 : null; };
+  const aloneX = (ps, kmS, wk, t) => { const g = {}; ps.forEach(o => (g[o.pj.rt] = g[o.pj.rt] || []).push(o)); return Object.values(g).reduce((a, L) => { const f = fleetUx(L.map(o => ({ q: o.q, c: o.pj.c })), kmS, chainP(L.map(o => o.pj)), wk, noHvOf(L, t, wk)); return { c: a.c + f.c, t: a.t + f.t, u: a.u + (f.U || 0) }; }, { c: 0, t: 0, u: 0 }); };
   const aloneOf = (ps, kmS, wk, t) => aloneX(ps, kmS, wk, t).c;
   /* lịch xe chung: điểm sẵn hàng trước lấy trước; tính ngược từ điểm cuối (như Core) để xe tới điểm sau vừa lúc hàng sẵn, không tới sớm rồi nằm chờ */
   const chainRun = stops => { stops.sort((a, b) => a.rd - b.rd);
@@ -297,7 +309,7 @@ function nsPlan(ref, x) {
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q, tD, k, prt.length ? "tour" : gm), mix = {};
       if (prt.length) legs.forEach(l => { const z = l.s[0], kmS = (socs.find(o => o.s === z) || {}).km || 0;
         const ps = prt.map(pj => ({ pj, q: okW(pj, tD, k) ? adoOf(pj, tD) * (pj.sh[k] || 0) * (pj.soc[z] || 0) : 0 })).filter(o => o.q > 0.5); if (!ps.length || !(l.Q > 0)) return;
-        const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k, ps.some(o => hvBanAt(o.pj, tD, k))), al = aloneX(ps, kmS, k, tD), alone = al.c;
+        const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k, noHvOf(ps, tD, k)), al = aloneX(ps, kmS, k, tD), alone = al.c;
         Object.assign(l, { c: Math.max(0, m.c - alone), tAlone: al.t, uAlone: al.u, t: m.t, mix: m.mix, q: m.t ? l.Q * m.t / Math.max(1e-9, m.U) : l.q, shared: ps.map(o => ({ n: o.pj.n, q: o.q, pj: o.pj })), fillAll: m.t ? m.U / m.t : 0 }); });
       /* chỗ tập kết không đủ chứa cả lượt: số xe ít nhất = ⌈đơn ÷ chỗ tập kết⌉ (xe phải lấy nhiều đợt); thêm xe cỡ nhỏ nhất đủ chở phần chia */
       let xs = 0; if (stage && legs.length) { const need = Math.ceil(Q / stage - 1e-9), t0 = legs.reduce((a, l) => a + l.t, 0);
