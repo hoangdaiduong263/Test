@@ -302,6 +302,28 @@ function nsPlan(ref, x) {
     const bands = []; let cur = null; for (let j = j0; j < grid.length && grid[j] <= 2 * grid[j0]; j++) { if (net[j] < 0) { if (!cur) bands.push(cur = [grid[j], grid[j]]); else cur[1] = grid[j]; } else cur = null; }
     return { v: grid[j0], bands }; };
   const thrR = [0, 1, 2].map(thrOf), thrs = thrR.map(o => o.v), thr = thrs[0];
+  /* HOÀ VỐN THÁNG: nhân cả bộ ADO đang nhập (giữ tỷ lệ BAU / Mini CP / CP và số ngày mỗi loại) tới mức nhỏ nhất mà cả tháng không lỗ.
+     Tìm thô theo ADO của loại ngày đầu có đơn (bước 100 tới 3.000, 250 tới 20.000), rồi tìm mịn (bước 10) trong khoảng vừa vượt; ghi dải lỗ lại tới 2× */
+  const ado0 = x.ado.map(v => Math.max(0, +v || 0)), dn = x.ado.map((_, t) => +x.days[t] || 0), bi = ado0.findIndex((v, t) => v > 0 && dn[t] > 0);
+  const netM = a => ado0.reduce((s0, v, t) => { const X = Math.round(v * a / ado0[bi]); return dn[t] > 0 && X > 0 ? s0 + dn[t] * day(X, 0, t).net : s0; }, 0);
+  const be = { ado: null, bands: [], base: bi };
+  if (bi >= 0) { const g = []; for (let a = 100; a <= 3000; a += 100) g.push(a); for (let a = 3250; a <= 20000; a += 250) g.push(a);
+    const nv = g.map(netM), j0 = nv.findIndex(v => v >= 0);
+    if (j0 >= 0) { let a0 = g[j0]; for (let a = (j0 ? g[j0 - 1] : 0) + 10; a < g[j0]; a += 10) if (netM(a) >= 0) { a0 = a; break; }
+      be.ado = ado0.map(v => Math.round(v * a0 / ado0[bi])); let cur = null;
+      for (let j = j0; j < g.length && g[j] <= 2 * a0; j++) { if (nv[j] < 0) { if (!cur) be.bands.push(cur = [g[j], g[j]]); else cur[1] = g[j]; } else cur = null; } } }
+  /* không hoà vốn ở mức đơn nào: tiền xe tối thiểu mỗi đơn (giá ÷ sức chở, cỡ rẻ nhất mỗi đơn, theo SOC) + tiền người + chia lại ≥ FM pickup.
+     Cần sức chở gấp f lần mới có thể hoà vốn → quy ra số đơn tối thiểu một xe 1T9 */
+  { const t0 = Math.max(0, bi), wk0 = works[t0], labO = lab === "pps" ? P.ppsRate : pay * wk0.w, socO = rsSh[t0] * P.ftePay / Math.max(1, workOf(st).prod);
+    const trO = socsT[t0].reduce((a, o) => a + o.sh / shS * Math.min(...ksAt(o.km).map(v => v.p / v.q)), 0), room = fmU - labO - socO;
+    be.floor = { truck: trO, lab: labO, soc: socO, fm: fmU, ok: room > 0 && trO < room }; }
+  /* SỨC CHỞ HOÀ VỐN: ở đúng ADO đang nhập, xe 1T9 phải chở tối thiểu bao nhiêu đơn thì cả tháng không lỗ (đổi mọi cỡ xe cùng tỷ lệ, như ô seller báo).
+     Chia đôi trên hệ số sức chở 0,2–8×; trên 8× coi như không đạt (tiền người / chia lại đã cao hơn FM pickup) */
+  if (bi >= 0) { const c0 = cap.slice(), netAt = f => { for (let j = 0; j < cap.length; j++) cap[j] = c0[j] * f; try { return netM(ado0[bi]); } finally { for (let j = 0; j < cap.length; j++) cap[j] = c0[j]; } };
+    if (netAt(8) < 0) be.cap1T9 = null; else { let lo = 0.2, hi = 8; if (netAt(lo) >= 0) hi = lo; else for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (netAt(mid) >= 0) hi = mid; else lo = mid; }
+      be.cap1T9 = Math.ceil(c0[2] * hi / 10) * 10; } }
+  /* số chuyến tối thiểu mỗi ngày (mỗi lượt có hàng × mỗi SOC đích của TO ≥ 1 xe): ở ADO thấp đây là lý do chở bao nhiêu cũng lỗ */
+  if (bi >= 0 && days[bi].W) { const Wb = days[bi].W; be.minTrips = Wb.reduce((a, v) => a + v.legs.filter(l => l.Q > 0.5).length, 0); be.waves = Wb.length; be.dest = socsT[bi].length; be.cur1T9 = Math.round(cap[2]); }
   /* 7. GHÉP VỚI TUYẾN D2S ĐANG CHẠY (tuyến theo kế hoạch Core: đi riêng = 1 điểm, đi chung = nhiều điểm một đội xe): toạ độ (x.ll), FM Hub (x.hub), Sup (x.sup)
      → tuyến có điểm cách ≤ 30 km, chung SOC, chung lượt COT. Tiền xe: seller mới đi riêng + tuyến đang chạy so với một đội xe chở cả tuyến và seller mới
      (mỗi seller chiếm chỗ theo sức chở của mình, cộng đ/km đi vòng). Điểm có sẵn: đơn/ngày = trung vị đơn của điểm (mọi loại ngày), phần đơn mỗi lượt và SOC theo chuyến thật.
@@ -325,6 +347,6 @@ function nsPlan(ref, x) {
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
   const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= slackMin), people: run.every(d => !d.short), delay: !late || late.worst >= 0 };
   const verdict = chk.profit && chk.thr && chk.cot && chk.people ? (chk.delay ? "go" : "cond") : "no";
-  return { ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), mrg, picked: partners.map(q => q.n) };
+  return { ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin, osCap, dly, late, pk: pk.t, ok: chk, verdict, thrs, thrBands: thrR.map(o => o.bands), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };
