@@ -37,13 +37,15 @@ function Core(D, REF) {
     prodHand: 2000,    // năng suất phần không sort (quét, bàn giao, xếp xe): đơn/người/ngày
     prodChute: 10,     // mỗi chute chia thêm ngoài 1: −% năng suất sort
     prodBulky: 5,      // mỗi 10 điểm % hàng to lệch khỏi 10%: −% năng suất sort
-    fteH: 7,           // một người làm bao nhiêu giờ/ngày
-    ftePay: 520000,    // FTE riêng: đ/người/ngày
-    hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ngày
+    fteH: 7,           // năng suất: giờ sort thực mỗi ngày công (prodBase đơn/người/ngày ứng với bấy nhiêu giờ)
+    shiftH: 8,         // một ca (giờ trả lương): FTE riêng và nhóm FM Hub cùng năng suất fteH giờ sort; nhóm Hub dùng phần còn lại của ca để đi giữa các điểm (làm + đi ≤ ca)
+    ftePay: 350000,    // FTE riêng tại điểm: đ/người/ca 8h — bằng người nhóm FM Hub; khác nhau chỉ ở chỗ nhóm Hub đi vòng nhiều điểm
+    hubPay: 350000,    // nhóm FM Hub đi vòng: đ/người/ca 8h
     splitExtra: 2,     // chia điểm cho xe: được thêm tối đa bấy nhiêu xe mỗi lượt nếu cần để kịp COT (chỉ kế hoạch; tiền xe thêm cộng vào kế hoạch)
     split: 1,          // lượt đi chung bị trễ: cho các xe trong lượt chia điểm (giữ tuyến & số xe)
     teamLate: 0,       // FTE chung: 1 = mỗi điểm được trễ tới lateTol (hoặc như khi dùng FTE riêng nếu đã trễ hơn); 0 = nhóm chung không được thêm trễ
     minTeam: 2,        // FTE chung: số điểm tối thiểu của một nhóm (1 = cho phép nhóm 1 điểm theo giá hub)
+    poolN: 3,          // HIỆN NAY (như Seller Planner cũ): FM Hub có từ bấy nhiêu điểm D2S trở lên thì các điểm của Hub dùng chung một nhóm người, ít hơn thì người riêng (0 = hiện nay cũng tự gom như kế hoạch)
     hubKm: 15,         // nhóm FM Hub: các điểm cách nhau tối đa (km)
     hubSpd: 40,        // nhóm FM Hub di chuyển (km/giờ)
     pps: 0,            // Rider PPS: 0 = không đưa vào model (chỉ FTE riêng & FTE chung theo nhóm FM Hub)
@@ -805,12 +807,15 @@ function Core(D, REF) {
         const t0 = teamReady(pts, n), q = { pts, n, rd: t0.rd, rs: t0.rs, seg: t0.seg }, A0 = Object.assign({}, A); pts.forEach(i => { A0[i] = { m: "H", team: q }; }); if (!okWith(pts, A0)) continue;
         const { t, A2, tr } = teamSim(pts, n);
         const mv = tr.seg.reduce((a, sg) => a + (sg.from != null && sg.from !== sg.i ? travel(sg.from, sg.i) : 0), 0);
-        if (W * P.fteH * 60 / n + mv > P.fteH * 60 + 1e-6) continue;
+        if (W * P.fteH * 60 / n + mv > (P.shiftH || P.fteH) * 60 + 1e-6) continue;
         if (okWith(pts, A2)) { t.c = tCost(t); t.mv = mv; return t; } } if (why) why.r = "trễ"; return null; }
     const apply = (t, old) => { old.forEach(o => teams.splice(teams.indexOf(o), 1)); t.hub = S[t.pts[0]].h; teams.push(t); t.pts.forEach(i => { A[i] = { m: "H", team: t }; }); };
     const byHub = {}, byHubAll = {}; Object.keys(A).map(Number).filter(i => waves(i) && S[i].h).forEach(i => { (byHubAll[S[i].h] = byHubAll[S[i].h] || []).push(i); if (HCOV[nm(i)] == null) (byHub[S[i].h] = byHub[S[i].h] || []).push(i); });
     const whyOf = {};
-    for (const pts of Object.values(byHub)) {
+    /* HIỆN NAY (isBase, P.poolN > 0): như Seller Planner cũ — chỉ FM Hub có ≥ poolN điểm D2S đang dùng chung người (gom theo cùng cách dưới đây); Hub ít điểm hơn: mỗi điểm người riêng.
+       Kế hoạch: gom ở mọi Hub */
+    const asIs = isBase && P.poolN > 0;
+    for (const pts of Object.values(byHub)) { if (asIs && pts.length < P.poolN) continue;
       /* FTE chung = một nhóm người đi nhiều điểm: cần ≥ P.minTeam điểm (P.minTeam = 1 thì cho cả nhóm 1 điểm theo giá hub) */
       if (P.minTeam <= 1) pts.forEach(i => { const t = tryTeam([i]); if (t && t.c < pc(i) - 1) apply(t, []); });
       for (let it = 0; it < 200; it++) { let best = null; const tm = teams.filter(t => t.pts.some(i => pts.includes(i))), free = pts.filter(i => A[i].m !== "H");
@@ -1021,7 +1026,7 @@ function Core(D, REF) {
       [[h.A, 0], [A2, 1]].forEach(([A, k]) => { const x = simRoute(g, A, null); if (!x) return; x.rows.forEach(s => s.st.forEach(z => { if (k) { roll += z.roll || 0; if (z.dep - z.dl > late) { late = z.dep - z.dl; pt = z.i; } } else { roll0 += z.roll || 0; late0 = Math.max(late0, z.dep - z.dl); } })); }); });
     return { late, late0, pt, roll: roll - roll0 }; }
   function reset() { TT = null; [TKM, RC, STC, COC, CLC, CAL, POL, TF, CF, FCAP, BF, PW, VU, NET, BR, SSH, CU, SDY, CPS, HBS].forEach(o => Object.keys(o).forEach(k => delete o[k])); SK = null; LK = null; }
-  return { routeValue, routeDetail, pairOk, occChanged, TY, price, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, scOf, capS, learnK, lowCap, mergeRisk, supOf, hubShare, locked, tripFill, tripsOf, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
+  return { routeValue, routeDetail, pairOk, occChanged, TY, price, planDay: (g, d) => withPlan(() => routeDay(g, d)), setDay(d) { DAYF = d ?? null; }, scOf, capS, learnK, lowCap, mergeRisk, supOf, hubShare, locked, tripFill, tripsOf, simDay(g, A, d, plan) { const o = DAYF; DAYF = d; try { return plan ? withPlan(() => simRoute(g, A, null, d)) : simRoute(g, A, null, d); } finally { DAYF = o; } }, dayWaves, occPoint, occ, occRegion, planCost: g => withPlan(() => routeCost(g)), socPool, chuteCheck, fCost, standalone, risk, teamRisk, setDelay(av, tr) { DLY.av = av || 0; DLY.tr = tr || 0; }, kmN, roadPath, hasRoad: !!RD, toSocTo, socShare, socN, chSt, volPk, fleet, vehSet, betaOf, DATES: D.dates, DT: D.dt || null, LH: D.lh || null, fillCap, dwellAt, toSocAt, P, VEH, REGIONS, S, COTW, run, simRoute, fteBase, geo, dayWaves, legMin, dwell, TRP, TRN, toSoc, travelData, baseRoutes, routeDay, DAYS, active, closeOf, openOf, dlInfo, setDeadline, DLOV, setAvail, AVOV, ownReady, setHC, HCOV, fteBase, setTruck, TROV, rkey, truckOv, fillOf, nodes, routeCost, realCost, routeBest, simRoute, work, fteN, modeTxt, geo, socOf, kmSoc, simK, durMin, travel, waves, cotsOf, deadline, openOf, mixLabel, key, nm, kmPt, tripKm, routeOrder,
     reset, setFit(days) { FIT = days ? new Set(days) : null; reset(); }, get FIT() { return FIT; },
     /* đặt tay "tuyến hiện nay" của một vùng (thí nghiệm ghép/tách); null = về cách dựng từ data */
     setBase(R, L) { reset(); if (L) BR[R] = L.map(x => x.slice()); } };
