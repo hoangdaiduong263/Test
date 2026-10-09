@@ -276,7 +276,7 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
     <div class="out">
       <section class="panel vdp" id="vd"></section>
       <div class="verdict" id="kpi"></div>
-      <section class="panel sec" id="winSec"><h2><span data-t="oWin"></span></h2><p class="sub" data-t="oWinS"></p><div class="tw"><table id="win"></table></div><p class="hint" id="winNote" style="margin-top:8px;font-size:12.5px;color:var(--ink)"></p></section>
+      <section class="panel sec" id="winSec"><h2><span data-t="oWin"></span></h2><p class="sub" data-t="oWinS"></p><div class="tw"><table id="win"></table></div><p class="hint" id="winNote" style="margin-top:8px;font-size:12.5px;color:var(--ink)"></p><div id="rescue"></div></section>
       <section class="panel sec"><h2><i>1</i><span data-t="o1"></span></h2><p class="sub" data-t="o1s"></p><div class="tw"><table id="truck"></table></div><div id="gcmp"></div><div id="fillSug" class="fillsug"></div></section>
       <div class="two">
         <section class="panel sec"><h2><i>2</i><span data-t="o2"></span></h2><p class="sub" data-t="o2s"></p><div class="tw"><table id="ppl"></table></div><p class="hint" id="hcNote" style="margin:8px 0 0"></p></section>
@@ -837,6 +837,16 @@ function drawAll(p){
     else if(be&&be.base>=0) note=L?`No ADO up to 20,000 ${T("dt")[be.base]} breaks even${be.cap1T9!=null?`; at the entered ADO a 1T9 must carry ≥ ${nf(be.cap1T9)}`:""}.`:`Không mức ADO nào tới 20.000 ${T("dt")[be.base]} hoà vốn${be.cap1T9!=null?`; ở ADO đang nhập xe 1T9 phải chở ≥ ${nf(be.cap1T9)} đơn`:be.minTrips?`; tối thiểu ${be.minTrips} chuyến/ngày (${be.waves} lượt × ${be.dest} SOC đích)`:""}.`;
     if(be&&be.cotWhy&&be.ado&&(!be.cotMax||be.cotMax[be.base]>=be.ado[be.base]))note+=L?` Above that: ${TX.winWhy[be.cotWhy.why][L]} on ${dtn[be.cotWhy.t]}; to go higher: ${lever(be.cotWhy.why)}.`:` Cao hơn mức đó ngày ${dtn[be.cotWhy.t]} ${TX.winWhy[be.cotWhy.why][L]}; muốn chạy cao hơn: ${lever(be.cotWhy.why)}.`;
     $("winNote").textContent=note; }
+  /* CÁCH CỨU khi không mức ADO nào hoà vốn: các đòn bẩy đang có trong model, mỗi cách một dòng, Áp dụng = đổi ô nhập tương ứng */
+  if(!p.lite){const be=p.be,R0=be&&be.rescue,P0=REF.P,dtn=T("dt");
+    const lab={hub:L?`Hub staff (${nf(P0.hubPay/1e3)}k/day) instead of FTE`:`Người của Hub (${nf(P0.hubPay/1e3)}k/ngày) thay FTE`,pps:L?`PPS rider (${nf(P0.ppsRate)} đ/order, seller packs)`:`Rider PPS (${nf(P0.ppsRate)} đ/đơn, seller tự đóng hàng)`,"1to":L?"One TO to the main SOC (1 chute, main SOC re-sorts)":"Gộp TO về SOC chính (1 chute, SOC chính chia lại)",merge:L?"Share trucks with":"Ghép xe cả tuyến với"};
+    const nm=o=>o.k.split("+").map(z=>z==="merge"?`${lab.merge} ${(o.mem||[]).map(n=>esc(short(n))).join(" + ")}`:lab[z]).join(L?" + ":" + ");
+    $("rescue").innerHTML=!R0?"":`<h3 style="margin:14px 0 4px;font-size:14px">${L?"Ways to rescue (levers already in the model)":"Cách cứu (đòn bẩy đang có trong model)"}</h3>
+      ${be.hvLimited?`<p class="meta" style="margin:0 0 6px">${L?"Daytime waves fall in heavy-truck ban hours, so only small trucks run them: the main reason the truck cost per order stays high.":"Lượt ban ngày rơi vào giờ cấm xe 5T/8T nên chỉ chạy xe nhỏ — lý do chính tiền xe mỗi đơn cao."}</p>`:""}
+      ${R0.length?`<div class="tw"><table><thead><tr><th>${L?"Lever":"Đòn bẩy"}</th><th class="n">${L?"Breaks even from":"Hoà vốn từ"}</th><th class="n">${L?"At entered ADO":"Ở ADO đang nhập"}</th><th></th></tr></thead><tbody>${R0.slice().sort((a,b)=>(a.be?0:1)-(b.be?0:1)||(a.be&&b.be?a.be[a.base]-b.be[b.base]:b.net-a.net)).map(o=>`<tr><td>${nm(o)}</td>
+        <td class="n">${o.be?`<b>${dtn[o.base]} ${nf(o.be[o.base])}</b><div class="meta">${o.be.map((v,t)=>dtn[t]+" "+nf(v)).join(" · ")}</div>${o.bands.length?`<div class="meta">${L?"loss again at":"lỗ lại ở"} ${dtn[o.base]} ${o.bands.slice(0,2).map(b=>b[0]===b[1]?nf(b[0]):nf(b[0])+"–"+nf(b[1])).join(", ")}${o.bands.some(b=>o.at>=b[0]&&o.at<=b[1])?(L?" (entered ADO is in it)":" (ADO đang nhập nằm trong dải này)"):""}</div>`:""}${o.at<o.be[o.base]?`<div class="meta">${L?"needs more orders than entered":"cần nhiều đơn hơn đang nhập"}</div>`:""}`:`<span class="meta">${L?"still none":"vẫn không"}</span>`}</td>
+        <td class="n"><b class="${o.net>=0?"pos":"neg"}">Est. ${o.net>=0?"+":"−"}${mn(Math.abs(o.net))}</b>${L?"/month":"/tháng"}</td><td><button type="button" class="ghost" data-rsc="${o.k}">${L?"Apply":"Áp dụng"}</button></td></tr>`).join("")}</tbody></table></div>`:""}
+      ${R0.some(o=>o.be)?"":`<p class="hint">${L?"None of the levers in the model creates a break-even level for this profile: picking up by FM stays cheaper.":"Các đòn bẩy đang có trong model đều không tạo được mức hoà vốn cho hồ sơ này: FM pickup vẫn rẻ hơn."}</p>`}`;}
   if(!HO){
   /* xe */
   const waves=p.cots.map((c,k)=>k).filter(k=>D.some(d=>d.W.some(w=>w.k===k)));
@@ -987,6 +997,8 @@ $("ppl").addEventListener("change",e=>{const t=e.target.dataset&&e.target.datase
   setTimeout(()=>{const a=document.activeElement,k=a&&a.dataset?a.dataset.hc:null;render();if(k!=null){const n=document.querySelector(`#ppl [data-hc="${k}"]`);if(n)n.focus();}},0);});
 $("fillSug").addEventListener("click",e=>{const cm=e.target.closest("[data-commit]");if(cm){e.preventDefault();commitPick(cm.dataset.commit);return;}const uc=e.target.closest("[data-uncommit]");if(uc){uncommit(uc.dataset.uncommit);return;}
   const g=e.target.closest("[data-goto]");if(g){const t=$(g.dataset.goto);if(t)(t.closest("section")||t).scrollIntoView({behavior:"smooth",block:"start"});}});
+$("rescue").addEventListener("click",e=>{const b=e.target.closest("[data-rsc]");if(!b||!LASTP||!LASTP.be||!LASTP.be.rescue)return;const o=LASTP.be.rescue.find(z=>z.k===b.dataset.rsc);if(!o)return;
+  if(o.ex.lab)X.lab=o.ex.lab;if(o.ex.pick)X.pick=o.ex.pick.slice();if(o.ex.ch){X.ch=[1,1,1];X.chutes=null;fillRegion(true);}drawForm();render();});
 $("fillSug").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("mrg").addEventListener("change",e=>{const n=e.target.dataset&&e.target.dataset.pick;if(!n)return;X.pick=e.target.checked?[...new Set(X.pick.concat([n]))]:X.pick.filter(q=>q!==n);render();});
 $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
