@@ -10,6 +10,8 @@ const NS_KS = ["VAN", "1T25", "1T9", "5T", "8T"];
    Seller mới: theo điểm D2S gần nhất (≤ near km) có luật; HN ngoài bán kính đó thì theo vùng */
 /* cổng bàn giao: phút xe chuyển sang cổng kế tiếp (giả định, chưa đo) */
 const NS_GATE = { move: 10 };
+/* trần số người khi tìm số người kịp COT nếu không nhập "số người tối đa cấp được" — chỉ để vòng tìm có điểm dừng, coi như không giới hạn */
+const NS_HCMAX = 1000;
 const NS_BAN = { heavy: ["5T", "8T"], clKm: 2, near: 3,
   HN: { zone: 1, c: [21.0285, 105.8542], r: 14.5, allow: [[1260, 1800]] },
   HCM: { c: [10.7724, 106.698], r: 15, allow: [[1320, 1800]] } };
@@ -287,16 +289,16 @@ function nsPlan(ref, x) {
         return { r, worst, rollC, xr, rollT, rollDay: r.length ? r[r.length - 1].roll : 0 }; };
       const p1 = pass(0); return p1.rollDay > 0 ? pass(p1.rollDay) : p1; };
     const hc0 = lab === "pps" ? 0 : Math.max(1, gates, Math.ceil(X * w - 1e-9)); let hc = hc0, s = sim(Math.max(1, hc));
-    /* trễ (hoặc dư dưới mức yêu cầu) thì thêm từng người, chỉ giữ khi giờ xe rời thật sự sớm hơn (trễ do chỗ chất xe thì thêm người không giúp) */
-    /* hàng dồn vào khung ngắn cần nhiều người hơn mức tính theo cả ngày: thêm tới khi hết trễ hoặc không cải thiện, tối đa gấp 3 + maxExtra (và không quá số người cấp được) */
-    /* bước mô phỏng 5′: thêm 1 người có khi chưa đổi được giờ xong → thử tới 3 người mới kết luận "thêm người không giúp" */
-    const lim = lab === "pps" ? 0 : Math.max(hc0, Math.min(40, hc0 * 3 + P.maxExtra, osCap != null ? osCap : Infinity));
-    if (lab !== "pps") while (s.worst < slackMin && hc < lim) { let nx = null; for (let j = 1; j <= 3 && hc + j <= lim; j++) { const s2 = sim(hc + j); if (s2.worst > s.worst + 0.5) { nx = [hc + j, s2]; break; } } if (!nx) break; [hc, s] = nx; }
+    /* trễ (hoặc dư dưới mức yêu cầu) thì thêm người tới khi kịp COT — KHÔNG giới hạn số người thêm, chỉ chặn bởi số người cấp được (nếu có nhập).
+       Thêm bao nhiêu cũng không kịp hẳn (trễ do giờ bàn giao xong / xe / chỗ chất) thì lấy số ít nhất cho kết quả tốt nhất có thể. Tìm nhị phân giữa hc0 và mức trần */
+    const lim = lab === "pps" ? 0 : Math.max(hc0, osCap != null ? osCap : NS_HCMAX);
+    if (lab !== "pps" && s.worst < slackMin && lim > hc) { const sB = sim(lim), goal = sB.worst >= slackMin ? slackMin : sB.worst - 0.5;
+      if (sB.worst > s.worst + 0.5) { let lo = hc, hi = lim, sh = sB; while (hi - lo > 1) { const m = (lo + hi) >> 1, sm = sim(m); if (sm.worst >= goal) { hi = m; sh = sm; } else lo = m; } hc = hi; s = sh; } }
     /* nhập số người thực tế: số đề xuất (và kết quả với số đó) giữ lại để so; mọi kết quả còn lại chạy theo số nhập; ít hơn số theo khối việc (hc0) thì báo thiếu người (sim không giới hạn giờ làm mỗi người) */
-    let rec = null; if (hf > 0 && lab !== "pps") { rec = { hc, worst: s.worst, roll: s.rollT, ok: s.worst >= slackMin && !(s.rollT > 0.5), cap: osCap != null && hc >= osCap, lim: hc >= lim }; if (hf !== hc) s = sim(hf); hc = hf; }
+    let rec = null; if (hf > 0 && lab !== "pps") { rec = { hc, worst: s.worst, roll: s.rollT, ok: s.worst >= slackMin && !(s.rollT > 0.5), cap: osCap != null && hc >= osCap }; if (hf !== hc) s = sim(hf); hc = hf; }
     W.forEach((v, j) => Object.assign(v, s.r[j]));
     const truck = W.reduce((a, v) => a + v.cost, 0) + s.rollC, labC = lab === "pps" ? X * P.ppsRate : hc * pay, fm = X * fmU;
-    return { X, W, hc, hc0, rec, atLim: lab !== "pps" && hc >= lim, short: rec ? Math.max(0, hc0 - hc) : osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0) + s.xr, xs: W.reduce((a, v) => a + v.xs, 0), xr: s.xr, rollC: s.rollC, roll: s.rollT, rollDay: s.rollDay, worst: s.worst, gm };
+    return { X, W, hc, hc0, rec, short: rec ? Math.max(0, hc0 - hc) : osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0) + s.xr, xs: W.reduce((a, v) => a + v.xs, 0), xr: s.xr, rollC: s.rollC, roll: s.rollT, rollDay: s.rollDay, worst: s.worst, gm };
   };
   /* nhiều cổng: tính cả 2 cách xe lấy hàng trên hồ sơ đang nhập; tự chọn = ít hàng dồn hơn, rồi ít trễ hơn, rồi rẻ hơn */
   let GM = gMode === "each" ? "each" : "tour", gateCmp = null;
