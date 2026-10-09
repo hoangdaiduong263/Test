@@ -408,18 +408,19 @@ function nsPlan(ref, x) {
       const oeNo = ps.some(q => q.lock) ? "hub" : G.oe && x.sup && ps.some(q => q.sup && q.sup !== x.sup) ? "sup" : null;
       const o = { n: r.id, grp: r.grp ? 1 : 0, gt: r.t, gk: r.k, mem: ps.map(q => q.n), now: r.now, km: +km.toFixed(1), sup: ps[0].sup, hub: ps[0].hub, supOk: !!x.sup && ps.every(q => q.sup === x.sup), hubOk: !!x.hub && ps.some(q => q.hub === x.hub), oeNo, socs: cs, waves: ws.map(k => cots[k].p), ado: ps.reduce((a, q) => a + q.ado, 0), save: 0, slack: null };
       /* Est. lợi và COT: chạy lại đúng kế hoạch như khi tick tuyến này (cùng số xe, lịch chạy) — tiền xe seller mới đi riêng − tiền xe phần thêm khi đi chung, cả tháng; COT = mức dư nhỏ nhất ngày BAU */
-      if (cs.length && ws.length && runT.length) { let yB = null, aB = null;
-        runT.forEach(d => { const a = day(d.X, 0, d.t, [], null, hcIn[d.t]), b = day(d.X, 0, d.t, ps, null, hcIn[d.t]); o.save += d.n * (a.truck - b.truck); if (d === bau) { yB = b; aB = a; } });
-        if (bau) { const y = yB || day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]), a = aB || day(bau.X, 0, bau.t, [], null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) || 0 : null;
-          /* GOM THÊM cho xe vơi (ngày BAU), mỗi lượt chung: đơn tuyến này gom thêm; độ đầy xe seller mới (chặng chung SOC), xe tuyến đó đang chạy riêng, và xe chở chung; số xe trước (cả hai bên) → sau */
-          o.fw = y.W.map(vb => { const sh2 = vb.legs.filter(l => l.shared && l.t), va = a.W.find(v => v.k === vb.k); if (!sh2.length || !va) return null;
-            if (!r.grp && ps.some(q => cm.has(q.n + "|" + bau.t + "|" + vb.k))) return null;   // điểm đã chốt nhóm ở lượt này → gợi ý nhóm thay vì tuyến lẻ
+      if (cs.length && ws.length && runT.length) { const AB = {};
+        runT.forEach(d => { const a = day(d.X, 0, d.t, [], null, hcIn[d.t]), b = day(d.X, 0, d.t, ps, null, hcIn[d.t]); o.save += d.n * (a.truck - b.truck); AB[d.t] = { d, a, b }; });
+        /* GOM THÊM cho xe vơi, mỗi loại ngày, mỗi lượt chung: đơn tuyến này gom thêm; độ đầy xe seller mới (chặng chung SOC), xe tuyến đó đang chạy riêng, và xe chở chung; số xe trước (cả hai bên) → sau;
+           Est. lợi / tháng nếu chỉ chung đúng lượt này của loại ngày đó (số ngày loại đó × tiền xe lượt đi riêng − phần tăng khi đi chung) và phút dư COT của lượt */
+        const fwOf = (d, a, y) => y.W.map(vb => { const sh2 = vb.legs.filter(l => l.shared && l.t), va = a.W.find(v => v.k === vb.k); if (!sh2.length || !va) return null;
+            if (!r.grp && ps.some(q => cm.has(q.n + "|" + d.t + "|" + vb.k))) return null;   // điểm đã chốt nhóm ở lượt này → gợi ý nhóm thay vì tuyến lẻ
             const own = va.legs.filter(l => sh2.some(z => z.s[0] === l.s[0])), q0 = own.reduce((s0, l) => s0 + l.q, 0), Q0 = own.reduce((s0, l) => s0 + l.Q, 0), tO = own.reduce((s0, l) => s0 + l.t, 0);
             const tP = sh2.reduce((s0, l) => s0 + (l.tAlone || 0), 0), uP = sh2.reduce((s0, l) => s0 + (l.uAlone || 0), 0), fO = q0 ? Q0 / q0 : 0, t1 = sh2.reduce((s0, l) => s0 + l.t, 0);
             return { k: vb.k, p: cots[vb.k].p, socs: sh2.map(l => l.s[0]), add: sh2.reduce((s0, l) => s0 + l.shared.reduce((s1, z) => s1 + z.q, 0), 0), fO, fP: tP ? uP / tP : 0, f0: tO + tP ? (fO * tO + uP) / (tO + tP) : 0,
               f1: t1 ? sh2.reduce((s0, l) => s0 + l.fillAll * l.t, 0) / t1 : 0, t0: tO + tP, t1,
-              /* chỉ chung đúng lượt này của ngày BAU: Est. lợi / tháng (số ngày BAU × tiền xe lượt này đi riêng − phần tăng khi đi chung) và phút dư COT của lượt */
-              save: (bau.n || 0) * ((va.cost || 0) - (vb.cost || 0)), slack: isFinite(vb.slack) ? Math.round(vb.slack) || 0 : null }; }).filter(Boolean); } }
+              save: (d.n || 0) * ((va.cost || 0) - (vb.cost || 0)), slack: isFinite(vb.slack) ? Math.round(vb.slack) || 0 : null }; }).filter(Boolean);
+        o.fwT = {}; Object.values(AB).forEach(({ d, a, b }) => { o.fwT[d.t] = fwOf(d, a, b); });
+        if (bau) { const e = AB[bau.t], y = e ? e.b : day(bau.X, 0, bau.t, ps, null, hcIn[bau.t]); o.slack = y.worst < 1e8 ? Math.round(y.worst) || 0 : null; o.fw = o.fwT[bau.t] || []; } }
       mrg.list.push(o); });
     mrg.list.forEach(o => { o.st = !o.socs.length || !o.waves.length ? "na" : o.oeNo ? "oe" : o.slack != null && o.slack < slackMin ? "late" : o.save <= 0 ? "nogain" : !o.supOk ? "check" : "go"; });
     mrg.day = bau ? bau.t : null;
