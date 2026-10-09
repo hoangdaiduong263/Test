@@ -16,6 +16,8 @@ const NS_BAN = { heavy: ["5T", "8T"], clKm: 2, near: 3,
   HN: { zone: 1, c: [21.0285, 105.8542], r: 14.5, allow: [[1260, 1800]] },
   HCM: { c: [10.7724, 106.698], r: 15, allow: [[1320, 1800]] } };
 const nsKm = (a, b) => { const r = v => v * Math.PI / 180, dLa = r(b[0] - a[0]), dLo = r(b[1] - a[1]); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLo / 2) ** 2; return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h))); };
+/* phân vị p (0–100) có nội suy */
+const nsPct = (a, p) => { const b = a.filter(x => x != null && isFinite(x)).sort((x, y) => x - y); if (!b.length) return null; const r = (b.length - 1) * p / 100, i = Math.floor(r); return b[i] + (b[Math.min(b.length - 1, i + 1)] - b[i]) * (r - i); };
 const nsMed = a => { const b = a.filter(x => x != null && isFinite(x)).sort((x, y) => x - y); if (!b.length) return null; const m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
 
 function nsRef(C, REF) {
@@ -53,10 +55,17 @@ function nsRef(C, REF) {
         const act = C.active(i), g = C.geo(C.nm(i)), sh = C.socShare(i);
         return { n: C.nm(i), ll: g ? [+g[0].toFixed(5), +g[1].toFixed(5)] : null, hub: C.S[i].h || "", sup: C.supOf(i) || "", lock: C.locked(i) ? 1 : 0, solo: (P.soloKeep || []).includes(C.nm(i)) ? 1 : 0,
           soc: Object.fromEntries(Object.entries(sh).filter(e => e[1] >= 0.02).map(([k, v]) => [k, +v.toFixed(3)])), sh: o.map(v => +v.toFixed(3)), dep: dep.map(v => v == null ? null : Math.round(v)),
-          ado: Math.round(nsMed(act.map(d => C.S[i].v[d])) || 0), b: +C.betaOf(i).toFixed(3), c: NS_KS.map(k => Math.round(K.cap(i, k))) }; }) };
+          ado: Math.round(nsMed(act.map(d => C.S[i].v[d])) || 0), b: +C.betaOf(i).toFixed(3), c: NS_KS.map(k => Math.round(K.cap(i, k))),
+          /* để dựng hồ sơ "như seller mới" cho seller đang chạy: đơn/ngày BAU / Mini CP / CP = P50 / P87 / P97 các ngày có hàng (≈ 25 / 4 / 1 ngày mỗi tháng),
+             km thật tới từng SOC, số chute / SOC phải chia, thời gian xe đứng riêng của điểm (cố định, phút mỗi đơn) */
+          a3: [50, 87, 97].map(p => Math.round(nsPct(act.map(d => C.S[i].v[d]), p) || 0)), nd: act.length,
+          skm: Object.fromEntries(Object.keys(sh).filter(x => sh[x] >= 0.02).map(x => { const k = C.kmN(C.S[i].n, x); return [x, k == null ? null : +k.toFixed(1)]; })),
+          ch: C.chSt(i).ch, st: C.chSt(i).st, dw: w && w.dw ? [+w.dw.fix.toFixed(2), +w.dw.rate.toFixed(4)] : null }; }) };
     /* tuyến của mạng theo kế hoạch Core Planner (đi riêng = tuyến 1 điểm); now = 0 nếu kế hoạch khác tuyến đang chạy */
     const run = C.run(R), kNow = new Set(run.T0.map(g => g.slice().sort().join("|")));
     reg[R].rts = run.T.map(g => ({ m: g.map(i => N.indexOf(i)).filter(j => j >= 0), now: kNow.has(g.slice().sort().join("|")) ? 1 : 0 })).filter(r => r.m.length);
+    /* nhóm điểm đang đi chung xe hiện nay (trước kế hoạch Core) — để mô hình seller đang chạy "như đang chạy" */
+    reg[R].rts0 = run.T0.map(g => g.map(i => N.indexOf(i)).filter(j => j >= 0)).filter(m => m.length > 1);
     /* CẤM TẢI suy từ giờ chạy thật của các điểm gần nhau (xem NS_BAN): mỗi điểm một luật cho xe nặng (5T, 8T) */
     const bz = NS_BAN[R], H = new Set(NS_BAN.heavy), pe = reg[R].pts.map(q => { const L = DEP[q.n] || [], dy = {}; L.forEach(e => (dy[e.d] = dy[e.d] || []).push(e));
       let w = 0, stk = 0; Object.values(dy).forEach(a => { a.sort((x, y) => x.m - y.m); let cur = []; const fl = () => { if (cur.length) { w++; if (!cur.some(e => H.has(e.k)) && cur.length >= 2) stk++; } cur = []; };
@@ -181,7 +190,11 @@ function nsPlan(ref, x) {
   const llOk = !!(x.ll && x.ll.length === 2 && isFinite(x.ll[0]) && isFinite(x.ll[1]));
   /* ghép theo TUYẾN của kế hoạch Core: chọn một tuyến = xe chở chung với mọi điểm trên tuyến đó (điểm đang đi chung không tách ra được) */
   const rts = (G.rts || G.pts.map((_, j) => ({ m: [j], now: 1 }))).map((r, j) => ({ id: "r" + j, now: r.now, ps: r.m.map(i => G.pts[i]) }));
-  const partners = llOk ? rts.filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.map(q => Object.assign({}, q, { rt: r.id }))).filter(q => q.ll).map(q => Object.assign(q, { km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km) : [];
+  /* nhóm đang đi chung hiện nay (id c0, c1…): chỉ để chọn "như đang chạy" cho seller có sẵn, không đưa vào danh sách gợi ý ghép */
+  const rtsC = (G.rts0 || []).map((m, j) => ({ id: "c" + j, now: 1, cur: 1, ps: m.map(i => G.pts[i]) }));
+  /* x.self: đang mô hình một seller có sẵn như seller mới → không ghép với chính nó (tuyến của nó còn lại các điểm khác) */
+  const notSelf = q => !x.self || q.n !== x.self;
+  const partners = llOk ? rts.concat(rtsC).filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.filter(notSelf).map(q => Object.assign({}, q, { rt: r.id }))).filter(q => q.ll).map(q => Object.assign(q, { km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km) : [];
   /* LUẬT CẤM TẢI cho seller mới (x.ban: "auto" | "off"): theo điểm D2S gần nhất trong NS_BAN.near km có luật; HN ngoài đó thì theo vùng; HCM trong vùng nội đô mà không có điểm gần → chưa đủ dữ liệu */
   const ban = (() => { const bz = NS_BAN[x.R]; if (x.ban === "off") return { m: "off" }; if (!llOk || !bz) return { m: llOk ? "free" : "noll" };
     const near = G.pts.filter(q => q.ll && q.ban).map(q => ({ q, km: nsKm(x.ll, q.ll) })).filter(o => o.km <= NS_BAN.near).sort((a, b) => a.km - b.km);
@@ -368,7 +381,7 @@ function nsPlan(ref, x) {
   const mrg = { need: !llOk, list: [], pending: lite };
   if (!mrg.need && !lite) {
     const mySoc = Object.fromEntries(socs.map(o => [o.s, o.sh / shS])), runT = days.filter(d => d.X > 0 && d.n > 0), bau = days.find(d => d.t === 0 && d.X > 0) || runT[0];
-    rts.forEach(r => { const ps = r.ps.filter(q => q.ll).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
+    rts.forEach(r => { const ps = r.ps.filter(q => q.ll && notSelf(q)).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
       const km = ps[0].km; if (km > 30) return;
       const cs = Object.keys(mySoc).filter(z => ps.some(q => q.soc[z] > 0)), ws = cots.map((_, k) => k).filter(k => sh[k] > 0 && ps.some(q => q.sh[k] > 0));
       /* luật OE (vùng đang áp): khác Sup thì không ghép; tuyến có seller giữ chuyến ghé hub thì không ghép.
