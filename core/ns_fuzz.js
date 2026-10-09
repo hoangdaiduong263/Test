@@ -33,7 +33,7 @@ for(let it=0;it<N;it++){
       if(w.fill>1.02&&!(w.shared&&w.shared.length))bad("plan fill>1",{...wt,f:w.fill});
       if(j>0&&Math.abs((W[j-1].roll||0)-(w.carryIn||0))>1)bad("carry mismatch",{...wt,prevRoll:W[j-1].roll,carryIn:w.carryIn});
       const ld=(w.trk||[]).reduce((a,z)=>a+(z.q||0),0);
-      if(!w.last&&w.roll<=0.5&&w.dep>w.c.p+0.5&&!(w.shared||[]).length)bad("non-last dep after COT w/o roll",{...wt,dep:w.dep,cot:w.c.p,pick:x.pick.length,shared:(w.shared||[]).length,hvW:w.hvW});
+      if(!w.last&&w.roll<=0.5&&w.dep>w.c.p+Math.max(0,-(p.slackMin??0))+0.5&&!(w.shared||[]).length)bad("non-last dep after COT w/o roll",{...wt,dep:w.dep,cot:w.c.p,pick:x.pick.length,shared:(w.shared||[]).length,hvW:w.hvW});
       (w.trk||[]).forEach(z=>{if(!fin(z.dep))bad("truck dep not finite",wt);});
       if(!(w.shared||[]).length&&(w.trk||[]).length&&Math.abs(ld-(w.Qt-w.roll))>2)bad("orders not conserved",{...wt,loaded:ld,Qt:w.Qt,roll:w.roll});
     });

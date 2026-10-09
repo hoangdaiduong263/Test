@@ -8,7 +8,7 @@ const NS_KS = ["VAN", "1T25", "1T9", "5T", "8T"];
    có ≥ 3 chuyến nặng nhưng né 16–21h → chỉ các khung đã thấy xe nặng chạy (9–16h, 21–06h); gần như không xe nặng mà ≥ 40% đợt phải chồng nhiều xe nhẹ → chỉ 22:00–06:00 (QĐ 23/2018);
    còn lại → chưa đủ dữ liệu (cảnh báo, không ràng buộc). South, North: không thấy dấu hiệu cấm theo giờ.
    HCM (TS cập nhật 10/2026): vùng cấm theo ranh giới TS (poly, vẽ lại từ bản đồ TS, sai ~0,5–1 km, chờ file ranh giới) — xe từ 1T9 trở lên (1T9, 5T, 8T) cấm 06:00–22:00;
-   ban ngày chỉ VAN, 1T25. Thay luật suy từ giờ chạy thật ở trên cho HCM.
+   ban ngày chỉ VAN (HCM không có 1T25 — xem cỡ xe có ở vùng). Thay luật suy từ giờ chạy thật ở trên cho HCM.
    Seller mới: theo điểm D2S gần nhất (≤ near km) có luật; HN ngoài bán kính đó thì theo vùng */
 /* cổng bàn giao: phút xe chuyển sang cổng kế tiếp (giả định, chưa đo) */
 const NS_GATE = { move: 10 };
@@ -50,6 +50,9 @@ function nsRef(C, REF) {
     const out = [0, 1, 2, 3].map(t => { if (t < 3 && !DT) return null; const D0 = ds(t); return cots.map((c, k) => { const W = D0.map(d => by[d][k]).filter(Boolean); if (!W.length) return null;
       return [Math.round(nsMed(W.map(z => z.a))), Math.round(nsMed(W.map(z => z.d))), +nsMed(W.map(z => z.n)).toFixed(1), Math.round(nsMed(W.flatMap(z => z.q))), Math.round(nsMed(W.flatMap(z => z.ld))), W.length, D0.length, W.filter(z => z.d > c.p).length]; }); });
     return out.some(Boolean) ? out : null; };
+  /* CỠ XE CÓ Ở VÙNG: cỡ có ≥ 5 chuyến D2S thật T8–9 (theo vùng của điểm lấy đầu tiên); cỡ không có xe (vd 1T25 ngoài HN, 8T ở South) không được chọn */
+  const RG = {}; C.S.forEach((s, i) => { RG[C.nm(i)] = s.R; }); const FLN = {};
+  Object.values(C.TRP).forEach(t => { const p0 = t[5].find(p => p[1] === 0); if (!p0) return; const R = RG[String(C.TRN[p0[0]]).trim()]; if (!R) return; const k = C.TY[t[1]] === "KHAC" ? "VAN" : C.TY[t[1]]; (FLN[R] = FLN[R] || {})[k] = (FLN[R][k] || 0) + 1; });
   const DEP = {}; Object.values(C.TRP).forEach(t => { const k = C.TY[t[1]] === "KHAC" ? "VAN" : C.TY[t[1]]; t[5].forEach(p => { if (p[1] !== 0 || p[4] == null) return; const n = String(C.TRN[p[0]]).trim(); (DEP[n] = DEP[n] || []).push({ k, m: p[5] ?? p[4], d: t[0] }); }); });
   ["HN", "HCM", "South", "North"].forEach(R => {
     const N = C.nodes(R);
@@ -92,6 +95,7 @@ function nsRef(C, REF) {
     /* nhóm người chung FM Hub: hiện nay (như Seller Planner cũ: Hub ≥ poolN điểm) và theo kế hoạch Core — số người, các điểm */
     const tmOf = L => L.teams.map(t => ({ hub: t.hub, n: t.n, m: t.pts.map(i => N.indexOf(i)).filter(j => j >= 0) }));
     reg[R].tm0 = tmOf(run.L0); reg[R].tm1 = tmOf(run.L1);
+    reg[R].fleetN = Object.fromEntries(NS_KS.map(k => [k, (FLN[R] || {})[k] || 0])); reg[R].fleet = NS_KS.filter(k => reg[R].fleetN[k] >= 5);
     /* CẤM TẢI suy từ giờ chạy thật của các điểm gần nhau (xem NS_BAN): mỗi điểm một luật cho xe nặng (5T, 8T) */
     const bz = NS_BAN[R], H = new Set(NS_BAN.heavy), pe = reg[R].pts.map(q => { const L = DEP[q.n] || [], dy = {}; L.forEach(e => (dy[e.d] = dy[e.d] || []).push(e));
       let w = 0, stk = 0; Object.values(dy).forEach(a => { a.sort((x, y) => x.m - y.m); let cur = []; const fl = () => { if (cur.length) { w++; if (!cur.some(e => H.has(e.k)) && cur.length >= 2) stk++; } cur = []; };
@@ -166,7 +170,13 @@ function nsPlan(ref, x) {
       const fj = lo == null ? (hi == null ? 1 : f[hi]) : hi == null ? f[lo] : Math.pow(f[lo], (hi - j) / (hi - lo)) * Math.pow(f[hi], (j - lo) / (hi - lo)); cap[j] *= fj; }
     how.ov = Object.fromEntries(NS_KS.map((k, j) => [k, ovK[j]]).filter(e => e[1])); how.ovBad = [];
     for (let j = 1; j < cap.length; j++) if (cap[j] < cap[j - 1]) { if (ovK[j]) how.ovBad.push(NS_KS[j]); cap[j] = cap[j - 1]; } }
-  const mi = Math.max(0, NS_KS.indexOf(x.maxK)), ksAt = (km, wk) => NS_KS.slice(0, mi + 1).map((k, j) => ({ k, q: cap[j], p: G.price[k][kmI(km)] })).filter(v => v.q > 0 && (wk == null || hvOk[wk] || !HV.has(v.k)));
+  /* cỡ xe có ở vùng (chuyến thật); thiếu số liệu thì coi như đủ mọi cỡ */
+  const mi = Math.max(0, NS_KS.indexOf(x.maxK)), fleetOk = !G.fleet || !G.fleet.length || NS_KS.slice(0, mi + 1).some(k => G.fleet.includes(k));
+  /* cỡ xe tối đa nhập vào nhỏ hơn mọi cỡ vùng có → tạm tính theo bảng giá (báo trên trang: fleetWarn) */
+  const avK = k => !fleetOk || G.fleet.includes(k);
+  /* cỡ xe dùng được ở lượt wk; không còn cỡ nào (cấm tải + không có xe) → cỡ nhỏ nhất trong giới hạn, để không mất hàng */
+  const ksAt = (km, wk) => { const L = NS_KS.slice(0, mi + 1).map((k, j) => ({ k, q: cap[j], p: G.price[k][kmI(km)] })).filter(v => v.q > 0);
+    const A = L.filter(v => avK(v.k) && (wk == null || hvOk[wk] || !HV.has(v.k))); return A.length ? A : L.filter(v => avK(v.k)).slice(0, 1).concat(L).slice(0, 1); };
   /* 2. đội xe rẻ nhất chở Q đơn: n xe loại chính + 1 xe vừa phần lẻ (như Core), không quá 100% sức chở học được */
   const fleet = (Q, km, wk) => { if (Q <= 0) return { t: 0, c: 0, mix: {}, q: 0 }; let best = null; const ks = ksAt(km, wk);
     const add = (c, t, mix, q) => { if (!best || c < best.c - 1 || (Math.abs(c - best.c) <= 1 && t < best.t)) best = { c, t, mix, q }; };
@@ -206,7 +216,7 @@ function nsPlan(ref, x) {
   const stage = +x.area > 0 && +x.dens > 0 ? +x.area * +x.dens : null;   // số đơn tập kết được cùng lúc
   /* khoảng cách (chim bay × 1,3 như Core khi chưa có đường bộ) và đội xe rẻ nhất cho nhiều seller chung xe: mỗi seller chiếm q ÷ sức chở của chính nó */
   const R6 = 6371, hav = (a, b) => { const r = v => v * Math.PI / 180, dLa = r(b[0] - a[0]), dLo = r(b[1] - a[1]); const h = Math.sin(dLa / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLo / 2) ** 2; return 2 * R6 * Math.asin(Math.min(1, Math.sqrt(h))) * 1.3; };
-  const KS2 = NS_KS.slice(0, mi + 1), capN = cap.map(Math.round);
+  const KS2 = NS_KS.slice(0, mi + 1).filter(avK), capN = cap.map(Math.round);
   /* noHv: các cỡ xe bị cấm ở điểm ghép (giờ xe rời của điểm đó) → không dùng các cỡ đó cho xe chung */
   const fleetUx = (loads, km, dt, wk, noHv) => { let best = null; const kmI0 = kmI(km);
     const one = KS2.filter(k => (wk == null || hvOk[wk] || !HV.has(k)) && !(noHv && noHv.has(k))).map(k => { const j = NS_KS.indexOf(k); const U = loads.reduce((a, l) => a + (l.c[j] > 0 ? l.q / l.c[j] : 1e9), 0); return { k, U, p: G.price[k][kmI0] + (G.pkm[k] || 0) * (dt || 0) }; }).filter(o => o.U < 1e8);
@@ -524,6 +534,6 @@ function nsPlan(ref, x) {
   /* trễ trong mức cho phép: kịp theo luật nhưng phải theo dõi → không xếp "nên chạy" thẳng */
   const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay && !chk.cotW ? "go" : "cond") : "no";
   const lossDays = run.filter(d => d.net < 0).map(d => ({ t: d.t, X: d.X, net: d.net, thr: thrs[d.t] }));
-  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
+  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi && avK(k), na: avK(k) ? 0 : 1, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, fleet: G.fleet || null, fleetWarn: !fleetOk, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };
