@@ -194,7 +194,7 @@ function nsPlan(ref, x) {
   const rtsC = (G.rts0 || []).map((m, j) => ({ id: "c" + j, now: 1, cur: 1, ps: m.map(i => G.pts[i]) }));
   /* x.self: đang mô hình một seller có sẵn như seller mới → không ghép với chính nó (tuyến của nó còn lại các điểm khác) */
   const notSelf = q => !x.self || q.n !== x.self;
-  const partners = llOk ? rts.concat(rtsC).filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.filter(notSelf).map(q => Object.assign({}, q, { rt: r.id }))).filter(q => q.ll).map(q => Object.assign(q, { km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km) : [];
+  const partners = llOk ? rts.concat(rtsC).filter(r => (x.pick || []).includes(r.id)).flatMap(r => r.ps.filter(notSelf).map(q => Object.assign({}, q, { rt: r.id }))).filter(q => q.ll).map(q => Object.assign(q, { km: hav(x.ll, q.ll) })).filter((q, j, A) => A.findIndex(z => z.n === q.n) === j).sort((a, b) => a.km - b.km) : [];
   /* LUẬT CẤM TẢI cho seller mới (x.ban: "auto" | "off"): theo điểm D2S gần nhất trong NS_BAN.near km có luật; HN ngoài đó thì theo vùng; HCM trong vùng nội đô mà không có điểm gần → chưa đủ dữ liệu */
   const ban = (() => { const bz = NS_BAN[x.R]; if (x.ban === "off") return { m: "off" }; if (!llOk || !bz) return { m: llOk ? "free" : "noll" };
     const near = G.pts.filter(q => q.ll && q.ban).map(q => ({ q, km: nsKm(x.ll, q.ll) })).filter(o => o.km <= NS_BAN.near).sort((a, b) => a.km - b.km);
@@ -381,7 +381,8 @@ function nsPlan(ref, x) {
   const mrg = { need: !llOk, list: [], pending: lite };
   if (!mrg.need && !lite) {
     const mySoc = Object.fromEntries(socs.map(o => [o.s, o.sh / shS])), runT = days.filter(d => d.X > 0 && d.n > 0), bau = days.find(d => d.t === 0 && d.X > 0) || runT[0];
-    rts.forEach(r => { const ps = r.ps.filter(q => q.ll && notSelf(q)).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
+    const inP = new Set(partners.map(q => q.n));
+    rts.forEach(r => { const ps = r.ps.filter(q => q.ll && notSelf(q) && !inP.has(q.n)).map(q => Object.assign({}, q, { rt: r.id, km: hav(x.ll, q.ll) })).sort((a, b) => a.km - b.km); if (!ps.length) return;
       const km = ps[0].km; if (km > 30) return;
       const cs = Object.keys(mySoc).filter(z => ps.some(q => q.soc[z] > 0)), ws = cots.map((_, k) => k).filter(k => sh[k] > 0 && ps.some(q => q.sh[k] > 0));
       /* luật OE (vùng đang áp): khác Sup thì không ghép; tuyến có seller giữ chuyến ghé hub thì không ghép.
