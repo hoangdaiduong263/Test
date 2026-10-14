@@ -173,7 +173,8 @@ function nsPlan(ref, x) {
     return Object.assign({}, byS[d], { sh: mem.reduce((a, n) => a + byS[n].sh, 0), fwd: cs.filter(c => !c.mixed).flatMap(c => c.socs).filter(n => n !== d), rsm: cs.filter(c => c.mixed).flatMap(c => c.socs).filter(n => n !== d) }); }));
   const socs = socsT[0];
   /* phần đơn SOC chính phải chia lại mỗi loại ngày = đơn các SOC không có chute */
-  const rsSh = socsT.map(L => L.reduce((a, l) => a + l.rsm.reduce((b, n) => b + byS[n].sh, 0), 0) / shS);
+  /* x.rsOv[t] (0–1): phần đơn phải rã bao thêm theo NHÓM SORT (so với FLM chuẩn, tính ở trang từ bảng chute theo nhóm sort) — thay cho phần tính theo SOC ở đây */
+  const rsSh = socsT.map((L, t) => Array.isArray(x.rsOv) && x.rsOv[t] != null && isFinite(+x.rsOv[t]) ? Math.min(1, Math.max(0, +x.rsOv[t])) : L.reduce((a, l) => a + l.rsm.reduce((b, n) => b + byS[n].sh, 0), 0) / shS);
   const km0 = socs.length ? socs.reduce((a, o) => a + o.sh * o.km, 0) / shS : 0;
   /* 1. sức chở theo cỡ xe: trung vị các seller giống (cùng vùng, % hàng to ±10 điểm), hoặc đúng một seller chọn tay; cỡ lớn không chở ít hơn cỡ nhỏ */
   let pool, how;
@@ -212,7 +213,9 @@ function nsPlan(ref, x) {
   const betaT = [0, 1, 2].map(t => { const v = x.betaT && x.betaT[t]; return v !== "" && v != null && isFinite(+v) ? Math.min(1, Math.max(0, +v)) : beta; });
   const workOf = (c, bt) => { const be = bt == null ? beta : bt, ch = Math.max(1, c | 0 || 1), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st) > 1 ? 1 : 0, sv = (1 - be) * sm + be * bg, bp = sv > 0 ? be * bg / sv * 100 : 0;
     const prod = Math.max(1, P.prodBase * Math.max(0.2, stepF(1, ch, 1, P.prodChute)) * Math.max(0.2, stepF(10, bp, 10, P.prodBulky))); /* mỗi hệ số giảm không dưới 20% (tránh âm khi nhiều chute / số chỉnh tay lớn) */ return { ch, st, prod: Math.round(prod), w: sv / prod + (1 - sv) / P.prodHand, sv, bp, beta: be, sort: sm ? (bg ? "big" : "small") : "none" }; };
-  const chs = chutesT.map(L => L.length || 1), works = chs.map((c, t) => workOf(c, betaT[t]));
+  /* x.chCnt[t]: số chute seller chia (khi nhiều chute cùng đi một SOC, bảng chute theo SOC gộp lại nên đếm thiếu) */
+  const chs = chutesT.map((L, t) => Array.isArray(x.chCnt) && +x.chCnt[t] > 0 ? Math.round(+x.chCnt[t]) : L.length || 1), works = chs.map((c, t) => workOf(c, betaT[t]));
+  const rsU = +x.rsCost > 0 ? +x.rsCost : (P.socPay || 520000) / Math.max(1, workOf(st).prod);
   const fmOf = be => (1 - be) * (ref.fm.rS + ref.fm.hS) + be * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM), fmU = fmOf(beta), fmT = betaT.map(fmOf);
   /* sức chở theo % hàng to của ngày: tỷ lệ định mức ở % hàng to ngày đó so với % chung (định mức học từ seller đã chạy đầy xe, ref.capNorm) */
   const fNorm = (k, be) => { const c = ref.capNorm && ref.capNorm[k]; return c ? 1 / ((1 - be) / c.n + be / c.b) : 1; };
@@ -353,7 +356,8 @@ function nsPlan(ref, x) {
   const day0 = (X, dly, t, prt, gm, hf) => { prt = prt || partners; gm = gm || GM; const tD = t || 0; dly = dly || 0; const dl = lateBase + dly; if (!(X > 0)) return { X: 0, W: [], hc: 0, hc0: 0, hcPay: 0, pool: null, short: 0, truck: 0, lab: 0, rs: 0, soc: 0, cost: 0, fm: 0, net: 0, trucks: 0, xs: 0, worst: 1e9 }; const wk = works[tD], w = wk.w * wF(tD), socs = socsT[tD], stg = tD > 0 && tentCP && +x.dens > 0 ? +x.areaCP * +x.dens : stage;
     /* SOC chia lại: chia ít chute hơn số SOC phải chia thì phần (SOC − chute) ÷ SOC số đơn được SOC chính sort lại,
        năng suất như sort đủ chute tại điểm, 520k/người/ngày (như Seller Planner: soc.same, soc.pay) */
-    const rs = X * rsSh[tD], socC = rs > 0 ? rs / workOf(st).prod * (P.socPay || 520000) : 0;
+    /* x.rsCost (đ/đơn): giá một lần rã bao, sort lại ở SOC (tay / máy ASM theo cài đặt mạng lưới) — thay cho công sort tay suy từ năng suất */
+    const rs = X * rsSh[tD], socC = rs > 0 ? rs * rsU : 0;
     const W = cots.map((c, k) => { const Q = X * sh[k] / shT, legs = best(Q, tD, k, prt.length ? "tour" : gm), mix = {};
       if (prt.length) legs.forEach(l => { const z = l.s[0], kmS = (socs.find(o => o.s === z) || {}).km || 0;
         const ps = prt.map(pj => ({ pj, q: okW(pj, tD, k) ? adoOf(pj, tD) * (pj.sh[k] || 0) * (pj.soc[z] || 0) : 0 })).filter(o => o.q > 0.5); if (!ps.length || !(l.Q > 0)) return;
@@ -513,7 +517,7 @@ function nsPlan(ref, x) {
       gb.forEach(a => { if (netM(a) < 0) { if (!cur) be.bands.push(cur = [a, a]); else cur[1] = a; } else cur = null; }); } }
   /* không hoà vốn ở mức đơn nào: tiền xe tối thiểu mỗi đơn (giá ÷ sức chở, cỡ rẻ nhất mỗi đơn, theo SOC) + tiền người + chia lại ≥ FM pickup.
      Cần sức chở gấp f lần mới có thể hoà vốn → quy ra số đơn tối thiểu một xe 1T9 */
-  { const t0 = Math.max(0, bi), wk0 = works[t0], labO = lab === "pps" ? P.ppsRate : poolPts.length ? 0 : pay * wk0.w * wF(t0), socO = rsSh[t0] * (P.socPay || 520000) / Math.max(1, workOf(st).prod);
+  { const t0 = Math.max(0, bi), wk0 = works[t0], labO = lab === "pps" ? P.ppsRate : poolPts.length ? 0 : pay * wk0.w * wF(t0), socO = rsSh[t0] * rsU;
     /* mỗi lượt chỉ dùng cỡ xe được phép giờ đó (cấm tải xe nặng) → tiền xe tối thiểu mỗi đơn theo % đơn từng lượt */
     const trO = cots.reduce((a, c, k) => a + sh[k] / shT * socsT[t0].reduce((b, o) => b + o.sh / shS * Math.min(...ksAt(o.km, k).map(v => v.p / v.q)), 0), 0), room = fmT[t0] - labO - socO;
     be.floor = { truck: trO, lab: labO, soc: socO, fm: fmT[t0], ok: room > 0 && trO < room }; }

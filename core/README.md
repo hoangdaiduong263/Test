@@ -96,3 +96,18 @@ Vùng có trong `COTW` (hiện là HN) dùng COT theo khung nhận đơn, thay c
 - Số chỗ chất hàng tại điểm (xe chất song song không giới hạn).
 - Thể tích/khối lượng hàng.
 - SOC sort lại, ké FM/LM, thuê xe ca 12H, ưu tiên điểm.
+
+## New Seller (bản gộp, `build_ns2.js`)
+Trang chủ 2 thẻ: **A** đánh giá seller mới (form 9 mục có diễn giải từng ô, bảng chute theo sort code kéo/chạm → kết quả), **B** seller đang chạy + mạng lưới SPX.
+```
+node core/build_ns2.js <data.js> <out.html> [hubsup.json] [pivot.json]   # NS_FROM / NS_TO / NS_REG (mặc định 01–31/08/2026, HCM,South)
+```
+| File | Việc |
+|---|---|
+| `sliceD.js` | Cắt `data.js` theo kỳ và vùng, tính lại chỉ số tổng hợp từng điểm trên kỳ mới |
+| `ns2_lib.js` | 14 sort code (Volume by Sort Code) → nhóm LM → SOC nhà (bản nháp, mã DRAFT chờ xác nhận); bảng chute mẫu; % đơn phải rã bao thêm so với FLM; hồ sơ form → đầu vào `nsPlan` |
+| `ns2_page.html`, `ns2_ui.js` | Giao diện; mọi số tính bằng `nsPlan` trên trang (cài đặt đang nhập, các cách chia chute khác, thiếu/thêm 1 người, sự cố, đòn bẩy, ghép xe, ngưỡng ADO) |
+
+- `nsPlan` nhận thêm `rsOv[t]` (phần đơn rã bao thêm theo sort code, thay phần tính theo SOC), `rsCost` (đ/lần rã bao: tay 260 đ hoặc theo % ASM), `chCnt[t]` (số chute khi nhiều chute cùng SOC). Không truyền thì như cũ.
+- Seller đang chạy: lời/lỗ của kỳ = FM pickup trên số đơn thật − (tiền xe thật + người + rã bao theo mô hình); đòn bẩy so với lời/lỗ thực tế đó.
+- South chưa có trong Volume by Sort Code → % sort code tạm theo trung bình HCM.
