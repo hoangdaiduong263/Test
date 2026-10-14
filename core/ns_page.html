@@ -170,7 +170,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px;background:var(--c)}
 .cap td{padding:5px 8px}
 .socs{display:grid;gap:4px}
-.socs .sr{display:grid;grid-template-columns:minmax(0,1fr) 56px 56px;gap:6px;align-items:center;font-size:12.5px}
+.socs .sr{display:grid;grid-template-columns:minmax(0,1fr) 64px 64px;gap:6px;align-items:center;font-size:12.5px}
 .socs .sr.h{font-size:11px;color:var(--ink2)}
 .socs .sr span{min-width:0;overflow-wrap:anywhere}
 .socs .sr.h span:not(:first-child){text-align:right}
@@ -351,9 +351,9 @@ const TX={
  o7s:(R,oe)=>[`Các tuyến D2S ${R} theo kế hoạch Core Planner (đi riêng hoặc đi chung nhiều điểm) có điểm cách ≤ 30 km, chung SOC và chung lượt COT. Tuyến đang đi chung thì seller mới vào chung cả tuyến, không tách điểm ra. Est. lợi = tiền xe seller mới đi riêng + tiền xe tuyến đang chạy − tiền xe khi chạy chung (mỗi seller chiếm chỗ theo sức chở đã học, cộng km đi vòng), cả tháng. Điểm có sẵn tính theo đơn/ngày trung vị của điểm.`+(oe?` ${R} áp luật OE: chỉ ghép cùng Sup; không ghép tuyến có seller giữ chuyến ghé hub hoặc OE yêu cầu chạy riêng.`:""),`D2S routes in ${R} per the Core Planner plan (alone or shared by several stops) with a stop within 30 km, sharing a SOC and a COT wave. A shared route is joined as a whole; its stops are not split. Est. gain = new seller alone + the route as it runs today − running together (each seller takes space by its learned capacity, plus detour km), per month. Existing points use their median orders/day.`+(oe?` ${R} applies OE rules: same Supervisor only; no merge with routes holding hub-kept or OE run-alone sellers.`:"")],
  rtShare:n=>[`Đi chung ${n} điểm`,`Shared, ${n} stops`], rtSolo:["Đi riêng","Runs alone"], rtPlan:["tuyến theo kế hoạch Core, khác tuyến đang chạy","route per Core plan, differs from today"],
  hubAny:["— Hub của Sup này —","— this Sup\u2019s hubs —"], supAny:["— Sup của Hub này —","— this hub\u2019s Sup —"], hsHub:n=>[`Hub này có ${n} Sup phụ trách (bảng phân công Hub → Sup).`,`${n} Sup cover this hub (hub → Sup assignment list).`], hsSup:n=>[`Sup này phụ trách ${n} Hub.`,`This Sup covers ${n} hubs.`],
- cuL:["Chute & TO (1 chute = 1 TO, mỗi TO đi 1 SOC)","Chutes & TOs (1 chute = 1 TO, each TO goes to 1 SOC)"], cuDayL:["Loại ngày","Day type"], cuSame:["Giống nhau mọi loại ngày","Same for all day types"], cuTo:["TO đi SOC","TO goes to"], cuDrop:["Kéo SOC vào đây","Drag a SOC here"], cuAdd:["Thêm chute","Add chute"], cuDel:["Bỏ chute","Remove chute"],
+ cuL:["Chute & TO theo nhóm sort (1 chute = 1 TO, mỗi TO đi 1 SOC)","Chutes & TOs by sort group (1 chute = 1 TO, each TO goes to 1 SOC)"], cuDayL:["Loại ngày","Day type"], cuSame:["Giống nhau mọi loại ngày","Same for all day types"], cuTo:["TO đi SOC","TO goes to"], cuDrop:["Kéo SOC vào đây","Drag a SOC here"], cuAdd:["Thêm chute","Add chute"], cuDel:["Bỏ chute","Remove chute"],
  cuDirect:[d=>`Đi thẳng ${d}`,d=>`Direct to ${d}`], cuTransit:(d,o)=>[`${d} chuyển tiếp (transit) ${o}`,`${d} transits ${o}`], cuResort:(d,o)=>[`${d} chia lại ${o} (tính tiền người chia lại)`,`${d} re-sorts ${o} (re-sort labour costed)`],
- cuHint:["Kéo SOC sang chute khác, hoặc chạm SOC rồi chạm chute. Bớt chute: bấm × — SOC trong chute đó dồn sang chute cùng TO, không có thì sang chute đi SOC chính. Tiền chuyển hàng giữa SOC không tính vào D2S.","Drag a SOC to another chute, or tap a SOC then tap a chute. Remove a chute with × — its SOCs move to a chute with the same TO, else to the main-SOC chute. SOC-to-SOC transfer is not charged to D2S."],
+ cuHint:["Kéo nhóm sort sang chute khác, hoặc chạm nhóm rồi chạm chute. Bớt chute: bấm × — nhóm trong chute đó dồn sang chute cùng TO, không có thì sang chute đi SOC chính. SOC nhận bao làm gì (transit / rã bao) theo kế hoạch sort ở tab Mạng lưới SPX.","Drag a sort group to another chute, or tap a group then tap a chute. Remove a chute with × — its groups move to a chute with the same TO, else to the main SOC. What the receiving SOC does (transit / open) follows the sorting plans in the SPX network tab."],
  cuMoved:(o,d)=>[`Đã bớt 1 chute: ${o} dồn sang chute đi ${d}.`,`Removed 1 chute: ${o} moved to the chute going to ${d}.`],
  banL:["Luật cấm tải xe 5T/8T","Truck ban for 5T/8T"], banAuto:["Tự động theo điểm gần","Auto from nearby points"], banOff:["Không áp","Off"],
  tabNet:["Mạng lưới SPX","SPX network"], tabPlan:["Đánh giá seller","Assess seller"], tabAsm:["Giả định & ràng buộc","Assumptions & constraints"], tabCur:["Seller đang chạy","Running sellers"],
@@ -458,7 +458,7 @@ function applyPreset(id){const q=PRESETS.find(x=>x.id===id);X.preset=id;if(!q)re
   X.socs=null;fillRegion(false);if(q.soc){X.socs.forEach(o=>{o.sh=q.soc[o.s]||0;});const c=X.socs.filter(o=>o.sh>=5).length;X.ch=[c,c,c];X.chutes=null;fillRegion(true);}}
 function fillRegion(keep){const G=REF.reg[X.R];if(!keep||!X.socs)X.socs=G.soc.map(s=>({s,sh:Math.round(G.socSh[s]||0),km:G.km[s]??15,fw:false}));
   if(!keep||!X.sh||X.sh.length!==G.cots.length)X.sh=G.sh.map(v=>Math.round(v*100));
-  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}if(!keep||!X.chutes){const d=cuDefault();X.chutes=[0,1,2].map(()=>d.map(c=>({socs:c.socs.slice(),to:c.to})));X.cuDay=0;X.cuSel=null;}}
+  if(!keep||!X.win||X.win.length!==G.cots.length){X.open=REF.P.open;X.win=G.cots.map(c=>[Math.max(c.a,X.open),c.b]);}if(!keep||X.ch==null){const c=Math.max(G.ch,X.socs.filter(o=>o.sh>=5).length);X.ch=[c,c,c];}if(!keep||!X.chutes){const d=cuDefault();X.chutes=[0,1,2].map(()=>d.map(c=>({socs:c.socs.slice(),to:c.to})));X.cuDay=0;X.cuSel=null;X.gsh=null;X.gch=null;}}
 fillRegion(false);
 
 /* LUẬT CẤM TẢI MỚI (vùng có cài đặt, hiện HCM): bật/tắt, cỡ xe bị cấm, giờ cấm, ngày áp dụng — dùng chung mọi seller (nhớ trong trình duyệt) */
@@ -481,7 +481,11 @@ function drawForm(){
   document.querySelector('#tabs [data-tab="upd"]').hidden=MODE!=="walk";
   $("R").innerHTML=Object.keys(REF.reg).map(r=>`<option${r===X.R?" selected":""}>${r}</option>`).join("");
   const G=REF.reg[X.R];
-  $("socs").innerHTML=`<div class="sr h"><span>${T("socHd")}</span><span>${T("socPct")}</span><span>km</span></div>`+X.socs.map((o,j)=>`<div class="sr"><span>${esc(o.s)}</span><input type="number" id="ss${j}" aria-label="${esc(o.s)} ${T("socPct")}" min="0" max="100" step="1" value="${o.sh}"><input type="number" id="sk${j}" aria-label="${esc(o.s)} km" min="0" max="300" step="1" value="${o.km}"></div>`).join("");
+  sgEnsure();{const GN=sgGroups(),tot=GN.reduce((a,g)=>a+(+X.gsh[g]||0),0),V=(vi,en)=>L?en:vi;
+  $("socs").innerHTML=`<div class="sr h"><span>${V("Nhóm sort","Sort group")} <span class="chip mid" style="font-size:10.5px">${V("minh hoạ","illustrative")}</span></span><span>${T("socPct")}</span><span>SOC</span></div>`
+    +GN.map((g,i)=>`<div class="sr"><span>${esc(g)}</span><input type="number" id="gs${i}" data-g="${esc(g)}" aria-label="${esc(g)} ${T("socPct")}" min="0" max="100" step="0.1" value="${+X.gsh[g]||0}"><span class="meta" style="text-align:right">${esc(sn(sgHome(g)||"–"))}</span></div>`).join("")
+    +`<p class="hint" id="gstot" style="margin:4px 0 8px">${V(`Tổng ${nf(tot,tot%1?1:0)}%. Số minh hoạ: chia % theo SOC hiện có cho các nhóm sort của SOC đó; thay bằng số thật khi có dữ liệu Volume by Sort Code.`,`Total ${nf(tot,tot%1?1:0)}%. Illustrative: each SOC's share split over the sort groups it serves; replaced by real numbers once Volume by Sort Code is loaded.`)}</p>`
+    +`<div class="sr h"><span>${V("SOC đích (tự cộng theo chute)","Destination SOC (summed from chutes)")}</span><span>${T("socPct")}</span><span>km</span></div>`+X.socs.map((o,j)=>`<div class="sr"><span>${esc(o.s)}</span><span class="n" id="sp${j}" style="text-align:right;font-family:var(--f-num);font-size:12.5px;padding-right:6px">${nf(o.sh,o.sh%1?1:0)}</span><input type="number" id="sk${j}" aria-label="${esc(o.s)} km" min="0" max="300" step="1" value="${o.km}"></div>`).join("");}
   $("waves").innerHTML=`<div class="row"><label for="open">${T("openL")}</label><input type="text" class="tm" id="open" inputmode="numeric" maxlength="5" placeholder="hh:mm" value="${hm(X.open)}"></div>
     <div class="wv wv-h"><span>${T("wave")}</span><span>${T("hoFrom")}</span><span>${T("hoTo")}</span><span>${T("socPct")}</span></div>`+G.cots.map((c,k)=>`<div class="wv"><span class="cot">${hm(c.p)}</span><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wa${k}" aria-label="${T("hoFrom")} ${hm(c.p)}" value="${hm(X.win[k][0])}"><input type="text" class="tm" inputmode="numeric" maxlength="5" placeholder="hh:mm" id="wb${k}" aria-label="${T("hoTo")} ${hm(c.p)}" value="${hm(X.win[k][1])}"><input type="number" id="sh${k}" aria-label="${T("socPct")} ${hm(c.p)}" min="0" max="100" step="1" value="${X.sh[k]}"></div>`).join("")+`<p class="hint">${T("hoHint")}</p>`;
   const dt=T("dt");
@@ -534,19 +538,55 @@ function cuNorm(L){const names=X.socs.map(o=>o.s),seen=new Set();L.forEach(c=>{c
   const miss=names.filter(n=>!seen.has(n));if(miss.length){let m=L.find(c=>c.to===mainSoc());if(!m)L.push(m={socs:[],to:mainSoc()});m.socs.push(...miss);}return L;}
 function cuDefault(){const c=X.ch?X.ch[0]:X.socs.length,r=X.socs.slice().sort((a,b)=>b.sh-a.sh),L=r.slice(0,Math.max(1,c)).map(o=>({socs:[o.s],to:o.s}));return cuNorm(L);}
 function cuEdit(f){const t=X.cuDay;X.cuMsg="";f(X.chutes[t]);cuNorm(X.chutes[t]);if(X.cuSame)X.chutes=[0,1,2].map(()=>X.chutes[t].map(c=>({socs:c.socs.slice(),to:c.to})));render();}
-function drawChutes(){const dtn=T("dt"),CL=X.chutes[X.cuDay],shOf=n=>(X.socs.find(o=>o.s===n)||{}).sh||0;
-  const eff=c=>{const o=c.socs.filter(n=>n!==c.to);if(!c.socs.length)return "";if(!o.length)return T("cuDirect")(sn(c.to));return c.socs.length===1?TX.cuTransit(sn(c.to),o.map(sn).join(", "))[L]:TX.cuResort(sn(c.to),o.map(sn).join(", "))[L];};
-  $("chs").innerHTML=`<div class="cutab" role="group" aria-label="${T("cuDayL")}">${dtn.map((d,t)=>`<button type="button" data-cud="${t}" aria-pressed="${X.cuDay===t}">${esc(d)} · ${X.chutes[t].filter(c=>c.socs.length).length} chute</button>`).join("")}<label><input type="checkbox" id="cuSame"${X.cuSame?" checked":""}>${T("cuSame")}</label></div>`
+/* NHÓM SORT (lớp trên SOC): % đơn theo nhóm sort và chute theo nhóm sort; % SOC đích và chute SOC cho engine tự suy ra (sgSync).
+   Chưa có dữ liệu đơn theo sort code: % là MINH HOẠ — chia % theo SOC hiện có cho các nhóm sort mà SOC đó phụ trách theo một tỷ trọng chung (SG_W),
+   nên tổng mỗi SOC, số xe và tiền giữ nguyên tới khi kéo nhóm sang chute khác. Nhóm mà vùng không có SOC nhà (Cen2, North ở miền Nam…) đi theo TO của chute */
+const SG_W={"HCA":14,"HCB":12,"SE1, SE2":10,"13 Cen2":8,"Cen_DN":6,"SW2":9,"SW1":5,"HN, North_A":16,"North_D":7,"North_B":8,"North_C":5};
+const SG_AL={"HN1 SOC":"HN SOC","HY SOC":"Hung Yen SOC"},SG_RA={"HN SOC":"HN1 SOC","Hung Yen SOC":"HY SOC"};
+function sgGroups(){return spnGet().groups.map(z=>z.g);}
+function sgHome(g){const z=spnGet().groups.find(q=>q.g===g),h=z&&z.home;return h?(SG_AL[h]||h):null;}
+function sgReg(g,to){const h=sgHome(g);return X.socs.some(o=>o.s===h)?h:to;}
+function sgDefault(){const S=X.socs,names=S.map(o=>o.s),GN=sgGroups(),main=mainSoc(),pool={};
+  S.forEach(o=>{pool[o.s]=GN.filter(g=>sgHome(g)===o.s);});const far=GN.filter(g=>!names.includes(sgHome(g)));
+  const tgt=S.slice().sort((a,b)=>b.sh-a.sh).find(o=>o.sh>0&&!pool[o.s].length)||{s:main};pool[tgt.s]=pool[tgt.s].concat(far);
+  const gsh={};GN.forEach(g=>{gsh[g]=0;});
+  S.forEach(o=>{let P=pool[o.s];if(!(o.sh>0))return;if(!P.length)P=pool[main];const w=P.reduce((a,g)=>a+(SG_W[g]||5),0);let acc=0;
+    P.forEach((g,i)=>{const v=i===P.length-1?Math.round((o.sh-acc)*10)/10:Math.round(o.sh*(SG_W[g]||5)/w*10)/10;gsh[g]=Math.round((gsh[g]+v)*10)/10;acc+=v;});});
+  const gch=[0,1,2].map(t=>(X.chutes[t]||[]).map(c=>({to:c.to,g:[...new Set(c.socs.flatMap(n=>pool[n]||[]))]})));
+  gch.forEach(gNorm);return {gsh,gch};}
+/* mỗi nhóm đúng 1 chute; nhóm thiếu → chute đi SOC nhà của nhóm, không có thì chute đi SOC chính */
+function gNorm(L){const names=X.socs.map(o=>o.s),GN=sgGroups(),seen=new Set(),main=mainSoc();L.forEach(c=>{c.g=c.g.filter(g=>GN.includes(g)&&!seen.has(g)&&seen.add(g));if(!names.includes(c.to))c.to=main;});
+  GN.filter(g=>!seen.has(g)).forEach(g=>{const h=sgHome(g);let c=L.find(q=>q.to===h)||L.find(q=>q.to===main)||L[0];if(!c)L.push(c={to:main,g:[]});c.g.push(g);});return L;}
+function sgEnsure(){if(!X.socs||!X.chutes)return;const GN=sgGroups();if(!X.gsh||!X.gch||GN.some(g=>!(g in X.gsh))){const d=sgDefault();X.gsh=d.gsh;X.gch=d.gch;}sgSync();}
+/* % SOC đích = cộng % các nhóm theo SOC mà bao của nhóm đi tới (theo chute ngày BAU); chute SOC cho engine = các SOC đích trong chute + TO */
+function sgSync(){const sh={};X.socs.forEach(o=>{sh[o.s]=0;});(X.gch[0]||[]).forEach(c=>c.g.forEach(g=>{const r=sgReg(g,c.to);if(r in sh)sh[r]+=Math.max(0,+X.gsh[g]||0);}));
+  X.socs.forEach(o=>{o.sh=Math.round(sh[o.s]*10)/10;});
+  X.chutes=X.gch.map(L=>cuNorm(L.map(c=>({to:c.to,socs:[...new Set(c.g.filter(g=>(+X.gsh[g]||0)>0||true).map(g=>sgReg(g,c.to)))]})).filter(c=>c.socs.length)));}
+function gEdit(f){const t=X.cuDay;X.cuMsg="";f(X.gch[t]);gNorm(X.gch[t]);if(X.cuSame)X.gch=[0,1,2].map(()=>X.gch[t].map(c=>({to:c.to,g:c.g.slice()})));sgSync();render();}
+/* FLM chuẩn để so: theo vùng và mã FM Hub (HCM → FLM HCM; South: 70 → SW1, 71–75 → SW2, còn lại → SE; HN/North → FLM North) */
+function sgBase(){const h=String(X.hub||""),pre=+h.slice(0,2);return X.R==="HCM"?"flm_hcm":X.R==="South"?(pre===70?"flm_sw1":pre>=71&&pre<=75?"flm_sw2":"flm_se"):X.R==="HN"||X.R==="North"?"flm_north":X.R==="DNCH"?"flm_cendn":"flm_se";}
+function drawChutes(){sgEnsure();const dtn=T("dt"),CL=X.gch[X.cuDay],N=spnGet(),V=(vi,en)=>L?en:vi,pc=g=>nf(+X.gsh[g]||0,(+X.gsh[g]||0)%1?1:0);
+  /* SOC nhận bao làm gì: bao chỉ có hàng của đúng một SOC khác → transit; còn lại rã bao (sort hub / sort SOC) — theo kế hoạch sort ở tab Mạng lưới */
+  const eff=c=>{if(!c.g.length)return V("Chute trống — kéo nhóm vào.","Empty chute — drag groups in.");const S=SG_RA[c.to]||c.to,acts={};
+    c.g.forEach(g=>{const pl=nsPlanOf(N,S,g,"n"),k=pl.a==="lm"?"lm":"soc:"+pl.to;(acts[k]=acts[k]||[]).push(g);});const ks=Object.keys(acts);
+    if(ks.length===1&&ks[0]!=="lm")return `<b>${esc(sn(c.to))}</b> transit → ${esc(ssn(ks[0].slice(4)))}`;
+    return `<b>${esc(sn(c.to))}</b> ${V("rã bao","opens")}: `+ks.map(k=>k==="lm"?`<span class="fk lm">sort hub</span> ${acts.lm.map(esc).join(", ")}`:`<span class="fk soc">sort SOC</span> → ${esc(ssn(k.slice(4)))} (${acts[k].map(esc).join(", ")})`).join("; ");};
+  /* so với FLM chuẩn của hub: nhóm nào phải rã bao thêm, bao nhiêu % đơn (minh hoạ), chưa tính vào lãi/lỗ */
+  const base=N.profs.find(p=>p.id===sgBase())||N.profs.find(p=>p.k!=="d2s"&&p.ch.length);let cmp="";
+  if(base){const c=nsNetCmp(N,{ch:CL.map(q=>({g:q.g,p:[SG_RA[q.to]||q.to]}))},base,spnMan()),by={};let tot=0;
+    c.rows.filter(x=>x.v==="n"&&x.extra.length).forEach(x=>{const v=+X.gsh[x.g]||0;tot+=v;x.extra.forEach(z=>{by[z]=(by[z]||0)+v;});});
+    cmp=`<p class="hint" style="margin:0">${tot>0?V(`So với ${esc(base.n)}: rã bao thêm ${Object.entries(by).map(([z,v])=>`ở <b>${esc(ssn(z))}</b> ${nf(v)}% đơn`).join(", ")} (số minh hoạ) — tốn thêm công sort (máy ASM hoặc tay), chưa tính vào lãi/lỗ.`,`Versus ${esc(base.n)}: extra bag opening ${Object.entries(by).map(([z,v])=>`at <b>${esc(ssn(z))}</b> for ${nf(v)}% of orders`).join(", ")} (illustrative) — extra sorting (ASM or by hand), not yet in the P&L.`):V(`Như ${esc(base.n)}: không phải rã bao thêm.`,`Same as ${esc(base.n)}: no extra bag opening.`)}</p>`;}
+  $("chs").innerHTML=`<div class="cutab" role="group" aria-label="${T("cuDayL")}">${dtn.map((d,t)=>`<button type="button" data-cud="${t}" aria-pressed="${X.cuDay===t}">${esc(d)} · ${X.gch[t].filter(c=>c.g.length).length} chute</button>`).join("")}<label><input type="checkbox" id="cuSame"${X.cuSame?" checked":""}>${T("cuSame")}</label></div>`
    +CL.map((c,i)=>`<div class="chu" data-chu="${i}"><div class="hd"><span>Chute ${i+1}</span>${CL.length>1?`<button type="button" data-cudel="${i}" aria-label="${T("cuDel")} ${i+1}" title="${T("cuDel")}">×</button>`:""}</div>
-     <div class="chips">${c.socs.length?c.socs.map(n=>`<span class="chip2${X.cuSel===n?" sel":""}" draggable="true" tabindex="0" role="button" data-soc="${esc(n)}" title="${esc(n)}">${esc(sn(n))} · ${nf(shOf(n))}%</span>`).join(""):`<span class="ph">${T("cuDrop")}</span>`}</div>
+     <div class="chips">${c.g.length?c.g.map(g=>`<span class="chip2${X.cuSel===g?" sel":""}" draggable="true" tabindex="0" role="button" data-sg="${esc(g)}" title="${esc(g)}">${esc(g)} · ${pc(g)}%</span>`).join(""):`<span class="ph">${V("Kéo nhóm sort vào","Drop sort groups here")}</span>`}</div>
      <label class="eff" style="display:grid;gap:2px">${T("cuTo")}<select data-cuto="${i}">${X.socs.map(o=>`<option value="${esc(o.s)}"${o.s===c.to?" selected":""}>${esc(o.s)}</option>`).join("")}</select></label>
-     <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`+(X.cuMsg?`<p class="hint" role="status" style="margin:0;color:var(--ink)">${esc(X.cuMsg)}</p>`:"");}
+     <div class="eff">${eff(c)}</div></div>`).join("")+`<button type="button" class="cuadd" data-cuadd="1">+ ${T("cuAdd")}</button>`+cmp+(X.cuMsg?`<p class="hint" role="status" style="margin:0;color:var(--ink)">${esc(X.cuMsg)}</p>`:"");}
 /* % đơn mỗi lượt luôn cộng 100: sửa một lượt thì các lượt còn lại chia phần còn lại theo tỷ lệ cũ (2 lượt: lượt kia = 100 − x) */
 function shBal(el){const m=/^sh(\d+)$/.exec(el.id||"");if(!m||el.value.trim()==="")return;const n=REF.reg[X.R].cots.length,k=+m[1];if(+el.value>100)el.value=100;
   const v=Math.max(0,+el.value||0),oth=[...Array(n).keys()].filter(j=>j!==k),old=oth.map(j=>Math.max(0,+$("sh"+j).value||0)),sum=old.reduce((a,b)=>a+b,0),rest=100-v;if(!oth.length)return;
   const nv=oth.map((j,i)=>Math.round(sum>0?rest*old[i]/sum:rest/oth.length)),fix=rest-nv.reduce((a,b)=>a+b,0),bi=nv.indexOf(Math.max(...nv));nv[bi]+=fix;oth.forEach((j,i)=>{$("sh"+j).value=Math.max(0,nv[i]);});}
 function read(){
-  const G=REF.reg[X.R];X.socs.forEach((o,j)=>{o.sh=Math.max(0,+$("ss"+j).value||0);o.km=Math.max(0,+$("sk"+j).value||0);});
+  const G=REF.reg[X.R];X.socs.forEach((o,j)=>{if($("sk"+j))o.km=Math.max(0,+$("sk"+j).value||0);});if(X.gsh){const c={};document.querySelectorAll("#socs [data-g]").forEach(el=>{c[el.dataset.g]=Math.max(0,+el.value||0);});if(Object.keys(c).length){X.gsh=Object.assign({},X.gsh,c);sgSync();}}
   X.sh=G.cots.map((_,k)=>Math.max(0,+$("sh"+k).value||0));
   const tm=v=>{const m=/^(\d{1,2}):?(\d\d)$/.exec(String(v||"").trim());return m&&+m[1]<24&&+m[2]<60?+m[1]*60+ +m[2]:null;};
   X.open=tm($("open").value)??X.open;X.win=G.cots.map((c,k)=>{const a=tm($("wa"+k).value),b=tm($("wb"+k).value),o=X.win[k];return [a??o[0],Math.max(a??o[0],b??o[1])];});
@@ -573,18 +613,18 @@ function profOf(q,R){const G=REF.reg[R],open=REF.P.open,a3=q.a3&&q.a3.some(v=>v>
     open,win:G.cots.map((k,j)=>{const a=Math.max(k.a,open),r=q.rw&&q.rw[3]&&q.rw[3][j];
       /* khung bàn giao theo chuyến thật (mọi ngày): hàng xong lúc xe cuối bắt đầu chất = giờ xe rời cuối − phút đứng mỗi xe (trung vị); không có chuyến thì theo khung COT của vùng */
       return r?[a,Math.round(Math.min(k.p-REF.P.closeMin,Math.max(a+30,r[1]-r[4])))]:[a,k.b];}),ch:[c,c,c],chutes:null,like:inSel?q.n:"",capK:inSel?{}:Object.fromEntries(NS_KS.map((k,j)=>[k,q.c&&q.c[j]>0?q.c[j]:""]).filter(e=>e[1]!=="")),
-    dwFix:q.dw?q.dw[0]:"",dwRate:q.dw?+(q.dw[1]*100).toFixed(2):"",capOv:"",tail:0,hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:"",lab:tm?"hub":"fte",ban:"auto",maxK:"8T",bays:4,
+    gsh:null,gch:null,dwFix:q.dw?q.dw[0]:"",dwRate:q.dw?+(q.dw[1]*100).toFixed(2):"",capOv:"",tail:0,hoProf:"even",hoN:3,late:0,hoRate:"",gates:1,gMode:"auto",gMove:"",lab:tm?"hub":"fte",ban:"auto",maxK:"8T",bays:4,
     /* % hàng to theo loại ngày từ dữ liệu thật (chỉ ghi khi khác % chung ≥ 1 điểm) */
     betaT:q.b3?q.b3.map(v=>v==null||Math.abs(v-(q.b||0))<0.01?"":Math.round(v*100)):["","",""],prod:{base:"",hand:"",chute:"",bulky:"",fteH:""},dockSwap:"",gateFix:false,gateMax:"",hoDev:"",areaCP:"",shelter:"",cam:{has:"",self:"",zone:""},
     osCap:"",hcIn:["","",""],slackMin:0,delay:20,area:"",dens:"",pick:[]},JSON.parse(JSON.stringify((SITE_KNOWN[q.n]||{}).set||{})));}
 /* mở một seller đang chạy trong trang đánh giá (như khi nhập seller mới) */
 function openSeller(q,R){const S=profOf(q,R);Object.assign(X,S,{preset:"",tab:"plan",cuSel:null,cuDay:0,nsId:""});const sh=S.socs.map(o=>({...o}));X.socs=null;fillRegion(false);
   X.socs=sh;X.sh=S.sh.slice();X.win=S.win.map(w=>w.slice());X.open=S.open;X.ch=S.ch.slice();X.chutes=null;fillRegion(true);
-  X.pick=S.selfGrp?[S.selfGrp]:[];SELFBASE=snapS(X);const sv=savedOf(R,q.n);if(sv&&sv.s)Object.assign(X,JSON.parse(JSON.stringify(sv.s)));drawForm();render();window.scrollTo(0,0);}
+  X.pick=S.selfGrp?[S.selfGrp]:[];sgEnsure();SELFBASE=snapS(X);const sv=savedOf(R,q.n);if(sv&&sv.s){Object.assign(X,JSON.parse(JSON.stringify(sv.s)));if((sv.s.socs||sv.s.chutes)&&!sv.s.gch&&!sv.s.gsh){X.gsh=null;X.gch=null;}}drawForm();render();window.scrollTo(0,0);}
 /* LƯU CÀI ĐẶT cho seller đang chạy: chỉ lưu các ô khác hồ sơ gốc (dữ liệu thật cập nhật thì phần không chỉnh vẫn theo dữ liệu mới).
    Lưu chung cho mọi người mở trang (db, bộ "seller_settings", mỗi seller một bản); không có db (mở file trên máy) thì lưu trên trình duyệt này */
-const SKEYS=["ado","days","beta","socs","sh","open","win","ch","chutes","like","capK","dwFix","dwRate","tail","hoProf","hoN","late","hoRate","gates","gMode","gMove","lab","ban","maxK","bays","osCap","hcIn","slackMin","delay","area","dens","pick","ll","hub","sup","betaT","prod","dockSwap","gateFix","gateMax","hoDev","areaCP","shelter","cam"];
-const SLAB={betaT:["% hàng to theo ngày","bulky % by day"],prod:["năng suất","productivity"],dockSwap:["đổi xe tại dock","dock swap"],gateFix:["người cố định cổng","staff per gate"],gateMax:["hàng lệch cổng","gate imbalance"],hoDev:["bàn giao phân mảnh","fragmented handover"],areaCP:["tập kết campaign","campaign staging"],shelter:["mái che","shelter"],cam:["camera","CCTV"],ado:["ADO","ADO"],days:["số ngày","days"],beta:["% hàng to","bulky %"],socs:["SOC","SOCs"],sh:["% lượt","wave %"],open:["giờ bắt đầu","start time"],win:["khung bàn giao","handover window"],ch:["chute","chutes"],chutes:["chute/TO","chutes/TO"],like:["seller giống","similar seller"],capK:["sức chở","capacity"],dwFix:["xe đứng","dwell"],dwRate:["xe đứng","dwell"],tail:["kiểu nhả","release"],hoProf:["kiểu nhả","release"],hoN:["kiểu nhả","release"],late:["giao trễ","lateness"],hoRate:["tốc độ bàn giao","handover speed"],gates:["cổng","gates"],gMode:["cổng","gates"],gMove:["cổng","gates"],lab:["loại người","staff type"],ban:["cấm tải","truck ban"],maxK:["cỡ xe","truck size"],bays:["chỗ chất","bays"],osCap:["người tối đa","staff cap"],hcIn:["số người thực tế","actual staff"],slackMin:["dư COT","COT slack"],delay:["thử trễ","delay test"],area:["tập kết","staging"],dens:["tập kết","staging"],pick:["ghép xe","sharing"],ll:["toạ độ","location"],hub:["Hub","Hub"],sup:["Sup","Sup"]};
+const SKEYS=["ado","days","beta","socs","sh","open","win","ch","chutes","like","capK","dwFix","dwRate","tail","hoProf","hoN","late","hoRate","gates","gMode","gMove","lab","ban","maxK","bays","osCap","hcIn","slackMin","delay","area","dens","pick","ll","hub","sup","betaT","prod","dockSwap","gateFix","gateMax","hoDev","areaCP","shelter","cam","gsh","gch"];
+const SLAB={gsh:["% đơn theo nhóm sort","order share by sort group"],gch:["chute theo nhóm sort","chutes by sort group"],betaT:["% hàng to theo ngày","bulky % by day"],prod:["năng suất","productivity"],dockSwap:["đổi xe tại dock","dock swap"],gateFix:["người cố định cổng","staff per gate"],gateMax:["hàng lệch cổng","gate imbalance"],hoDev:["bàn giao phân mảnh","fragmented handover"],areaCP:["tập kết campaign","campaign staging"],shelter:["mái che","shelter"],cam:["camera","CCTV"],ado:["ADO","ADO"],days:["số ngày","days"],beta:["% hàng to","bulky %"],socs:["SOC","SOCs"],sh:["% lượt","wave %"],open:["giờ bắt đầu","start time"],win:["khung bàn giao","handover window"],ch:["chute","chutes"],chutes:["chute/TO","chutes/TO"],like:["seller giống","similar seller"],capK:["sức chở","capacity"],dwFix:["xe đứng","dwell"],dwRate:["xe đứng","dwell"],tail:["kiểu nhả","release"],hoProf:["kiểu nhả","release"],hoN:["kiểu nhả","release"],late:["giao trễ","lateness"],hoRate:["tốc độ bàn giao","handover speed"],gates:["cổng","gates"],gMode:["cổng","gates"],gMove:["cổng","gates"],lab:["loại người","staff type"],ban:["cấm tải","truck ban"],maxK:["cỡ xe","truck size"],bays:["chỗ chất","bays"],osCap:["người tối đa","staff cap"],hcIn:["số người thực tế","actual staff"],slackMin:["dư COT","COT slack"],delay:["thử trễ","delay test"],area:["tập kết","staging"],dens:["tập kết","staging"],pick:["ghép xe","sharing"],ll:["toạ độ","location"],hub:["Hub","Hub"],sup:["Sup","Sup"]};
 const snapS=S=>Object.fromEntries(SKEYS.map(k=>[k,JSON.parse(JSON.stringify(S[k]??null))]));
 const diffS=(a,b)=>{const d={};SKEYS.forEach(k=>{if(JSON.stringify(a[k])!==JSON.stringify(b[k]))d[k]=a[k];});return d;};
 const labsOf=d=>[...new Set(Object.keys(d||{}).map(k=>(SLAB[k]||[k,k])[L]))].join(", ");
@@ -650,7 +690,7 @@ async function saveNew(){if(SAVE.busy)return;const nm=($("nsName")?$("nsName").v
   if(!planIn().ll){SAVE.msg=L?"Enter the location first.":"Nhập toạ độ trước.";drawSelf();return;}
   if(G.pts.some(q=>q.n===nm)||Object.entries(NET.news).some(([id,d])=>d.R===X.R&&d.name===nm&&id!==X.nsId)){SAVE.msg=L?"That name is already used in this region.":"Tên này đã có trong vùng.";drawSelf();return;}
   const id=X.nsId||newId();SAVE.busy=true;drawSelf();
-  try{const was=X.self;X.self=nm;X.nsId=id;await putDoc("new_sellers",id,await stampOf({name:nm,R:X.R,s:snapS(X),pt:ptOf(nm)}));SELFBASE=snapS(X);
+  try{const was=X.self;X.self=nm;X.nsId=id;await putDoc("new_sellers",id,await stampOf({name:nm,R:X.R,s:snapS(X),pt:ptOf(nm)}));sgEnsure();SELFBASE=snapS(X);
     /* đổi tên: cập nhật tên trong các nhóm đã chốt */
     if(was&&was!==nm)for(const [gid,g] of Object.entries(NET.groups))if((g.mem||[]).some(m=>m.ns===id))await putDoc("groups",gid,Object.assign({},g,{mem:g.mem.map(m=>m.ns===id?{ns:id,n:nm}:m)}));}
   catch(e){SAVE.msg=e&&e.code==="invalid_argument"?(L?"You can view but not save on this page.":"Bạn chỉ có quyền xem, không lưu được."):(L?"Could not save, try again.":"Chưa lưu được, thử lại.");}
@@ -660,7 +700,7 @@ async function delNew(id){const d=NET.news[id];if(!d||SAVE.busy)return;SAVE.busy
     await delDoc("new_sellers",id);if(X.nsId===id){X.nsId="";X.self="";SELFBASE=null;}}catch(e){SAVE.msg=L?"Could not delete, try again.":"Chưa xoá được, thử lại.";}
   SAVE.busy=false;drawForm();render();}
 function openNew(id){const d=NET.news[id];if(!d)return;X.R=d.R;X.socs=null;fillRegion(false);Object.assign(X,JSON.parse(JSON.stringify(d.s)),{self:d.name,nsId:id,selfGrp:"",preset:"",tab:"plan",cuSel:null,cuDay:0});
-  if(!X.chutes){X.chutes=null;fillRegion(true);}SELFBASE=snapS(X);drawForm();render();window.scrollTo(0,0);}
+  if(!X.chutes){X.chutes=null;fillRegion(true);}if(!d.s.gch){X.gsh=null;X.gch=null;}sgEnsure();SELFBASE=snapS(X);drawForm();render();window.scrollTo(0,0);}
 /* CHỐT: lượt đã tick (tuyến rN@t:k hoặc nhóm g~id@t:k) thành nhóm dùng chung; nhóm có sẵn thì thêm seller này vào */
 async function commitPick(key){const me=selfRef(),m=/^(r\d+|g~[a-z0-9-]+)@(\d+):(\d+)$/.exec(key);if(!me||!m||SAVE.busy)return;const id=m[1],t=+m[2],k=+m[3],G=REF.reg[X.R];SAVE.busy=true;
   try{if(id.startsWith("g~")){const gid=id.slice(2),g=NET.groups[gid];if(g&&!(g.mem||[]).some(isMe))await putDoc("groups",gid,await stampOf(Object.assign({},g,{mem:g.mem.concat([me])})));}
@@ -847,7 +887,8 @@ function fullRun(){busy(true);clearTimeout(FT);FT=setTimeout(()=>{const inp=LAST
     /* luồng nền chưa từng trả lời trong 4 giây (bị chặn âm thầm) → bỏ, tính ở luồng chính */
     clearTimeout(WK.dog);if(!WK.ok)WK.dog=setTimeout(()=>{if(WK.busy&&!WK.ok&&WK.w)WK.w.onerror({message:"no response"});},4000);return;}
   let p=null;try{p=nsPlan(REF,inp);}catch(e){console.error(e);}if(id!==RSEQ)return;if(p)draw(p);busy(false);},WK.url?120:250);}
-function render(){if(X.self)drawSelf();LASTIN=planIn();let p;try{p=nsPlan(REF,Object.assign({},LASTIN,{lite:true}));}catch(e){console.error(e);return;}draw(p);RSEQ++;DRAWN=RSEQ;fullRun();}
+function sgPaint(){if(!X.gsh)return;X.socs.forEach((o,j)=>{const e=$("sp"+j);if(e)e.textContent=nf(o.sh,o.sh%1?1:0);});const t=$("gstot");if(t){const v=sgGroups().reduce((a,g)=>a+(+X.gsh[g]||0),0);t.firstChild&&(t.firstChild.nodeValue=t.firstChild.nodeValue.replace(/^(Tổng|Total) [\d.,]+%/,(L?"Total ":"Tổng ")+nf(v,v%1?1:0)+"%"));}}
+function render(){sgEnsure();sgPaint();if(X.self)drawSelf();LASTIN=planIn();let p;try{p=nsPlan(REF,Object.assign({},LASTIN,{lite:true}));}catch(e){console.error(e);return;}draw(p);RSEQ++;DRAWN=RSEQ;fullRun();}
 function spawn(){if(WK.w)try{WK.w.terminate();}catch(e){}WK.busy=false;const w=new Worker(WK.url);WK.w=w;
   const off=why=>{console.warn("worker off:",why);try{w.terminate();}catch(e){}WK.url=null;WK.w=null;WK.busy=false;if(LASTIN)fullRun();};
   w.onmessage=e=>{if(w!==WK.w)return;const d=e.data;WK.busy=false;WK.ok=true;clearTimeout(WK.dog);if(d.err){off(d.err);return;}if(d.id===RSEQ){draw(d.p);busy(false);}};
@@ -892,7 +933,7 @@ function drawAll(p){
   /* bản nhanh: các phần cần bản đủ giữ nội dung cũ, làm mờ tới khi có số mới */
   ["winSec","fillSug","asm"].forEach(id=>$(id).classList.toggle("stale",!!p.lite));$("mrg").closest("section").classList.toggle("stale",!!p.lite);
   const dt=T("dt"),D=p.days.filter(d=>d.X>0),b=p.days[0];
-  $("sochint").textContent=TX.socHint(X.R,REF.reg[X.R],p.work.st)[L];
+  $("sochint").textContent="";
   /* phiếu kết luận cho Ops */
   { const ck=(st,txt)=>`<li><b class="${st}">${st==="y"?(L?"Pass":"Đạt"):st==="w"?(L?"Watch":"Theo dõi"):(L?"Fail":"Chưa")}</b><span>${txt}</span></li>`;
     const why=[];if(!p.ok.profit)why.push(L?"costs more than FM pickup":"đắt hơn FM pickup");(p.lossDays||[]).forEach(o=>why.push(L?`${p.ok.profit?"watch: ":""}${T("dt")[o.t]} loses ${mn(-o.net)}/day at ${nf(o.X)} orders${p.lite?"":o.thr!=null?`; that day breaks even from ${nf(o.thr)}`:"; that day does not break even on its own"}`:`${p.ok.profit?"theo dõi: ":""}ngày ${T("dt")[o.t]} lỗ ${mn(-o.net)}/ngày ở ${nf(o.X)} đơn${p.lite?"":o.thr!=null?`; ngày này tự hoà vốn từ ${nf(o.thr)} đơn`:"; ngày này không tự hoà vốn ở mức đơn nào"}`));if(!p.ok.cot)why.push(L?"misses COT":"trễ COT");else if(p.ok.cotW)p.days.filter(d=>d.X>0&&d.n>0&&d.worst<0).forEach(d=>why.push(L?`watch: ${T("dt")[d.t]} leaves ${nf(-d.worst)}′ after COT (allowance ${nf(-p.slackMin)}′)`:`theo dõi: ngày ${T("dt")[d.t]} xe rời sau COT ${nf(-d.worst)}′ (cho phép ${nf(-p.slackMin)}′)`));if(!p.ok.people)why.push(L?"not enough staff":"thiếu người");if(p.ok.cam==="n")why.push(L?"no CCTV for reconciliation":"chưa có camera đối soát");if(p.dly&&!p.ok.delay)why.push(L?"fragile to seller delay":"dễ trễ khi seller giao trễ");
@@ -1086,19 +1127,19 @@ function drawAll(p){
   }
 }
 $("chs").addEventListener("click",e=>{const d=e.target.closest("[data-cud]");if(d){X.cuDay=+d.dataset.cud;render();return;}
-  if(e.target.closest("[data-cuadd]")){cuEdit(L=>L.push({socs:[],to:mainSoc()}));return;}
-  const dl=e.target.closest("[data-cudel]");if(dl){const i=+dl.dataset.cudel;cuEdit(CL=>{const c=CL.splice(i,1)[0];if(!c||!c.socs.length||!CL.length)return;
-    /* bớt chute: SOC của chute đó dồn sang chute cùng TO; không có thì sang chute đi SOC chính; không có nữa thì chute đầu */
-    const t=CL.find(q=>q.to===c.to)||CL.find(q=>q.to===mainSoc())||CL[0];t.socs.push(...c.socs);X.cuMsg=TX.cuMoved(c.socs.map(sn).join(", "),sn(t.to))[L];});return;}
-  const ch=e.target.closest("[data-soc]");if(ch){X.cuSel=X.cuSel===ch.dataset.soc?null:ch.dataset.soc;render();return;}
-  const cu=e.target.closest("[data-chu]");if(cu&&X.cuSel&&!e.target.closest("select,label")){const n=X.cuSel;X.cuSel=null;cuEdit(L=>{L.forEach(c=>{c.socs=c.socs.filter(q=>q!==n);});L[+cu.dataset.chu].socs.push(n);});}});
-$("chs").addEventListener("change",e=>{e.stopPropagation();if(e.target.id==="cuSame"){X.cuSame=e.target.checked;if(X.cuSame)cuEdit(()=>{});else render();return;}
-  const s=e.target.dataset.cuto;if(s!=null){const v=e.target.value;cuEdit(L=>{L[+s].to=v;});}});
+  if(e.target.closest("[data-cuadd]")){gEdit(L=>L.push({g:[],to:mainSoc()}));return;}
+  const dl=e.target.closest("[data-cudel]");if(dl){const i=+dl.dataset.cudel;gEdit(CL=>{const c=CL.splice(i,1)[0];if(!c||!c.g.length||!CL.length)return;
+    /* bớt chute: nhóm của chute đó dồn sang chute cùng TO; không có thì sang chute đi SOC chính; không có nữa thì chute đầu */
+    const t=CL.find(q=>q.to===c.to)||CL.find(q=>q.to===mainSoc())||CL[0];t.g.push(...c.g);X.cuMsg=TX.cuMoved(c.g.join(", "),sn(t.to))[L];});return;}
+  const ch=e.target.closest("[data-sg]");if(ch){X.cuSel=X.cuSel===ch.dataset.sg?null:ch.dataset.sg;render();return;}
+  const cu=e.target.closest("[data-chu]");if(cu&&X.cuSel&&!e.target.closest("select,label")){const n=X.cuSel;X.cuSel=null;gEdit(L=>{L.forEach(c=>{c.g=c.g.filter(q=>q!==n);});L[+cu.dataset.chu].g.push(n);});}});
+$("chs").addEventListener("change",e=>{e.stopPropagation();if(e.target.id==="cuSame"){X.cuSame=e.target.checked;if(X.cuSame)gEdit(()=>{});else render();return;}
+  const s=e.target.dataset.cuto;if(s!=null){const v=e.target.value;gEdit(L=>{L[+s].to=v;});}});
 $("chs").addEventListener("input",e=>e.stopPropagation());
-$("chs").addEventListener("dragstart",e=>{const c=e.target.closest("[data-soc]");if(!c)return;e.dataTransfer.setData("text/plain",c.dataset.soc);e.dataTransfer.effectAllowed="move";});
+$("chs").addEventListener("dragstart",e=>{const c=e.target.closest("[data-sg]");if(!c)return;e.dataTransfer.setData("text/plain",c.dataset.sg);e.dataTransfer.effectAllowed="move";});
 $("chs").addEventListener("dragover",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();c.classList.add("ov");});
 $("chs").addEventListener("dragleave",e=>{const c=e.target.closest("[data-chu]");if(c&&!c.contains(e.relatedTarget))c.classList.remove("ov");});
-$("chs").addEventListener("drop",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();const n=e.dataTransfer.getData("text/plain");if(!n)return;cuEdit(L=>{L.forEach(q=>{q.socs=q.socs.filter(x=>x!==n);});L[+c.dataset.chu].socs.push(n);});});
+$("chs").addEventListener("drop",e=>{const c=e.target.closest("[data-chu]");if(!c)return;e.preventDefault();const n=e.dataTransfer.getData("text/plain");if(!n)return;gEdit(L=>{L.forEach(q=>{q.g=q.g.filter(x=>x!==n);});L[+c.dataset.chu].g.push(n);});});
 $("f").addEventListener("submit",e=>e.preventDefault());
 $("upd").addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(!b)return;X.tab=b.dataset.go;render();window.scrollTo(0,0);});
 $("selfNote").addEventListener("click",e=>{if(e.target.closest("[data-ssave]"))saveSelf();else if(e.target.closest("[data-sreset]"))resetSelf();else if(e.target.closest("[data-nssave]"))saveNew();
