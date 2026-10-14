@@ -86,6 +86,9 @@ function nsRef(C, REF) {
           a3: DTa ? [0, 1, 2].map(t => { const ds = DAYI.filter(d => DTa[d] === t), on = ds.filter(d => (C.S[i].v[d] || 0) > 0); return ds.length && on.length >= ds.length / 2 ? Math.round(nsMed(on.map(d => C.S[i].v[d])) || 0) : 0; })
             : [50, 87, 97].map(p => Math.round(nsPct(act.map(d => C.S[i].v[d]), p) || 0)), nd: act.length,
           skm: Object.fromEntries(Object.keys(sh).filter(x => sh[x] >= 0.02).map(x => { const k = C.kmN(C.S[i].n, x); return [x, k == null ? null : +k.toFixed(1)]; })),
+          /* % hàng to theo loại ngày (trung vị các ngày có hàng) và dải dao động p10–p90 các ngày */
+          b3: DTa ? [0, 1, 2].map(t => { const a = DAYI.filter(d => DTa[d] === t && (C.S[i].v[d] || 0) > 0).map(d => (C.S[i].b[d] || 0) / C.S[i].v[d]); return a.length ? +nsMed(a).toFixed(3) : null; }) : null,
+          bR: (() => { const a = act.map(d => (C.S[i].b[d] || 0) / C.S[i].v[d]); return a.length ? [+nsPct(a, 10).toFixed(3), +nsPct(a, 90).toFixed(3)] : null; })(),
           ch: C.chSt(i).ch, st: C.chSt(i).st, dw: w && w.dw ? [+w.dw.fix.toFixed(2), +w.dw.rate.toFixed(4)] : null, rw: rwOf(C.nm(i), cots) }; }) };
     /* tuyến của mạng theo kế hoạch Core Planner (đi riêng = tuyến 1 điểm); now = 0 nếu kế hoạch khác tuyến đang chạy */
     const run = C.run(R), kNow = new Set(run.T0.map(g => g.slice().sort().join("|")));
@@ -108,17 +111,32 @@ function nsRef(C, REF) {
       const ev = { nH: hv.length, n16, w, stk, pts: js.length };
       js.forEach(j => { const q = reg[R].pts[j], kc = q.ll && bz && bz.c ? nsKm(q.ll, bz.c) : null; let b;
         if (!bz || !q.ll) b = { m: "free" };
-        else if (bz.poly) { const ins = nsInPoly(q.ll, bz.poly), dE = +nsEdgeKm(q.ll, bz.poly).toFixed(1); b = ins ? { m: "poly", allow: bz.allow, hv: bz.heavy, dE } : { m: "free", poly: 1, dE }; }
         else if (bz.zone) b = kc <= bz.r ? { m: "zone", allow: bz.allow } : { m: "free" };
         else if (kc > bz.r) b = { m: "free" };
         else if (hv.length >= 10 && n16 / hv.length >= 0.2) b = { m: "free" };
         else if (hv.length >= 3) { const al = []; if (hv.some(h => h >= 9 && h < 16)) al.push([540, 960]); if (hv.some(h => h >= 21 || h < 6)) al.push([1260, 1800]); if (hv.some(h => h >= 6 && h < 9)) al.push([360, 540]); b = { m: "obs", allow: al }; }
         else if (w >= 20 && stk / w >= 0.4) b = { m: "restr", allow: bz.allow };
         else b = { m: "unk" };
-        q.ban = Object.assign(b, { ev, km: kc == null ? null : +kc.toFixed(1) }); }); });
+        q.ban = Object.assign(b, { ev, km: kc == null ? null : +kc.toFixed(1) });
+        /* LUẬT MỚI (vùng TS, bật/tắt trên trang): điểm trong hay ngoài vùng, cách ranh bao xa; cỡ xe và giờ cấm lấy theo cài đặt lúc tính */
+        if (bz && bz.poly && q.ll) q.banN = { m: nsInPoly(q.ll, bz.poly) ? "poly" : "free", dE: +nsEdgeKm(q.ll, bz.poly).toFixed(1) }; }); });
+    /* cài đặt mặc định của luật mới (vùng, cỡ xe bị cấm, giờ cấm [từ, đến] phút, ngày áp dụng — chưa rõ) */
+    reg[R].banNew = bz && bz.poly ? { poly: bz.poly, hv: bz.heavy, ban: [360, 1320], src: bz.src || "", from: "" } : null;
   });
+  /* ĐỊNH MỨC SỨC CHỞ THEO % HÀNG TO (mỗi cỡ xe): sức chở học được (100% xe) của các seller đã có bằng chứng chạy đầy (độ tin cao / vừa),
+     khớp đường 1/đơn = (1 − b)/n + b/bk (n: đơn/xe khi 0% hàng to, bk: khi 100%). Ít hơn 5 seller hoặc khớp không hợp lý → đường chung của Core nhân hệ số trung vị.
+     Dùng để đổi sức chở theo % hàng to của từng loại ngày; bands = trung vị theo dải % hàng to (để hiện trên trang) */
+  const capNorm = {}; NS_KS.forEach(k => { const pts = [];
+    C.S.forEach((s, i) => { if (!C.active(i).length) return; const cf = K.conf(i, k), v = K.cap(i, k); if ((cf === "cao" || cf === "vừa") && v > 0) pts.push([C.betaOf(i), v]); });
+    const V = (C.VEH || []).find(u => u.k === k) || { n: 1000, b: 350 }, vc = be => 1 / ((1 - be) / V.n + be / V.b);
+    /* neo hai đầu: n = trung vị seller < 10% hàng to, bk = trung vị seller > 75% hàng to (≥ 3 seller mỗi đầu); thiếu đầu nào thì lấy đường chung của Core × hệ số trung vị (thực tế ÷ đường chung) */
+    const r = pts.length ? nsMed(pts.map(([be, v]) => v / vc(be))) || 1 : 1, lo = pts.filter(p => p[0] < 0.1).map(p => p[1]), hi = pts.filter(p => p[0] > 0.75).map(p => p[1]);
+    let n = lo.length >= 3 ? nsMed(lo) : V.n * r, bk = hi.length >= 3 ? nsMed(hi) : V.b * r; if (bk > n) bk = n;
+    const fit = (lo.length >= 3 ? "data" : "veh") + "/" + (hi.length >= 3 ? "data" : "veh");
+    const bands = [[0, 0.1], [0.1, 0.25], [0.25, 0.5], [0.5, 0.75], [0.75, 1.01]].map(([lo, hi]) => { const a = pts.filter(p => p[0] >= lo && p[0] < hi).map(p => p[1]); return [lo, Math.min(1, hi), a.length ? Math.round(nsMed(a)) : null, a.length]; });
+    capNorm[k] = { n: Math.round(n), b: Math.round(bk), N: pts.length, fit, veh: [V.n, V.b], bands }; });
   const dw = C.simK();
-  return { v: 1, sel, reg, dw: { fix: +dw.fix.toFixed(2), rate: +dw.rate.toFixed(4), spd: +dw.spd.toFixed(3) },
+  return { v: 1, sel, reg, capNorm, dw: { fix: +dw.fix.toFixed(2), rate: +dw.rate.toFixed(4), spd: +dw.spd.toFixed(3) },
     P: { prodBase: P.prodBase, prodHand: P.prodHand, prodChute: P.prodChute, prodBulky: P.prodBulky, fteH: P.fteH, shiftH: P.shiftH, ftePay: P.ftePay, hubPay: P.hubPay, hubKm: P.hubKm, hubSpd: P.hubSpd, poolN: P.poolN, socPay: 520000, ppsRate: P.ppsRate, ppsSpd: P.ppsSpd, closeMin: P.closeMin, open: P.open, maxExtra: P.maxExtra },
     /* đơn giá FM pickup (rider + hub, đ/đơn; hàng to nhân hệ số) — cùng giả định với Seller Planner */
     fm: { rS: 669, rM: 2.2, hS: 632.2157, hM: 1.4 } };
@@ -131,7 +149,10 @@ function nsRef(C, REF) {
    mặt bằng: maxK, bays, area (m² tập kết) + dens (đơn/m²): hàng một lượt vượt chỗ tập kết thì xe phải lấy nhiều đợt
    x = { R, socs: [{ s, sh (% đơn), km, fw }], win: [[từ, đến] mỗi lượt], open (giờ người bắt đầu), ado: [BAU, Mini CP, CP], days: [..], beta (0–1), sh: [phần đơn mỗi lượt], maxK, bays, ch, st, like (tên seller | null) } */
 function nsPlan(ref, x) {
-  const G = ref.reg[x.R], P = ref.P, beta = Math.min(1, Math.max(0, x.beta)), kmI = km => Math.min(60, Math.max(0, Math.round((+km || 0) / 5)));
+  /* NĂNG SUẤT: mặc định theo giả định Seller Planner cũ (ref.P); x.prod ghi đè từng số: base (sort lý tưởng đơn/người/ngày), hand (phần không sort), chute (−% mỗi chute thêm), bulky (−% mỗi 10 điểm % hàng to lệch 10%), fteH (giờ sort/ngày công) */
+  const PO = x.prod || {}, pOv = (k, v, lo, hi) => PO[k] !== "" && PO[k] != null && isFinite(+PO[k]) && +PO[k] >= lo && +PO[k] <= hi ? +PO[k] : v;
+  const G = ref.reg[x.R], P = Object.assign({}, ref.P, { prodBase: pOv("base", ref.P.prodBase, 1, 1e5), prodHand: pOv("hand", ref.P.prodHand, 1, 1e5), prodChute: pOv("chute", ref.P.prodChute, 0, 90), prodBulky: pOv("bulky", ref.P.prodBulky, 0, 90), fteH: pOv("fteH", ref.P.fteH, 1, 24) }),
+    prodSet = ["base", "hand", "chute", "bulky", "fteH"].filter(k => PO[k] !== "" && PO[k] != null && isFinite(+PO[k])), beta = Math.min(1, Math.max(0, x.beta)), kmI = km => Math.min(60, Math.max(0, Math.round((+km || 0) / 5)));
   /* SOC đích của seller: % đơn và km tới từng SOC */
   /* SOC chính = SOC nhiều đơn nhất. Tiền chuyển hàng giữa SOC (transit, chia lại xong chuyển) không tính vào D2S */
   const all = (x.socs || []).filter(o => o.sh > 0), shS = all.reduce((a, o) => a + o.sh, 0) || 1, main = all.slice().sort((a, b) => b.sh - a.sh)[0];
@@ -187,10 +208,20 @@ function nsPlan(ref, x) {
   /* số SOC phải chia riêng = SOC nhận ≥ 5% đơn (như Core, socMin) — kể cả SOC đi chuyển tiếp: túi vẫn phải chia riêng ở seller */
   /* số chute seller chia mỗi loại ngày = số SOC có chute riêng (gán ở trên); SOC không có chute → túi chung, SOC chính chia lại (như luồng 1 chute South từ 1/10) */
   const st = Math.max(1, all.filter(o => o.sh / shS >= 0.05).length), stepF = (i, a, s, r) => 1 - Math.round(Math.abs(i - a) / s) * r / 100;
-  const workOf = c => { const ch = Math.max(1, c | 0 || 1), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st) > 1 ? 1 : 0, sv = (1 - beta) * sm + beta * bg, bp = sv > 0 ? beta * bg / sv * 100 : 0;
-    const prod = Math.max(1, P.prodBase * stepF(1, ch, 1, P.prodChute) * stepF(10, bp, 10, P.prodBulky)); return { ch, st, prod: Math.round(prod), w: sv / prod + (1 - sv) / P.prodHand, sort: sm ? (bg ? "big" : "small") : "none" }; };
-  const chs = chutesT.map(L => L.length || 1), works = chs.map(workOf);
-  const fmU = (1 - beta) * (ref.fm.rS + ref.fm.hS) + beta * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM);
+  /* % HÀNG TO THEO LOẠI NGÀY (x.betaT: BAU, Mini CP, CP; trống = như % chung): đổi phần phải sort, đơn giá FM pickup và sức chở xe của ngày đó (theo định mức sức chở theo % hàng to) */
+  const betaT = [0, 1, 2].map(t => { const v = x.betaT && x.betaT[t]; return v !== "" && v != null && isFinite(+v) ? Math.min(1, Math.max(0, +v)) : beta; });
+  const workOf = (c, bt) => { const be = bt == null ? beta : bt, ch = Math.max(1, c | 0 || 1), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st) > 1 ? 1 : 0, sv = (1 - be) * sm + be * bg, bp = sv > 0 ? be * bg / sv * 100 : 0;
+    const prod = Math.max(1, P.prodBase * Math.max(0.2, stepF(1, ch, 1, P.prodChute)) * Math.max(0.2, stepF(10, bp, 10, P.prodBulky))); /* mỗi hệ số giảm không dưới 20% (tránh âm khi nhiều chute / số chỉnh tay lớn) */ return { ch, st, prod: Math.round(prod), w: sv / prod + (1 - sv) / P.prodHand, sv, bp, beta: be, sort: sm ? (bg ? "big" : "small") : "none" }; };
+  const chs = chutesT.map(L => L.length || 1), works = chs.map((c, t) => workOf(c, betaT[t]));
+  const fmOf = be => (1 - be) * (ref.fm.rS + ref.fm.hS) + be * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM), fmU = fmOf(beta), fmT = betaT.map(fmOf);
+  /* sức chở theo % hàng to của ngày: tỷ lệ định mức ở % hàng to ngày đó so với % chung (định mức học từ seller đã chạy đầy xe, ref.capNorm) */
+  const fNorm = (k, be) => { const c = ref.capNorm && ref.capNorm[k]; return c ? 1 / ((1 - be) / c.n + be / c.b) : 1; };
+  const capScT = betaT.map(bt => NS_KS.map(k => Math.abs(bt - beta) < 1e-6 ? 1 : fNorm(k, bt) / Math.max(1e-9, fNorm(k, beta))));
+  /* THIẾT LẬP NÂNG CAO (đi site): người cố định mỗi cổng + hàng lệch cổng, năng suất mất do bàn giao phân mảnh / sai lệch, ngày campaign có bạt/lều (chỗ tập kết + năng suất tăng) */
+  const gateFix = !!x.gateFix, gateMax = Math.min(1, Math.max(0, (+x.gateMax || 0) / 100)), hoDev = Math.min(0.9, Math.max(0, (+x.hoDev || 0) / 100));
+  const tentCP = +x.areaCP > 0, shelter = Math.max(0, (+x.shelter || 0) / 100), dockSwap = Math.max(0, +x.dockSwap || 0);
+  /* hệ số khối việc mỗi đơn theo loại ngày: ≥ 1 khi bàn giao phân mảnh hoặc người cố định ở cổng đông nhất; < 1 khi có mái che ngày campaign */
+  const wF = t => { const g = Math.max(1, Math.round(+x.gates || 1)), gf = gateFix && g > 1 ? Math.max(1, g * Math.max(gateMax, 1 / g)) : 1; return gf / (1 - hoDev) / (t > 0 && tentCP ? 1 + shelter : 1); };
   /* khung bàn giao của seller theo lượt: x.win[k] = [từ, đến] (phút từ 0h); thiếu thì theo khung COT của vùng, không trước giờ người bắt đầu làm (x.open) */
   const open = x.open ?? P.open, cots = G.cots.map((c, k) => { const w = (x.win || [])[k]; return { p: c.p, a0: c.a, b0: c.b, a: w ? w[0] : Math.max(c.a, open), b: w ? w[1] : c.b }; });
   const bays = Math.max(1, x.bays | 0), sh = G.cots.map((_, k) => Math.max(0, +(x.sh[k] || 0))), shT = sh.reduce((a, b) => a + b, 0) || 1;
@@ -252,11 +283,18 @@ function nsPlan(ref, x) {
      Không có (seller mới đã lưu) thì theo giờ rời đã lưu */
   const rwOf = (pj, t, k) => { const R = pj.rw; return R ? (R[t] && R[t][k]) || (R[3] && R[3][k]) || null : null; };
   const depOf = (pj, t, k) => { const r = rwOf(pj, t, k); return r ? r[1] : pj.dep ? pj.dep[k] : null; };
+  /* LUẬT CẤM TẢI MỚI (vùng TS, x.banNew = { on, hv: cỡ xe bị cấm, ban: [từ, đến] phút cấm, from: ngày áp dụng }): tắt (mặc định) = luật cũ suy từ giờ chạy thật */
+  const BN = G.banNew ? (() => { const o = x.banNew || {}, hv = Array.isArray(o.hv) ? o.hv.filter(k => NS_KS.includes(k)) : G.banNew.hv, bw = Array.isArray(o.ban) && o.ban.length === 2 && o.ban.every(v => isFinite(+v)) ? o.ban.map(Number) : G.banNew.ban;
+      /* giờ được chạy = phần còn lại của ngày ngoài giờ cấm */
+      const allow = bw[0] < bw[1] ? [[bw[1], bw[0] + 1440]] : [[bw[1], bw[0]]];
+      return { on: !!o.on, hv, ban: bw, allow, from: o.from || "", src: G.banNew.src }; })() : null;
+  /* luật cấm tải đang áp cho một điểm đang chạy: luật mới bật → theo vùng mới (ngoài vùng: không cấm), tắt → luật cũ của điểm */
+  const banOfPj = pj => BN && BN.on && pj.banN ? (pj.banN.m === "poly" && BN.hv.length ? { allow: BN.allow, hv: BN.hv } : null) : pj.ban;
   /* LUẬT CẤM TẢI cho seller mới (x.ban: "auto" | "off"): theo điểm D2S gần nhất trong NS_BAN.near km có luật; HN ngoài đó thì theo vùng; HCM trong vùng nội đô mà không có điểm gần → chưa đủ dữ liệu */
   const ban = (() => { const bz = NS_BAN[x.R]; if (x.ban === "off") return { m: "off" }; if (!llOk || !bz) return { m: llOk ? "free" : "noll" };
     const near = G.pts.filter(q => q.ll && q.ban).map(q => ({ q, km: nsKm(x.ll, q.ll) })).filter(o => o.km <= NS_BAN.near).sort((a, b) => a.km - b.km);
     const kc = nsKm(x.ll, bz.c), src = near.find(o => o.q.ban.m !== "unk");
-    if (bz.poly) { const dE = +nsEdgeKm(x.ll, bz.poly).toFixed(1); return nsInPoly(x.ll, bz.poly) ? { m: "poly", allow: bz.allow, hv: bz.heavy, dE, src: bz.src } : { m: "free", poly: 1, dE, src: bz.src }; }
+    if (BN && BN.on && bz.poly) { const dE = +nsEdgeKm(x.ll, bz.poly).toFixed(1); return nsInPoly(x.ll, bz.poly) && BN.hv.length ? { m: "poly", allow: BN.allow, hv: BN.hv, dE, src: BN.src, from: BN.from } : { m: "free", poly: 1, dE, src: BN.src, from: BN.from }; }
     if (bz.zone) return kc <= bz.r ? { m: "zone", allow: bz.allow, kc } : { m: "free", kc };
     if (src) return Object.assign({}, src.q.ban, { from: src.q.n, fromKm: +src.km.toFixed(1), kc });
     return kc <= bz.r ? { m: "unk", kc, from: near[0] ? near[0].q.n : null, fromKm: near[0] ? +near[0].km.toFixed(1) : null } : { m: "free", kc }; })();
@@ -269,8 +307,8 @@ function nsPlan(ref, x) {
   const chainP = ps => { let d = 0; ps.forEach((q, j) => { if (j) d += hav(ps[j - 1].ll, q.ll); }); return d; };
   /* tiền xe các tuyến đó đang chạy (không có seller mới): mỗi tuyến một đội xe, km đi vòng giữa các điểm của tuyến */
   /* điểm đang chạy bị cấm xe nặng ở giờ xe rời thật của lượt đó (luật cấm tải của chính điểm) */
-  const hvBanAt = (pj, t, k) => { const al = pj.ban && pj.ban.allow; if (!al) return null; const d = depOf(pj, t, k); if (d == null) return null;
-    return al.some(([a, z]) => [0, -1440, 1440].some(o => d >= a + o && d < z + o)) ? null : (pj.ban.hv || NS_BAN.heavy); };
+  const hvBanAt = (pj, t, k) => { const b = banOfPj(pj), al = b && b.allow; if (!al) return null; const d = depOf(pj, t, k); if (d == null) return null;
+    return al.some(([a, z]) => [0, -1440, 1440].some(o => d >= a + o && d < z + o)) ? null : (b.hv || NS_BAN.heavy); };
   /* các cỡ xe bị cấm ở các điểm ghép (giờ xe rời thật của lượt k); null = không cấm */
   const noHvOf = (L, t, k) => { const s2 = new Set(L.flatMap(o => hvBanAt(o.pj, t, k) || [])); return s2.size ? s2 : null; };
   const aloneX = (ps, kmS, wk, t) => { const g = {}; ps.forEach(o => (g[o.pj.rt] = g[o.pj.rt] || []).push(o)); return Object.values(g).reduce((a, L) => { const f = fleetUx(L.map(o => ({ q: o.q, c: o.pj.c })), kmS, chainP(L.map(o => o.pj)), wk, noHvOf(L, t, wk)); return { c: a.c + f.c, t: a.t + f.t, u: a.u + (f.U || 0) }; }, { c: 0, t: 0, u: 0 }); };
@@ -291,7 +329,7 @@ function nsPlan(ref, x) {
      không ít hơn người riêng của seller thì như người riêng */
   const stepW = (i, a, s2, r) => 1 - Math.round(Math.abs(i - a) / s2) * r / 100;
   const wOf = (c0, s0, b) => { const ch = Math.max(1, c0 | 0 || 1), st2 = Math.max(1, s0 | 0 || 1), sm = ch > 1 ? 1 : 0, bg = Math.min(ch, st2) > 1 ? 1 : 0, sv = (1 - b) * sm + b * bg, bp = sv > 0 ? b * bg / sv * 100 : 0;
-    return sv / Math.max(1, P.prodBase * stepW(1, ch, 1, P.prodChute) * stepW(10, bp, 10, P.prodBulky)) + (1 - sv) / P.prodHand; };
+    return sv / Math.max(1, P.prodBase * Math.max(0.2, stepW(1, ch, 1, P.prodChute)) * Math.max(0.2, stepW(10, bp, 10, P.prodBulky))) + (1 - sv) / P.prodHand; };
   const hubKm = P.hubKm || 15, hubSpd = P.hubSpd || 40, shiftM = (P.shiftH || P.fteH) * 60;
   /* điểm D2S đang chạy cùng FM Hub, gần seller (≤ hubKm), các điểm cũng cách nhau ≤ hubKm (gần trước) */
   const hubPeers = x.hub && llOk ? (() => { const L = G.pts.filter(q => q.hub === x.hub && notSelf(q) && q.ll && q.dep && q.dep.some(v => v != null) && hav(x.ll, q.ll) <= hubKm)
@@ -312,7 +350,7 @@ function nsPlan(ref, x) {
   /* số người ít nhất của một nhóm (từ n0 tới < cap); null = không đạt */
   const teamMin = (T, cap, endMe, nMin) => { const W = T.reduce((a, z) => a + z.W, 0); for (let n = Math.max(nMin || 1, Math.ceil(W / (P.fteH * 60) - 1e-9)); n < cap; n++) { const r = teamRun(T, n, endMe); if (r.ok) return Object.assign(r, { n }); } return null; };
   /* 4. một loại ngày: xe từng lượt, người, giờ xe rời so với hạn COT */
-  const day = (X, dly, t, prt, gm, hf) => { prt = prt || partners; gm = gm || GM; const tD = t || 0; dly = dly || 0; const dl = lateBase + dly; if (!(X > 0)) return { X: 0, W: [], hc: 0, hc0: 0, hcPay: 0, pool: null, short: 0, truck: 0, lab: 0, rs: 0, soc: 0, cost: 0, fm: 0, net: 0, trucks: 0, xs: 0, worst: 1e9 }; const wk = works[tD], w = wk.w, socs = socsT[tD];
+  const day0 = (X, dly, t, prt, gm, hf) => { prt = prt || partners; gm = gm || GM; const tD = t || 0; dly = dly || 0; const dl = lateBase + dly; if (!(X > 0)) return { X: 0, W: [], hc: 0, hc0: 0, hcPay: 0, pool: null, short: 0, truck: 0, lab: 0, rs: 0, soc: 0, cost: 0, fm: 0, net: 0, trucks: 0, xs: 0, worst: 1e9 }; const wk = works[tD], w = wk.w * wF(tD), socs = socsT[tD], stg = tD > 0 && tentCP && +x.dens > 0 ? +x.areaCP * +x.dens : stage;
     /* SOC chia lại: chia ít chute hơn số SOC phải chia thì phần (SOC − chute) ÷ SOC số đơn được SOC chính sort lại,
        năng suất như sort đủ chute tại điểm, 520k/người/ngày (như Seller Planner: soc.same, soc.pay) */
     const rs = X * rsSh[tD], socC = rs > 0 ? rs / workOf(st).prod * (P.socPay || 520000) : 0;
@@ -322,7 +360,7 @@ function nsPlan(ref, x) {
         const m = fleetUx([{ q: l.Q, c: capN }].concat(ps.map(o => ({ q: o.q, c: o.pj.c }))), kmS, chainKm(ps.map(o => o.pj)), k, noHvOf(ps, tD, k)), al = aloneX(ps, kmS, k, tD), alone = al.c;
         Object.assign(l, { c: Math.max(0, m.c - alone), tAlone: al.t, uAlone: al.u, t: m.t, mix: m.mix, q: m.t ? l.Q * m.t / Math.max(1e-9, m.U) : l.q, shared: ps.map(o => ({ n: o.pj.n, q: o.q, pj: o.pj })), fillAll: m.t ? m.U / m.t : 0 }); });
       /* chỗ tập kết không đủ chứa cả lượt: số xe ít nhất = ⌈đơn ÷ chỗ tập kết⌉ (xe phải lấy nhiều đợt); thêm xe cỡ nhỏ nhất đủ chở phần chia */
-      let xs = 0; if (stage && legs.length) { const need = Math.ceil(Q / stage - 1e-9), t0 = legs.reduce((a, l) => a + l.t, 0);
+      let xs = 0; if (stg && legs.length) { const need = Math.ceil(Q / stg - 1e-9), t0 = legs.reduce((a, l) => a + l.t, 0);
         if (need > t0) { const L = legs.slice().sort((a, b) => b.Q - a.Q)[0], km = (socs.find(o => o.s === L.s[0]) || {}).km || 0, v = ksAt(km, k).find(u => u.q >= Q / need) || ksAt(km, k).slice(-1)[0];
           xs = need - t0; L.mix[v.k] = (L.mix[v.k] || 0) + xs; L.t += xs; L.c += xs * v.p; L.q += xs * v.q; } }
       legs.forEach(l => { for (const k2 in l.mix) mix[k2] = (mix[k2] || 0) + l.mix[k2]; });
@@ -364,7 +402,7 @@ function nsPlan(ref, x) {
         all.sort((p2, q2) => p2.tau - q2.tau);
         const dock = Array(bays).fill(-1e9), got = lanes.map(() => 0); let depL = null, dep1 = null, cut = 0, hvW = 0, loaded = 0, want = -1e9;
         all.forEach(z => { if (!(z.ld > 0)) { z.load = 0; return; } const L = lanes[z.li], mn = Math.min(...dock), di = dock.indexOf(mn);
-          const start = Math.max(Math.min(z.tau, 1e9) - z.dw, mn); let dep = Math.max(z.tau + P.closeMin, start + z.dw);
+          const start = Math.max(Math.min(z.tau, 1e9) - z.dw, mn > -1e8 ? mn + dockSwap : mn); /* dock bận: xe sau vào sau khi xe trước rời + phút đổi xe */ let dep = Math.max(z.tau + P.closeMin, start + z.dw);
           if (HV.has(z.k) && AL && isFinite(dep)) { const d2 = nextOk(dep); hvW = Math.max(hvW, d2 - dep); dep = d2; }
           if (lastW && !(dep <= Lc)) { if (!isFinite(dep)) dep = tE; z.load = z.ld; z.late = 1; } /* lượt cuối: chở hết, rời trễ */
           else if (!(dep <= LcX)) { /* tới hạn COT (+ trễ cho phép): đóng tải với phần đã sort xong (xe vơi); phần còn lại dồn lượt sau */
@@ -420,9 +458,13 @@ function nsPlan(ref, x) {
         if (tm && (!pk || tm.n - b.n < pk.add)) pk = { add: tm.n - b.n, n: tm.n, base: b.n, baseTeam: b.team ? b.team.n : null, own0: T0.reduce((a, o) => a + o.own, 0), pts: T0.map(o => o.q.n), seg: tm.seg, mv: tm.mv, work: tm.work }; });
       pool = pk ? Object.assign(pk, { ok: 1 }) : { ok: 0, pts: PT.map(o => o.q.n) }; } }
     const hcPay = pool && pool.ok && pool.add < hc ? Math.max(0, pool.add) : hc;
-    const truck = W.reduce((a, v) => a + v.cost, 0) + s.rollC, labC = lab === "pps" ? X * P.ppsRate : hcPay * pay, fm = X * fmU;
+    const truck = W.reduce((a, v) => a + v.cost, 0) + s.rollC, labC = lab === "pps" ? X * P.ppsRate : hcPay * pay, fm = X * fmT[tD];
     return { X, W, hc, hc0, hcPay, pool, rec, short: rec ? Math.max(0, hc0 - hc) : osCap != null && hc0 > osCap ? hc0 - osCap : 0, truck, lab: labC, rs, soc: socC, cost: truck + labC + socC, fm, net: fm - truck - labC - socC, trucks: W.reduce((a, v) => a + v.t, 0) + s.xr, xs: W.reduce((a, v) => a + v.xs, 0), xr: s.xr, rollC: s.rollC, roll: s.rollT, rollDay: s.rollDay, worst: s.worst, gm };
   };
+  /* sức chở theo % hàng to của loại ngày: đổi tạm sức chở (cap, capN) trong lúc tính ngày đó (nhân với hệ số đang có, vd khi thử đổi sức chở) */
+  const day = (X, dly, t, prt, gm, hf) => { const sc = capScT[t || 0]; if (sc.every(v => v === 1)) return day0(X, dly, t, prt, gm, hf);
+    const c0 = cap.slice(), n0 = capN.slice(); for (let j = 0; j < cap.length; j++) { cap[j] = c0[j] * sc[j]; capN[j] = Math.round(cap[j]); }
+    try { return day0(X, dly, t, prt, gm, hf); } finally { for (let j = 0; j < cap.length; j++) { cap[j] = c0[j]; capN[j] = n0[j]; } } };
   /* nhiều cổng: tính cả 2 cách xe lấy hàng trên hồ sơ đang nhập; tự chọn = ít hàng dồn hơn, rồi ít trễ hơn, rồi rẻ hơn */
   let GM = gMode === "each" ? "each" : "tour", gateCmp = null;
   if (gates > 1) { const sm = gm => { const D = x.ado.map((X, t) => ({ d: day(Math.max(0, +X || 0), 0, t, null, gm, hcIn[t]), n: +x.days[t] || 0 })).filter(o => o.d.X > 0 && o.n > 0);
@@ -471,10 +513,10 @@ function nsPlan(ref, x) {
       gb.forEach(a => { if (netM(a) < 0) { if (!cur) be.bands.push(cur = [a, a]); else cur[1] = a; } else cur = null; }); } }
   /* không hoà vốn ở mức đơn nào: tiền xe tối thiểu mỗi đơn (giá ÷ sức chở, cỡ rẻ nhất mỗi đơn, theo SOC) + tiền người + chia lại ≥ FM pickup.
      Cần sức chở gấp f lần mới có thể hoà vốn → quy ra số đơn tối thiểu một xe 1T9 */
-  { const t0 = Math.max(0, bi), wk0 = works[t0], labO = lab === "pps" ? P.ppsRate : poolPts.length ? 0 : pay * wk0.w, socO = rsSh[t0] * (P.socPay || 520000) / Math.max(1, workOf(st).prod);
+  { const t0 = Math.max(0, bi), wk0 = works[t0], labO = lab === "pps" ? P.ppsRate : poolPts.length ? 0 : pay * wk0.w * wF(t0), socO = rsSh[t0] * (P.socPay || 520000) / Math.max(1, workOf(st).prod);
     /* mỗi lượt chỉ dùng cỡ xe được phép giờ đó (cấm tải xe nặng) → tiền xe tối thiểu mỗi đơn theo % đơn từng lượt */
-    const trO = cots.reduce((a, c, k) => a + sh[k] / shT * socsT[t0].reduce((b, o) => b + o.sh / shS * Math.min(...ksAt(o.km, k).map(v => v.p / v.q)), 0), 0), room = fmU - labO - socO;
-    be.floor = { truck: trO, lab: labO, soc: socO, fm: fmU, ok: room > 0 && trO < room }; }
+    const trO = cots.reduce((a, c, k) => a + sh[k] / shT * socsT[t0].reduce((b, o) => b + o.sh / shS * Math.min(...ksAt(o.km, k).map(v => v.p / v.q)), 0), 0), room = fmT[t0] - labO - socO;
+    be.floor = { truck: trO, lab: labO, soc: socO, fm: fmT[t0], ok: room > 0 && trO < room }; }
   /* SỨC CHỞ HOÀ VỐN: ở đúng ADO đang nhập, xe 1T9 phải chở tối thiểu bao nhiêu đơn thì cả tháng không lỗ (đổi mọi cỡ xe cùng tỷ lệ, như ô seller báo).
      Chia đôi trên hệ số sức chở 0,2–8×; trên 8× coi như không đạt (tiền người / chia lại đã cao hơn FM pickup) */
   if (bi >= 0 && !lite && !x.noCap) { const c0 = cap.slice(), netAt = f => { for (let j = 0; j < cap.length; j++) cap[j] = c0[j] * f; memoOff = true; try { return netM(ado0[bm]); } finally { memoOff = false; for (let j = 0; j < cap.length; j++) cap[j] = c0[j]; } };
@@ -529,11 +571,17 @@ function nsPlan(ref, x) {
       return { k, ex, be: r.be.ado ? r.be.ado.slice() : null, base: r.be.base, bands: r.be.bands || [], at: ado0[r.be.base] || 0, net: r.month.net, vd: r.verdict, mem: best && k.includes("merge") ? best.mem : null }; } catch (e) { return null; } }).filter(Boolean);
     be.hvLimited = cots.some((c, k) => sh[k] > 0 && !hvOk[k]); }
   /* 6. KẾT LUẬN cho Ops: nên chạy D2S khi lời cả tháng, trên ngưỡng hoà vốn, kịp COT mọi loại ngày với mức dư yêu cầu, đủ người */
-  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cot: run.every(d => d.worst >= sMin), cotW: run.some(d => d.worst < 0 && d.worst >= sMin), people: run.every(d => !d.short), delay: !late || late.worst >= sMin };
+  const run = days.filter(d => d.X > 0 && d.n > 0), chk = { profit: month.net > 0, thr: run.length > 0 && run.every(d => d.net >= 0), cam: (() => { const c = x.cam || {}, self = c.self || (c.zone === "in" ? "n" : ""); return c.has === "y" || self === "y" ? "y" : c.has === "n" && self === "n" ? "n" : ""; })(), cot: run.every(d => d.worst >= sMin), cotW: run.some(d => d.worst < 0 && d.worst >= sMin), people: run.every(d => !d.short), delay: !late || late.worst >= sMin };
   /* lời cả tháng + kịp COT + đủ người là điều kiện cứng; có loại ngày lỗ hoặc dễ trễ khi seller giao trễ → vẫn chạy nhưng cần theo dõi (cond) */
   /* trễ trong mức cho phép: kịp theo luật nhưng phải theo dõi → không xếp "nên chạy" thẳng */
-  const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay && !chk.cotW ? "go" : "cond") : "no";
+  /* camera đối soát: seller không có / không cho, SPX cũng không lắp được (hoặc khu bàn giao nằm trong kho, như Tiki) → chưa đủ điều kiện "nên chạy" thẳng (không cộng chi phí camera: khoản mới chưa duyệt) */
+  const verdict = chk.profit && chk.cot && chk.people ? (chk.thr && chk.delay && !chk.cotW && chk.cam !== "n" ? "go" : "cond") : "no";
   const lossDays = run.filter(d => d.net < 0).map(d => ({ t: d.t, X: d.X, net: d.net, thr: thrs[d.t] }));
-  return { lite, ban, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi && avK(k), na: avK(k) ? 0 : 1, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, fleet: G.fleet || null, fleetWarn: !fleetOk, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
+  /* tác động của luật cấm tải mới: tính nhanh lại với trạng thái ngược (bật ↔ tắt) để so trước / sau */
+  let banAlt = null; if (BN && !lite && !x.noBanAlt) { try { const q = nsPlan(ref, Object.assign({}, x, { lite: true, noBanAlt: 1, noRescue: 1, banNew: Object.assign({}, x.banNew || {}, { on: !BN.on }) }));
+      banAlt = { on: !BN.on, net: q.month.net, truck: q.month.truck, trucks: q.days.map(d => d.X > 0 ? d.trucks : null), ban: { m: q.ban.m } }; } catch (e) { banAlt = null; } }
+  return { lite, ban, banNew: BN ? { on: BN.on, hv: BN.hv, ban: BN.ban, from: BN.from, src: BN.src } : null, banAlt,
+    prodP: { base: P.prodBase, hand: P.prodHand, chute: P.prodChute, bulky: P.prodBulky, fteH: P.fteH, set: prodSet, def: { base: ref.P.prodBase, hand: ref.P.prodHand, chute: ref.P.prodChute, bulky: ref.P.prodBulky, fteH: ref.P.fteH } },
+    betaT, fmT, capScT, wFT: [0, 1, 2].map(wF), site: { gateFix, gateMax, hoDev, tentCP, shelter, dockSwap, stageCP: tentCP && +x.dens > 0 ? +x.areaCP * +x.dens : null }, cam: x.cam || null, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi && avK(k), na: avK(k) ? 0 : 1, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, fleet: G.fleet || null, fleetWarn: !fleetOk, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
 if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };

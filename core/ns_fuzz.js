@@ -13,7 +13,9 @@ for(let it=0;it<N;it++){
     maxK:pick(NS_KS),bays:ri(1,6),ch:ch(.5)?null:[0,1,2].map(()=>ri(1,socs.length)),tail:ri(0,100),hoProf:pick(["even","end","lump","batch"]),hoN:ri(2,6),late:ch(.7)?0:ri(0,120),
     hoRate:ch(.6)?"":ri(50,3000),gates:ch(.6)?1:ri(2,5),gMode:pick(["auto","tour","each"]),gMove:ch(.5)?"":ri(0,30),capK:ch(.5)?{}:Object.fromEntries(NS_KS.filter(()=>ch(.4)).map(k=>[k,ri(50,3000)])),
     lab:pick(["fte","fte","hub","pps"]),ban:pick(["auto","off"]),osCap:ch(.7)?"":ri(1,60),slackMin:ch(.6)?0:ri(0,40),delay:ri(0,60),area:ch(.7)?"":ri(10,500),dens:ch(.7)?"":ri(1,50),
-    hcIn:[0,1,2].map(()=>ch(.6)?"":ri(1,60)),ll:ch(.15)?null:[(G.pts.find(q=>q.ll)||{ll:[10.8,106.7]}).ll[0]+(rnd()-.5)*.4,(G.pts.find(q=>q.ll)||{ll:[10.8,106.7]}).ll[1]+(rnd()-.5)*.4],
+    hcIn:[0,1,2].map(()=>ch(.6)?"":ri(1,60)),
+    betaT:[0,1,2].map(()=>ch(.6)?"":rnd()),prod:ch(.6)?{}:{base:ri(500,4000),hand:ri(500,4000),chute:ri(0,20),bulky:ri(0,10),fteH:ri(4,10)},dockSwap:ch(.6)?"":ri(0,20),gateFix:ch(.5),gateMax:ch(.5)?"":ri(30,80),hoDev:ch(.6)?"":ri(0,30),
+    areaCP:ch(.7)?"":ri(10,800),shelter:ch(.6)?"":ri(0,20),cam:{has:pick(["","y","n"]),self:pick(["","y","n"]),zone:pick(["","out","in"])},banNew:{on:ch(.5),hv:["1T9","5T","8T"].filter(()=>ch(.7)),ban:ch(.8)?[360,1320]:[ri(0,1439),ri(0,1439)],from:""},ll:ch(.15)?null:[(G.pts.find(q=>q.ll)||{ll:[10.8,106.7]}).ll[0]+(rnd()-.5)*.4,(G.pts.find(q=>q.ll)||{ll:[10.8,106.7]}).ll[1]+(rnd()-.5)*.4],
     hub:"",sup:ch(.5)?"":(pick(G.hs||[["",""]])[1]||""),pick:ch(.3)&&G.rts?[ "r"+ri(0,G.rts.length-1)]:[],dwFix:ch(.8)?"":ri(0,60),dwRate:ch(.8)?"":ri(0,20),like:null};
   let p;const t0=Date.now();
   try{p=nsPlan(REF,x);}catch(e){nErr++;bad("EXCEPTION",{it,msg:e.message,stack:e.stack.split("\n").slice(0,3).join(" | ")});continue;}
@@ -44,7 +46,7 @@ for(let it=0;it<N;it++){
   if(p.be){if(p.be.ado&&p.be.ado.some(v=>!fin(v)))bad("be.ado NaN",{it});if(p.be.cap1T9!=null&&!fin(p.be.cap1T9))bad("cap1T9 NaN",{it});}
   (p.thrs||[]).forEach(v=>{if(v!=null&&!fin(v))bad("thr NaN",{it});});
   (p.mrg.list||[]).forEach(o=>{if(!fin(o.save))bad("mrg save NaN",{it,n:o.n});(o.fw||[]).forEach(e=>{["add","fO","fP","f0","f1","t0","t1"].forEach(k=>{if(!fin(e[k]))bad("fw."+k+" NaN",{it,n:o.n,v:e[k]});});});});
-  const chk=p.ok,v=chk.profit&&chk.cot&&chk.people?(chk.thr&&chk.delay?"go":"cond"):"no";if(v!==p.verdict)bad("verdict mismatch",{it});
+  const chk=p.ok,v=chk.profit&&chk.cot&&chk.people?(chk.thr&&chk.delay&&!chk.cotW&&chk.cam!=="n"?"go":"cond"):"no";if(v!==p.verdict)bad("verdict mismatch",{it});
 }
 console.log("cases",N,"exceptions",nErr,"avg ms",(tSum/N).toFixed(0),"max ms",tMax);
 for(const k in issues)console.log(k.padEnd(36),issues[k].length,JSON.stringify(issues[k].slice(0,2)).slice(0,600));
