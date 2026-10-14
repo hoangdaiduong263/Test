@@ -1,4 +1,5 @@
 <title>D2S New Seller</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -19,7 +20,7 @@
   --good:#4cc488; --good-soft:#15291f; --f-soc:#86a8ff; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45;padding:0 16px;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45;margin:0;padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .wrap{max-width:1240px;margin:0 auto;padding-block:20px 40px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
 header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:2px solid var(--accent);padding-bottom:12px}
 header .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
@@ -62,6 +63,7 @@ input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .fe{fill:none;stroke-width:1.7}.fe.soc{stroke:var(--f-soc)}.fe.tr{stroke:var(--bad)}.fe.lm{stroke:var(--good)}.fm.soc{fill:var(--f-soc)}.fm.tr{fill:var(--bad)}.fm.lm{fill:var(--good)}
 .nn rect{fill:var(--panel);stroke:var(--line);stroke-width:1.2}.nn.o rect{fill:var(--navy-soft);stroke:var(--navy)}.nn.lm rect{fill:var(--warn-soft);stroke:var(--line)}.nn text{fill:var(--ink);font:600 12px var(--f-ui)}.el{font:10.5px var(--f-ui);fill:var(--ink2)}
 .fk{font-size:10.5px;font-weight:600;padding:0 4px;border-radius:4px}.fk.soc{color:var(--f-soc)}.fk.tr{color:var(--bad)}.fk.lm{color:var(--good)}
+.lk{font:inherit;font-size:inherit;color:var(--navy);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}.lk:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 .savebar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.savebar button[disabled]{opacity:.5;cursor:default}
 .busy{position:fixed;right:16px;bottom:16px;z-index:20;background:var(--panel);color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .fillsug{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.fillsug h3{font-size:14px;margin:0 0 4px}.fillsug .wl{font-size:12px;line-height:1.5}.fillsug .wl b{font-family:var(--f-num)}
@@ -156,7 +158,7 @@ td.n,th.n{text-align:right;font-family:var(--f-num)}
 .truck{font:600 12px var(--f-num);background:var(--navy-soft);color:var(--navy);border-radius:4px;padding:2px 6px;white-space:nowrap}
 .fillbar{height:5px;background:var(--soft);border-radius:3px;margin-top:6px;overflow:hidden;max-width:140px}
 .fillbar b{display:block;height:100%;background:var(--navy)}
-.meta{font-size:11.5px;color:var(--ink2);margin-top:3px;font-family:var(--f-num)}
+.meta{font-size:11.5px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
 .chip{display:inline-block;font:600 11.5px var(--f-ui);border-radius:999px;padding:2px 8px;white-space:nowrap}
 .ok{background:var(--good-soft);color:var(--good)} .mid{background:var(--warn-soft);color:var(--warn)} .late{background:var(--bad-soft);color:var(--bad)}
 .two{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
@@ -202,6 +204,26 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
 .foot{font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
 .tag{font:600 10.5px var(--f-ui);letter-spacing:.06em;text-transform:uppercase;background:var(--accent-soft);color:var(--accent);border-radius:4px;padding:2px 6px}
 @media (prefers-reduced-motion:no-preference){.fillbar b,.track div{transition:width .25s ease}}
+/* TỐI GIẢN: bớt viền, bớt nền tô, một màu nhấn (cam SPX) chỉ cho thương hiệu và focus; trạng thái (đạt / theo dõi / lỗ) vẫn theo màu ngữ nghĩa */
+header{border-bottom:1px solid var(--line);padding-bottom:16px}
+.wrap{gap:20px}
+.panel{border-color:var(--line);border-radius:12px;padding:16px 18px}
+.grp h3{color:var(--ink)}
+.tabs{border:0;border-bottom:1px solid var(--line);border-radius:0;width:100%;max-width:100%;gap:0 22px;background:none;overflow:visible}
+.tabs button{flex:0 0 auto;background:none;color:var(--ink2);border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 0;font-weight:600}
+.tabs button[aria-pressed="true"]{background:none;color:var(--ink);border-bottom-color:var(--ink)}
+.tabs button:hover{color:var(--ink)}
+input,select{background:var(--panel);border-color:var(--line)}
+input:hover,select:hover{border-color:var(--ink2)}
+.ghost{background:none;color:var(--ink);border:1px solid var(--line)}
+.ghost:hover{border-color:var(--ink2)}
+.sec h2 i{background:none;color:var(--ink2);padding:0;font-weight:500;font-size:12px}
+.vdp{border-width:1px;border-color:var(--line)}.vdp.go,.vdp.cond,.vdp.no{border-color:var(--line)}
+.kpi.hero{background:var(--panel)}
+.chip2{border-color:transparent}
+.cutab button{border-color:var(--line)}
+.flg i{border-top-width:2px}
+.netd{border-color:var(--line)}
 </style>
 
 <div class="wrap">
@@ -417,7 +439,7 @@ const TX={
  o4:["Chi phí mỗi đơn","Cost per order"], o5:["Sức chở dùng cho seller này","Capacity used for this seller"],
  lgS:["SOC chia lại / đơn","SOC re-sort / order"], lgT:["Tiền xe / đơn","Truck / order"], lgP:["Tiền người / đơn","People / order"], lgF:["FM pickup / đơn","FM pickup / order"],
  kSave:["Est. tiết kiệm / tháng","Est. saving / month"], kCpo:["D2S / đơn (BAU)","D2S cost / order (BAU)"], kThr:["ADO hoà vốn","Break-even ADO"], kTr:["Xe / ngày","Trucks / day"],
- vsFM:["so với FM pickup","vs FM pickup"], fmIs:["FM pickup","FM pickup"], aboveThr:["trên ngưỡng","above break-even"], belowThr:["dưới ngưỡng","below break-even"], noThr:["không có mức hoà vốn ổn định","no stable break-even"],
+ vsFM:["so với FM pickup","vs FM pickup"], fmIs:["FM pickup","FM pickup"], aboveThr:["ADO đang nhập trên ngưỡng","entered ADO is above break-even"], belowThr:["ADO đang nhập dưới ngưỡng","entered ADO is below break-even"], noThr:["không có mức hoà vốn ổn định","no stable break-even"],
  wave:["Lượt (COT)","Wave (COT)"], ord:["đơn","orders"], fill:["đầy","fill"], ppl:["người","people"], peop:["Người","People"],
  sortNone:["không sort: quét, bàn giao, xếp xe","no sorting: scan, hand over, load"], sortSmall:["sort hàng nhỏ","sort small parcels"], sortBig:["sort cả hàng to","sort all parcels"],
  prod:["đơn/người/ngày","orders/person/day"], extra:["thêm để kịp COT","added to meet COT"],
@@ -955,7 +977,7 @@ function drawAll(p){
       ${ask.length?`<div class="ask"><h4>${T("askH")}</h4><ul>${ask.map(a=>`<li>${esc(a)}</li>`).join("")}</ul></div>`:""}`; }
   /* dải kết luận */
   const cpo=b.X?b.cost/b.X:0,thr=p.thr,be=p.be;
-  if(!p.lite)KPIBE=`<div class="kpi"><span class="l">${T("kThr")} · ${L?"month":"tháng"}</span><span class="v">${be.ado?nf(be.ado[0]):be.base<0?"–":(L?"None":"Không có")}</span><span class="s">${be.ado?`BAU · Mini CP ${nf(be.ado[1])} · CP ${nf(be.ado[2])}<br>${L?"same mix and days as entered":"giữ tỷ lệ và số ngày đang nhập"} · ${p.month.net>=0?T("aboveThr"):(()=>{const a=X.ado[be.base];return p.days.some(d=>d.rec&&d.hc>d.rec.hc)?(L?"loses with the entered staff":"lỗ do số người đang nhập"):be.bands.some(b=>a>=b[0]&&a<=b[1])?(L?"in a loss-again band":"đang rơi vào dải lỗ lại"):T("belowThr");})()}${be.bands.length?`<br>${L?"loss again at":"lỗ lại ở"} ${T("dt")[be.base]} ${be.bands.slice(0,2).map(b=>b[0]===b[1]?nf(b[0]):nf(b[0])+"–"+nf(b[1])).join(", ")}`:""}`:(be.base<0?(L?"enter ADO and days per month":"nhập ADO và số ngày chạy"):L?`no ADO up to 20,000 (${T("dt")[be.base]}) breaks even`:`không mức ADO nào tới 20.000 (${T("dt")[be.base]}) hoà vốn`)}${be.cap1T9!=null?`<br>${L?`at entered ADO: break-even if a 1T9 carries ≥ ${nf(be.cap1T9)} (now ${nf(be.cur1T9)})`:`ở ADO đang nhập: hoà vốn khi xe 1T9 chở ≥ ${nf(be.cap1T9)} đơn (đang ${nf(be.cur1T9)})`}`:""}</span></div>`;
+  if(!p.lite)KPIBE=`<div class="kpi"><span class="l">${T("kThr")} · ${L?"month":"tháng"}</span><span class="v">${be.ado?nf(be.ado[0]):be.base<0?"–":(L?"None":"Không có")}</span><span class="s">${be.ado?`BAU · Mini CP ${nf(be.ado[1])} · CP ${nf(be.ado[2])}<br>${p.month.net>=0?T("aboveThr"):(()=>{const a=X.ado[be.base];return p.days.some(d=>d.rec&&d.hc>d.rec.hc)?(L?"loses with the entered staff":"lỗ do số người đang nhập"):be.bands.some(b=>a>=b[0]&&a<=b[1])?(L?"in a loss-again band":"đang rơi vào dải lỗ lại"):T("belowThr");})()}${be.bands.length?`<br>${L?"loss again at":"lỗ lại ở"} ${T("dt")[be.base]} ${be.bands.slice(0,2).map(b=>b[0]===b[1]?nf(b[0]):nf(b[0])+"–"+nf(b[1])).join(", ")}`:""}`:(be.base<0?(L?"enter ADO and days per month":"nhập ADO và số ngày chạy"):L?`no ADO up to 20,000 (${T("dt")[be.base]}) breaks even`:`không mức ADO nào tới 20.000 (${T("dt")[be.base]}) hoà vốn`)}${be.cap1T9!=null&&!be.ado?`<br>${L?`at entered ADO: break-even if a 1T9 carries ≥ ${nf(be.cap1T9)} (now ${nf(be.cur1T9)})`:`ở ADO đang nhập: hoà vốn khi xe 1T9 chở ≥ ${nf(be.cap1T9)} đơn (đang ${nf(be.cur1T9)})`}`:""}</span></div>`;
   const beTile=p.lite?(KPIBE||`<div class="kpi"><span class="l">${T("kThr")} · ${L?"month":"tháng"}</span><span class="v">…</span></div>`).replace('class="kpi"','class="kpi stale"'):KPIBE;
   $("kpi").innerHTML=`
    <div class="kpi hero"><span class="l">${T("kSave")}</span><span class="v ${p.month.net>=0?"pos":"neg"}">${p.month.net>=0?"":"−"}${mn(Math.abs(p.month.net))}</span><span class="s">${nf(p.month.orders)} ${T("ord")}${T("month")} · ${T("vsFM")}${p.days.some(d=>d.X>0&&d.n>0&&(d.roll||0)>0.5)?`<br><b style="color:var(--bad)">${L?"with orders rolled past COT (delay not costed)":"đang tính cả hàng dồn qua COT (chưa tính phí trễ)"}</b>`:""}</span></div>
@@ -1343,6 +1365,13 @@ $("net").addEventListener("dragstart",e=>{const c=e.target.closest("[data-ng]");
 $("net").addEventListener("dragover",e=>{const c=e.target.closest("[data-nchu]");if(!c)return;e.preventDefault();c.classList.add("ov");});
 $("net").addEventListener("dragleave",e=>{const c=e.target.closest("[data-nchu]");if(c&&!c.contains(e.relatedTarget))c.classList.remove("ov");});
 $("net").addEventListener("drop",e=>{const c=e.target.closest("[data-nchu]");if(!c)return;e.preventDefault();const g=e.dataTransfer.getData("text/plain");if(g)spnMove(g,+c.dataset.nchu);});
+/* chú thích dài (chữ thuần): hiện câu đầu, phần còn lại bấm "Xem thêm"; chạy lại sau mỗi lần vẽ */
+function tidy(){document.querySelectorAll(".sec .sub, .panel .hint").forEach(p=>{if(p.children.length)return;const t=p.textContent,lim=p.classList.contains("sub")?200:260;if(t.length<lim)return;
+  const m=/^([\s\S]{40,}?(?<!Est)[.;])\s/.exec(t);if(!m||t.length-m[0].length<50)return;
+  const s=document.createElement("span"),b=document.createElement("button");s.hidden=true;s.textContent=t.slice(m[0].length);b.type="button";b.className="lk";
+  const lab=()=>s.hidden?(L?"More":"Xem thêm"):(L?"Less":"Thu gọn");b.textContent=lab();b.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();s.hidden=!s.hidden;b.textContent=lab();});
+  p.textContent=m[1]+" ";p.append(s," ",b);});}
+{let tq=0;new MutationObserver(()=>{if(tq)return;tq=requestAnimationFrame(()=>{tq=0;tidy();});}).observe(document.body,{childList:true,subtree:true,characterData:true});}
 mkWorker();drawForm();render();initSave();
 })();
 </script>
