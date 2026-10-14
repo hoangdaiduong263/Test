@@ -584,52 +584,74 @@ function nsPlan(ref, x) {
     prodP: { base: P.prodBase, hand: P.prodHand, chute: P.prodChute, bulky: P.prodBulky, fteH: P.fteH, set: prodSet, def: { base: ref.P.prodBase, hand: ref.P.prodHand, chute: ref.P.prodChute, bulky: ref.P.prodBulky, fteH: ref.P.fteH } },
     betaT, fmT, capScT, wFT: [0, 1, 2].map(wF), site: { gateFix, gateMax, hoDev, tentCP, shelter, dockSwap, stageCP: tentCP && +x.dens > 0 ? +x.areaCP * +x.dens : null }, cam: x.cam || null, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi && avK(k), na: avK(k) ? 0 : 1, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, fleet: G.fleet || null, fleetWarn: !fleetOk, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
-/* MẠNG LƯỚI SPX — HCM & South, dựng lại từ slide mạng lưới FLM (slide 7: FLM SE).
-   Cài đặt sort của một điểm gốc (FM Hub chuẩn FLM, hoặc seller D2S) = các chute; mỗi chute = 1 TO tới SOC 1, chứa các nhóm LM (về sau là sort code).
-   SOC mở bao của một nhóm = SOC sort nhóm đó tới LM hub (lm); hàng nặng / DG có thể do SOC khác sort (hv); via = SOC chỉ chuyển tiếp sau khi đã sort tới LM hub.
-   Ở SOC 1: bao chỉ chứa hàng của đúng một SOC mở bao khác SOC 1 → chuyển tiếp nguyên bao (transit, không rã bao);
-   còn lại SOC 1 rã bao: hàng SOC 1 phụ trách sort tới LM hub, hàng của SOC khác sort lại thành bao đi SOC đó.
+/* MẠNG LƯỚI SPX — dựng lại từ slide mạng lưới (slide 4, 7, 8, 9, 11, 12; từ 26/9 và 8/10/2026). Màu như slide: xanh dương = sort to SOC, đỏ = transit, xanh lá = sort to hub.
+   Điểm gốc (FM Hub chuẩn FLM, hub đặc biệt, hoặc seller D2S) = các chute; mỗi chute = 1 bao: đi qua các SOC trong p (các SOC trước chỉ transit, SOC cuối rã bao).
+   SOC rã bao làm theo kế hoạch sort của SOC đó (plans[SOC][nhóm]): sort tới LM hub (lm, có thể còn đi qua SOC khác chỉ transit — via), hoặc sort vào bao đi SOC khác (soc → to, đi qua via).
+   Kế hoạch không ghi → SOC nhà của nhóm thì sort tới LM hub, SOC khác thì sort vào bao về SOC nhà. HV = hàng giá trị cao, DG = hàng nguy hiểm: có thể đi đường riêng (khoá "nhóm|h").
    Mỗi lần rã bao ở một SOC = một lần sort: SOC có ASM → %ASM × giá ASM + phần còn lại × giá tay; SOC không có ASM → 100% tay. */
-const NS_NET_G = ["HCA", "HCB", "HN, North_A", "North_D", "North_B", "Cen_DN", "13 Cen2", "SE1", "SE2", "SW2", "SW1", "North_C"];
-const NS_NET = {
-  v: 1, src: "slide 7 (FLM SE)",
-  cost: { man: null, asm: null },
-  socs: [{ s: "HCM Mega SOC", asm: false }, { s: "BD B Mega SOC", asm: true, pct: null }, { s: "BD A Mega SOC", asm: true, pct: null }, { s: "BN A Mega SOC", asm: false },
-    { s: "HN1 SOC", asm: false }, { s: "BN B Mega SOC", asm: false }, { s: "DN Mega SOC", asm: false }, { s: "Mini SOC", asm: false }, { s: "SW SOC", asm: false },
-    { s: "LA Temp", asm: false }, { s: "HY SOC", asm: false }],
-  groups: [{ g: "HCA", lm: "HCM Mega SOC" }, { g: "HCB", lm: "BD B Mega SOC" }, { g: "HN, North_A", lm: "BN A Mega SOC" }, { g: "North_D", lm: "HN1 SOC" },
-    { g: "North_B", lm: "BN B Mega SOC" }, { g: "Cen_DN", lm: "DN Mega SOC" }, { g: "13 Cen2", lm: "BD A Mega SOC", via: "Mini SOC", hv: "Mini SOC" },
-    { g: "SE1", lm: "BD A Mega SOC" }, { g: "SE2", lm: "BD A Mega SOC" }, { g: "SW2", lm: "SW SOC" }, { g: "SW1", lm: "LA Temp" }, { g: "North_C", lm: "HY SOC" }].map(z => Object.assign({ codes: "" }, z)),
-  profs: [
-    { id: "flm_se", n: "FLM SE", k: "flm", src: "slide 7", ch: [{ to: "HCM Mega SOC", g: ["HCA"] }, { to: "BD B Mega SOC", g: ["HCB"] }, { to: "BD A Mega SOC", g: ["HN, North_A"] },
-      { to: "BD A Mega SOC", g: ["North_D"] }, { to: "BD A Mega SOC", g: ["North_B"] }, { to: "BD A Mega SOC", g: ["Cen_DN"] }, { to: "BD A Mega SOC", g: ["SW2"] },
-      { to: "BD A Mega SOC", g: ["SW1"] }, { to: "BD A Mega SOC", g: ["North_C"] }, { to: "BD A Mega SOC", g: ["SE1", "SE2", "13 Cen2"] }] },
-    { id: "flm_hca", n: "FLM HCA", k: "flm", src: "", ch: [] }, { id: "flm_hcb", n: "FLM HCB", k: "flm", src: "", ch: [] },
-    { id: "flm_sw1", n: "FLM SW1", k: "flm", src: "", ch: [] }, { id: "flm_sw2", n: "FLM SW2", k: "flm", src: "", ch: [] },
-    { id: "d2s_ex1", n: "Ví dụ D2S: 1 chute → BD A", k: "d2s", src: "", ch: [{ to: "BD A Mega SOC", g: NS_NET_G.slice() }] }]
-};
-/* đánh giá một cài đặt sort trên mạng lưới: mỗi nhóm (và biến thể hàng nặng/DG nếu có SOC riêng) → chute, các SOC rã bao, đường đi (soc = sort to SOC, tr = transit, lm = sort to LM hub), giá sort / đơn */
+const NS_NET_G = ["HCA", "HCB", "SE1, SE2", "13 Cen2", "Cen_DN", "SW2", "SW1", "HN, North_A", "North_D", "North_B", "North_C"];
+const NS_NET = (() => {
+  const A = "BD A Mega SOC", B = "BD B Mega SOC", H = "HCM Mega SOC", SW = "SW SOC", LA = "LA Temp", DN = "DN Mega SOC", MI = "Mini SOC", N1 = "HN1 SOC", N2 = "HN2 SOC", BA = "BN A Mega SOC", BB = "BN B Mega SOC", HY = "HY SOC";
+  const lm = (via) => via ? { a: "lm", via } : { a: "lm" }, so = (to, via) => via ? { a: "soc", to, via } : { a: "soc", to };
+  const ch = (g, ...p) => ({ g: [].concat(g), p });
+  const north = (pre) => [ch("HN, North_A", ...pre, BA), ch("North_D", ...pre, N1), ch("North_B", ...pre, BB), ch("North_C", ...pre, HY)];
+  return {
+    v: 2, src: "slide 4, 7, 8, 9, 11, 12",
+    cost: { man: null, asm: null },
+    socs: [H, A, B, SW, LA, DN, MI, BA, BB, N1, N2, HY].map(s => ({ s, asm: s === A || s === B, pct: s === A || s === B ? null : undefined })),
+    groups: [["HCA", H], ["HCB", B], ["SE1, SE2", A], ["13 Cen2", MI], ["Cen_DN", DN], ["SW2", SW], ["SW1", LA], ["HN, North_A", BA], ["North_D", N1], ["North_B", BB], ["North_C", HY]].map(([g, home]) => ({ g, home, codes: "" })),
+    /* kế hoạch sort khi SOC rã bao (src: slide; as: giả định, chưa có slide) */
+    plans: {
+      [A]: { "SE1, SE2": lm(), "13 Cen2": lm([MI]), "13 Cen2|h": so(MI), HCA: so(H), HCB: so(B), SW2: so(SW), SW1: so(LA), "HN, North_A": so(BA), North_D: so(N1), North_B: so(BB), North_C: so(HY), Cen_DN: so(DN), src: "slide 12 (SE hub 63BDG21), 7, 8, 11" },
+      [DN]: { Cen_DN: lm(), "13 Cen2": lm([MI]), "13 Cen2|h": so(MI), "HN, North_A": so(BA), North_D: so(N1), North_B: so(BB), North_C: so(BB), HCA: so(H), "SE1, SE2": so(A), SW2: so(SW, [A]), SW1: so(LA, [A]), HCB: so(B), src: "slide 9" },
+      [BB]: { North_B: lm(), North_C: so(HY), src: "slide 9" },
+      [HY]: { North_C: lm(), "13 Cen2": so(MI), src: "slide 4" },
+      [MI]: { "13 Cen2": lm(), src: "slide 4, 7, 9" }
+    },
+    profs: [
+      { id: "flm_hcm", n: "FLM HCM", k: "flm", src: "slide 7", ch: [ch("HCA", H), ch("SW2", SW), ch("SW1", LA), ch(["SE1, SE2", "13 Cen2"], A), ch("Cen_DN", A, DN), ch("HCB", B), ...north([B])] },
+      { id: "flm_se", n: "FLM SE", k: "flm", src: "slide 7", ch: [ch("HCA", H), ch("HCB", B), ...north([A]), ch("Cen_DN", A, DN), ch(["SE1, SE2", "13 Cen2"], A), ch("SW2", A, SW), ch("SW1", A, LA)] },
+      { id: "flm_sw1", n: "FLM SW1", k: "flm", src: "slide 11", ch: [ch("HCA", H), ch("SW1", LA), ch("SW2", LA, SW), ...north([A]), ch("Cen_DN", A, DN), ch(["SE1, SE2", "13 Cen2"], A), ch("HCB", B)] },
+      { id: "flm_sw2", n: "FLM SW2", k: "flm", src: "slide 11", ch: [ch("SW2", SW), ch("HCA", SW, H), ...north([SW, A]), ch("Cen_DN", SW, A, DN), ch(["SE1, SE2", "13 Cen2"], SW, A), ch("HCB", SW, B), ch("SW1", SW, LA)] },
+      { id: "hub_54fm01", n: "54FM01 Hub", k: "flm", src: "slide 8", ch: [ch("HCA", H), ch("SW2", SW), ch("SW1", LA), ch(["SE1, SE2", "13 Cen2"], A), ch("Cen_DN", A, DN), ch("HCB", B), ch("North_C", B, HY), ch("North_B", BB), ch("HN, North_A", BA), ch("North_D", N1)] },
+      { id: "hub_cangio", n: "Can Gio hub", k: "flm", src: "slide 12", ch: [ch("HCA", H), ch("HCB", H, B), ch(["SE1, SE2", "13 Cen2"], H, A), ch("SW2", H, A, SW), ch("SW1", H, A, LA), ch("Cen_DN", H, A, DN), ...north([H, A])] },
+      { id: "hub_63bdg21", n: "SE hub 63BDG21", k: "flm", src: "slide 12", ch: [ch(NS_NET_G.slice(), A)] },
+      { id: "flm_cendn", n: "FLM Cen_DN, 36-WIS", k: "flm", src: "slide 9", nosort: true, ch: [ch(NS_NET_G.slice(), DN)] },
+      { id: "flm_north", n: "FLM North (trừ North D)", k: "flm", src: "slide 4", ch: [ch("HN, North_A", BA), ch("North_B", BB), ch("North_D", N2, N1), ch(["North_C", "13 Cen2"], N2, HY), ch("Cen_DN", N2, DN), ch("HCA", N2, H), ch("SW2", N2, SW), ch("SW1", N2, A, LA), ch("SE1, SE2", N2, A), ch("HCB", N2, B)] },
+      { id: "flm_northd", n: "FLM North D (từ 8/10)", k: "flm", src: "slide 4", ch: [ch("HN, North_A", BA), ch("North_B", BB), ch("North_D", N1), ch(["North_C", "13 Cen2"], N1, HY), ch("Cen_DN", N1, N2, DN), ch("HCA", N1, N2, H), ch("SW2", N1, N2, SW), ch("SW1", N1, N2, A, LA), ch("SE1, SE2", N1, N2, A), ch("HCB", N1, N2, B)] },
+      { id: "d2s_ex1", n: "Ví dụ D2S: 1 chute → BD A", k: "d2s", src: "", ch: [ch(NS_NET_G.slice(), A)] }]
+  };
+})();
+/* kế hoạch sort của SOC X cho nhóm g (biến thể v: "n" thường, "h" HV/DG): ghi trong plans, không có thì theo SOC nhà */
+function nsPlanOf(net, X, g, v) { const P = (net.plans || {})[X] || {}, e = (v === "h" && P[g + "|h"]) || P[g]; if (e) return Object.assign({ src: P.src || "" }, e);
+  const z = (net.groups || []).find(q => q.g === g) || {}, home = (v === "h" && z.hvHome) || z.home; return home === X || !home ? { a: "lm", fb: 1 } : { a: "soc", to: home, fb: 1 }; }
+/* nhóm có đường riêng cho HV/DG không */
+function nsNetVars(net, g) { return Object.values(net.plans || {}).some(P => P && P[g + "|h"]) || ((net.groups || []).find(q => q.g === g) || {}).hvHome ? ["n", "h"] : ["n"]; }
+/* đánh giá một điểm gốc: mỗi nhóm (và biến thể) → chute, các cạnh (soc / tr / lm), các SOC rã bao, giá sort / đơn */
 function nsNet(net, prof, man) {
-  const S = Object.fromEntries(net.socs.map(z => [z.s, z])), G = Object.fromEntries(net.groups.map(z => [z.g, z]));
-  const vars = g => G[g].hv && G[g].hv !== G[g].lm ? ["n", "h"] : ["n"], opener = (g, v) => v === "h" ? G[g].hv : G[g].lm;
+  const S = Object.fromEntries(net.socs.map(z => [z.s, z])), GS = new Set(net.groups.map(z => z.g));
   const cM = net.cost && net.cost.man != null && net.cost.man !== "" ? +net.cost.man : man != null ? man : null, cA = net.cost && net.cost.asm != null && net.cost.asm !== "" ? +net.cost.asm : null;
-  /* giá một lần sort ở SOC s: thiếu số nào thì null (không đoán) */
+  /* giá một lần rã bao ở SOC s: thiếu số nào thì null (không đoán) */
   const sortC = s => { const z = S[s] || {}; if (!z.asm) return cM; const p = z.pct == null || z.pct === "" ? null : Math.min(100, Math.max(0, +z.pct)) / 100;
     if (p == null || cM == null || (p > 0 && cA == null)) return null; return p * cA + (1 - p) * cM; };
-  const seen = new Set(), dup = [];
-  const chutes = (prof.ch || []).map((c, i) => { const g = c.g.filter(x => G[x] && (seen.has(x) ? (dup.push(x), false) : (seen.add(x), true)));
-    const ops = [...new Set(g.flatMap(x => vars(x).map(v => opener(x, v))))], transit = g.length > 0 && ops.length === 1 && ops[0] !== c.to;
-    return { i, to: c.to, g, ops, transit }; });
+  const seen = new Set(), dup = [], warn = [];
+  const chutes = (prof.ch || []).map((c, i) => { const g = c.g.filter(x => GS.has(x) && (seen.has(x) ? (dup.push(x), false) : (seen.add(x), true))), p = (c.p || []).filter(Boolean);
+    return { i, g, p, to: p[0] || null, open: p[p.length - 1] || null, tr: p.slice(0, -1) }; });
   const where = {}; chutes.forEach(c => c.g.forEach(x => { where[x] = c.i; }));
   const rows = [];
-  for (const z of net.groups) for (const v of vars(z.g)) {
-    const ci = where[z.g]; if (ci == null) { rows.push({ g: z.g, v, ci: -1, op: [], e: [], cost: null }); continue; }
-    const c = chutes[ci], o = opener(z.g, v), op = c.transit ? [o] : o === c.to ? [c.to] : [c.to, o], e = [{ a: "O", b: c.to, k: "soc" }];
-    if (o !== c.to) e.push({ a: c.to, b: o, k: c.transit ? "tr" : "soc" });
-    if (v === "n" && z.via && z.via !== o) e.push({ a: o, b: z.via, k: "lm" }, { a: z.via, b: "LM:" + z.g, k: "tr" }); else e.push({ a: o, b: "LM:" + z.g, k: "lm" });
-    const cs = op.map(sortC); rows.push({ g: z.g, v, ci, op, e, cost: cs.some(x => x == null) ? null : cs.reduce((a, b) => a + b, 0) });
+  for (const z of net.groups) for (const v of nsNetVars(net, z.g)) {
+    const ci = where[z.g], c = chutes[ci]; if (ci == null || !c.p.length) { rows.push({ g: z.g, v, ci: ci == null ? -1 : ci, op: [], e: [], cost: null, nop: ci != null }); continue; }
+    const e = [{ a: "O", b: c.p[0], k: prof.nosort ? "tr" : "soc" }], op = [], src = [];
+    for (let j = 0; j + 1 < c.p.length; j++) e.push({ a: c.p[j], b: c.p[j + 1], k: "tr" });
+    let X = c.open, n = 0, loop = false;
+    while (true) { if (op.includes(X) || ++n > 8) { loop = true; break; } op.push(X); const pl = nsPlanOf(net, X, z.g, v); src.push(pl.fb ? "fb" : pl.as ? "as" : "src");
+      if (pl.a === "lm") { const via = (pl.via || []).filter(Boolean); if (via.length) { e.push({ a: X, b: via[0], k: "lm" }); for (let j = 0; j + 1 < via.length; j++) e.push({ a: via[j], b: via[j + 1], k: "tr" }); e.push({ a: via[via.length - 1], b: "LM:" + z.g, k: "tr" }); }
+        else e.push({ a: X, b: "LM:" + z.g, k: "lm" }); break; }
+      const seq = [X, ...(pl.via || []).filter(Boolean), pl.to]; e.push({ a: X, b: seq[1], k: "soc" }); for (let j = 1; j + 1 < seq.length; j++) e.push({ a: seq[j], b: seq[j + 1], k: "tr" }); X = pl.to; }
+    if (loop) warn.push(z.g);
+    const cs = op.map(sortC); rows.push({ g: z.g, v, ci, op, e, src, loop, cost: loop || cs.some(x => x == null) ? null : cs.reduce((a, b) => a + b, 0) });
   }
-  return { chutes, rows, dup, miss: [...new Set(rows.filter(r => r.ci < 0).map(r => r.g))], nCh: chutes.filter(c => c.g.length).length, cM, cA, sortC };
+  return { chutes, rows, dup, warn: [...new Set(warn)], miss: [...new Set(rows.filter(r => r.ci < 0).map(r => r.g))], nCh: chutes.filter(c => c.g.length).length, cM, cA, sortC };
 }
 /* so một cài đặt D2S với chuẩn FLM: số lần rã bao thêm ở SOC nào, giá thêm / đơn */
 function nsNetCmp(net, d2s, flm, man) {
@@ -638,4 +660,4 @@ function nsNetCmp(net, d2s, flm, man) {
     r.op.forEach(s => { const j = rest.indexOf(s); if (j >= 0) rest.splice(j, 1); else extra.push(s); });
     return { g: r.g, v: r.v, a: r, b, extra, fewer: rest, dc: r.cost != null && b.cost != null && r.ci >= 0 && b.ci >= 0 ? r.cost - b.cost : null }; }) };
 }
-if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN, NS_NET, nsNet, nsNetCmp };
+if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN, NS_NET, nsNet, nsNetCmp, nsPlanOf, nsNetVars };
