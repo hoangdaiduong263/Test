@@ -584,4 +584,58 @@ function nsPlan(ref, x) {
     prodP: { base: P.prodBase, hand: P.prodHand, chute: P.prodChute, bulky: P.prodBulky, fteH: P.fteH, set: prodSet, def: { base: ref.P.prodBase, hand: ref.P.prodHand, chute: ref.P.prodChute, bulky: ref.P.prodBulky, fteH: ref.P.fteH } },
     betaT, fmT, capScT, wFT: [0, 1, 2].map(wF), site: { gateFix, gateMax, hoDev, tentCP, shelter, dockSwap, stageCP: tentCP && +x.dens > 0 ? +x.areaCP * +x.dens : null }, cam: x.cam || null, gates, gateCmp, gm: GM, ho: { prof, hoN, hoRate, late: lateBase, gMove, tail: Math.round(tail * 100) }, chutes: chutesT, main: main ? main.s : null, rsSh, cap: NS_KS.map((k, j) => ({ k, ov: ovK[j] ? 1 : 0, q: Math.round(cap[j]), q0: Math.round(capLearn[j]), on: j <= mi && avK(k), na: avK(k) ? 0 : 1, p: G.price[k][kmI(km0)] })), km0, how, pool: pool.map(s => s.n), work: works[0], works, fmU, days, month, thr, cots, open, lab, pay, dw: { fix: dwFix, rate: dwRate }, stage, fleet: G.fleet || null, fleetWarn: !fleetOk, slackMin: sMin, slackIn: slackMin, lateTol, osCap, hcIn, dly, late, pk: pk.t, ok: chk, verdict, lossDays, thrs, thrBands: thrR.map(o => o.bands), thrCot: thrR.map(o => o.cot), be, mrg, picked: partners.map(q => q.n) };
 }
-if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN };
+/* MẠNG LƯỚI SPX — HCM & South, dựng lại từ slide mạng lưới FLM (slide 7: FLM SE).
+   Cài đặt sort của một điểm gốc (FM Hub chuẩn FLM, hoặc seller D2S) = các chute; mỗi chute = 1 TO tới SOC 1, chứa các nhóm LM (về sau là sort code).
+   SOC mở bao của một nhóm = SOC sort nhóm đó tới LM hub (lm); hàng nặng / DG có thể do SOC khác sort (hv); via = SOC chỉ chuyển tiếp sau khi đã sort tới LM hub.
+   Ở SOC 1: bao chỉ chứa hàng của đúng một SOC mở bao khác SOC 1 → chuyển tiếp nguyên bao (transit, không rã bao);
+   còn lại SOC 1 rã bao: hàng SOC 1 phụ trách sort tới LM hub, hàng của SOC khác sort lại thành bao đi SOC đó.
+   Mỗi lần rã bao ở một SOC = một lần sort: SOC có ASM → %ASM × giá ASM + phần còn lại × giá tay; SOC không có ASM → 100% tay. */
+const NS_NET_G = ["HCA", "HCB", "HN, North_A", "North_D", "North_B", "Cen_DN", "13 Cen2", "SE1", "SE2", "SW2", "SW1", "North_C"];
+const NS_NET = {
+  v: 1, src: "slide 7 (FLM SE)",
+  cost: { man: null, asm: null },
+  socs: [{ s: "HCM Mega SOC", asm: false }, { s: "BD B Mega SOC", asm: true, pct: null }, { s: "BD A Mega SOC", asm: true, pct: null }, { s: "BN A Mega SOC", asm: false },
+    { s: "HN1 SOC", asm: false }, { s: "BN B Mega SOC", asm: false }, { s: "DN Mega SOC", asm: false }, { s: "Mini SOC", asm: false }, { s: "SW SOC", asm: false },
+    { s: "LA Temp", asm: false }, { s: "HY SOC", asm: false }],
+  groups: [{ g: "HCA", lm: "HCM Mega SOC" }, { g: "HCB", lm: "BD B Mega SOC" }, { g: "HN, North_A", lm: "BN A Mega SOC" }, { g: "North_D", lm: "HN1 SOC" },
+    { g: "North_B", lm: "BN B Mega SOC" }, { g: "Cen_DN", lm: "DN Mega SOC" }, { g: "13 Cen2", lm: "BD A Mega SOC", via: "Mini SOC", hv: "Mini SOC" },
+    { g: "SE1", lm: "BD A Mega SOC" }, { g: "SE2", lm: "BD A Mega SOC" }, { g: "SW2", lm: "SW SOC" }, { g: "SW1", lm: "LA Temp" }, { g: "North_C", lm: "HY SOC" }].map(z => Object.assign({ codes: "" }, z)),
+  profs: [
+    { id: "flm_se", n: "FLM SE", k: "flm", src: "slide 7", ch: [{ to: "HCM Mega SOC", g: ["HCA"] }, { to: "BD B Mega SOC", g: ["HCB"] }, { to: "BD A Mega SOC", g: ["HN, North_A"] },
+      { to: "BD A Mega SOC", g: ["North_D"] }, { to: "BD A Mega SOC", g: ["North_B"] }, { to: "BD A Mega SOC", g: ["Cen_DN"] }, { to: "BD A Mega SOC", g: ["SW2"] },
+      { to: "BD A Mega SOC", g: ["SW1"] }, { to: "BD A Mega SOC", g: ["North_C"] }, { to: "BD A Mega SOC", g: ["SE1", "SE2", "13 Cen2"] }] },
+    { id: "flm_hca", n: "FLM HCA", k: "flm", src: "", ch: [] }, { id: "flm_hcb", n: "FLM HCB", k: "flm", src: "", ch: [] },
+    { id: "flm_sw1", n: "FLM SW1", k: "flm", src: "", ch: [] }, { id: "flm_sw2", n: "FLM SW2", k: "flm", src: "", ch: [] },
+    { id: "d2s_ex1", n: "Ví dụ D2S: 1 chute → BD A", k: "d2s", src: "", ch: [{ to: "BD A Mega SOC", g: NS_NET_G.slice() }] }]
+};
+/* đánh giá một cài đặt sort trên mạng lưới: mỗi nhóm (và biến thể hàng nặng/DG nếu có SOC riêng) → chute, các SOC rã bao, đường đi (soc = sort to SOC, tr = transit, lm = sort to LM hub), giá sort / đơn */
+function nsNet(net, prof, man) {
+  const S = Object.fromEntries(net.socs.map(z => [z.s, z])), G = Object.fromEntries(net.groups.map(z => [z.g, z]));
+  const vars = g => G[g].hv && G[g].hv !== G[g].lm ? ["n", "h"] : ["n"], opener = (g, v) => v === "h" ? G[g].hv : G[g].lm;
+  const cM = net.cost && net.cost.man != null && net.cost.man !== "" ? +net.cost.man : man != null ? man : null, cA = net.cost && net.cost.asm != null && net.cost.asm !== "" ? +net.cost.asm : null;
+  /* giá một lần sort ở SOC s: thiếu số nào thì null (không đoán) */
+  const sortC = s => { const z = S[s] || {}; if (!z.asm) return cM; const p = z.pct == null || z.pct === "" ? null : Math.min(100, Math.max(0, +z.pct)) / 100;
+    if (p == null || cM == null || (p > 0 && cA == null)) return null; return p * cA + (1 - p) * cM; };
+  const seen = new Set(), dup = [];
+  const chutes = (prof.ch || []).map((c, i) => { const g = c.g.filter(x => G[x] && (seen.has(x) ? (dup.push(x), false) : (seen.add(x), true)));
+    const ops = [...new Set(g.flatMap(x => vars(x).map(v => opener(x, v))))], transit = g.length > 0 && ops.length === 1 && ops[0] !== c.to;
+    return { i, to: c.to, g, ops, transit }; });
+  const where = {}; chutes.forEach(c => c.g.forEach(x => { where[x] = c.i; }));
+  const rows = [];
+  for (const z of net.groups) for (const v of vars(z.g)) {
+    const ci = where[z.g]; if (ci == null) { rows.push({ g: z.g, v, ci: -1, op: [], e: [], cost: null }); continue; }
+    const c = chutes[ci], o = opener(z.g, v), op = c.transit ? [o] : o === c.to ? [c.to] : [c.to, o], e = [{ a: "O", b: c.to, k: "soc" }];
+    if (o !== c.to) e.push({ a: c.to, b: o, k: c.transit ? "tr" : "soc" });
+    if (v === "n" && z.via && z.via !== o) e.push({ a: o, b: z.via, k: "lm" }, { a: z.via, b: "LM:" + z.g, k: "tr" }); else e.push({ a: o, b: "LM:" + z.g, k: "lm" });
+    const cs = op.map(sortC); rows.push({ g: z.g, v, ci, op, e, cost: cs.some(x => x == null) ? null : cs.reduce((a, b) => a + b, 0) });
+  }
+  return { chutes, rows, dup, miss: [...new Set(rows.filter(r => r.ci < 0).map(r => r.g))], nCh: chutes.filter(c => c.g.length).length, cM, cA, sortC };
+}
+/* so một cài đặt D2S với chuẩn FLM: số lần rã bao thêm ở SOC nào, giá thêm / đơn */
+function nsNetCmp(net, d2s, flm, man) {
+  const A = nsNet(net, d2s, man), B = nsNet(net, flm, man), key = r => r.g + "|" + r.v, bm = Object.fromEntries(B.rows.map(r => [key(r), r]));
+  return { A, B, rows: A.rows.map(r => { const b = bm[key(r)] || { op: [], cost: null, ci: -1 }, rest = b.op.slice(), extra = [];
+    r.op.forEach(s => { const j = rest.indexOf(s); if (j >= 0) rest.splice(j, 1); else extra.push(s); });
+    return { g: r.g, v: r.v, a: r, b, extra, fewer: rest, dc: r.cost != null && b.cost != null && r.ci >= 0 && b.ci >= 0 ? r.cost - b.cost : null }; }) };
+}
+if (typeof module !== "undefined") module.exports = { nsRef, nsPlan, NS_KS, NS_BAN, NS_NET, nsNet, nsNetCmp };

@@ -6,17 +6,17 @@
 :root{
   --bg:#f6f7f9; --panel:#ffffff; --ink:#16213a; --ink2:#5b6478; --line:#e2e5ec; --soft:#eef1f6;
   --accent:#ee4d2d; --accent-soft:#fdeee9; --navy:#142b52; --navy-soft:#e8edf6;
-  --good:#1f8a52; --good-soft:#e5f4ec; --warn:#b7791f; --warn-soft:#fbf1df; --bad:#c2362a; --bad-soft:#fbe7e5;
+  --good:#1f8a52; --good-soft:#e5f4ec; --f-soc:#2f5fd0; --warn:#b7791f; --warn-soft:#fbf1df; --bad:#c2362a; --bad-soft:#fbe7e5;
   --f-ui:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --f-num:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#10141c; --panel:#171c26; --ink:#e6e9f0; --ink2:#9aa3b5; --line:#2a3140; --soft:#1e2430;
   --accent:#ff6a4a; --accent-soft:#3a1e18; --navy:#9db5e0; --navy-soft:#1d2738;
-  --good:#4cc488; --good-soft:#15291f; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}}
+  --good:#4cc488; --good-soft:#15291f; --f-soc:#86a8ff; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#10141c; --panel:#171c26; --ink:#e6e9f0; --ink2:#9aa3b5; --line:#2a3140; --soft:#1e2430;
   --accent:#ff6a4a; --accent-soft:#3a1e18; --navy:#9db5e0; --navy-soft:#1d2738;
-  --good:#4cc488; --good-soft:#15291f; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}
+  --good:#4cc488; --good-soft:#15291f; --f-soc:#86a8ff; --warn:#e3a94a; --warn-soft:#2e2414; --bad:#ff7a6e; --bad-soft:#36191a; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.45;padding:0 16px;margin:0}
@@ -54,6 +54,12 @@ input[type=number]{font-family:var(--f-num);width:100%;text-align:right}
 .wpick{display:flex;gap:8px;align-items:flex-start;margin:2px 0;cursor:pointer}.wpick input{margin-top:3px}
 .ttl{font-size:12px;line-height:1.6;margin:2px 0}.ttl .stop{white-space:nowrap}.linkb{font:inherit;font-size:12px;background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
 .mine{margin-bottom:12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--good-soft)}.mine h3{margin:0 0 4px;font-size:14px}.mine .mrow{font-size:13px;margin:4px 0}.cbtn{padding:1px 8px;font-size:12px}
+.flg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:0 0 4px}.flg i{display:inline-block;width:20px;border-top:2.5px solid;vertical-align:middle;margin-right:5px}.flg i.soc{border-color:var(--f-soc)}.flg i.tr{border-color:var(--bad)}.flg i.lm{border-color:var(--good)}
+.nb{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}.chu.tray{border-style:solid;background:var(--soft)}.chip2 small{font:600 10px var(--f-num);color:var(--ink2)}
+.netd{overflow-x:auto;margin:8px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.netd svg{display:block}
+.fe{fill:none;stroke-width:1.7}.fe.soc{stroke:var(--f-soc)}.fe.tr{stroke:var(--bad)}.fe.lm{stroke:var(--good)}.fm.soc{fill:var(--f-soc)}.fm.tr{fill:var(--bad)}.fm.lm{fill:var(--good)}
+.nn rect{fill:var(--panel);stroke:var(--line);stroke-width:1.2}.nn.o rect{fill:var(--navy-soft);stroke:var(--navy)}.nn.lm rect{fill:var(--warn-soft);stroke:var(--line)}.nn text{fill:var(--ink);font:600 12px var(--f-ui)}.el{font:10.5px var(--f-ui);fill:var(--ink2)}
+.fk{font-size:10.5px;font-weight:600;padding:0 4px;border-radius:4px}.fk.soc{color:var(--f-soc)}.fk.tr{color:var(--bad)}.fk.lm{color:var(--good)}
 .savebar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.savebar button[disabled]{opacity:.5;cursor:default}
 .busy{position:fixed;right:16px;bottom:16px;z-index:20;background:var(--panel);color:var(--ink2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 .fillsug{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.fillsug h3{font-size:14px;margin:0 0 4px}.fillsug .wl{font-size:12px;line-height:1.5}.fillsug .wl b{font-family:var(--f-num)}
@@ -208,11 +214,12 @@ input.tm{font-family:var(--f-num);width:100%;text-align:center}
     </div>
   </header>
 
-  <div class="lang tabs" role="group" id="tabs"><button type="button" data-tab="upd" data-t="tabUpd" hidden></button><button type="button" data-tab="plan" data-t="tabPlan"></button><button type="button" data-tab="cur" data-t="tabCur"></button><button type="button" data-tab="asm" data-t="tabAsm"></button></div>
+  <div class="lang tabs" role="group" id="tabs"><button type="button" data-tab="upd" data-t="tabUpd" hidden></button><button type="button" data-tab="plan" data-t="tabPlan"></button><button type="button" data-tab="cur" data-t="tabCur"></button><button type="button" data-tab="net" data-t="tabNet"></button><button type="button" data-tab="asm" data-t="tabAsm"></button></div>
   <div class="busy" id="busy" role="status" aria-live="polite" hidden></div>
   <div id="upd" hidden></div>
   <div id="asm" hidden></div>
   <div id="cur" hidden></div>
+  <div id="net" hidden></div>
   <div class="grid" id="plan">
     <form class="panel inputs" id="f" autocomplete="off">
       <div class="pre"><label for="preset" data-t="preL"></label><select id="preset"></select><button type="button" id="advBtn" class="ghost"></button></div>
@@ -347,7 +354,7 @@ const TX={
  cuHint:["Kéo SOC sang chute khác, hoặc chạm SOC rồi chạm chute. Bớt chute: bấm × — SOC trong chute đó dồn sang chute cùng TO, không có thì sang chute đi SOC chính. Tiền chuyển hàng giữa SOC không tính vào D2S.","Drag a SOC to another chute, or tap a SOC then tap a chute. Remove a chute with × — its SOCs move to a chute with the same TO, else to the main-SOC chute. SOC-to-SOC transfer is not charged to D2S."],
  cuMoved:(o,d)=>[`Đã bớt 1 chute: ${o} dồn sang chute đi ${d}.`,`Removed 1 chute: ${o} moved to the chute going to ${d}.`],
  banL:["Luật cấm tải xe 5T/8T","Truck ban for 5T/8T"], banAuto:["Tự động theo điểm gần","Auto from nearby points"], banOff:["Không áp","Off"],
- tabPlan:["Đánh giá seller","Assess seller"], tabAsm:["Giả định & ràng buộc","Assumptions & constraints"], tabCur:["Seller đang chạy","Running sellers"],
+ tabNet:["Mạng lưới SPX","SPX network"], tabPlan:["Đánh giá seller","Assess seller"], tabAsm:["Giả định & ràng buộc","Assumptions & constraints"], tabCur:["Seller đang chạy","Running sellers"],
  hvBanL:["XE không được rời lượt này (cấm tải)","XE cannot leave in this wave (truck ban)"], hvWaitL:t=>[`xe nặng chờ tới ${t} mới được rời`,`heavy truck waits until ${t}`],
  askBan:["Giờ cấm tải xe 5T/8T tại điểm: chưa có điểm D2S gần đủ dữ liệu","5T/8T ban hours at the site: no nearby D2S point with enough data"],
  tabUpd:["Cập nhật","Update"], preL:["Ví dụ","Example"], preNone:["Tự nhập seller mới","Enter a new seller"], advOn:["Hiện tuỳ chỉnh nâng cao","Show advanced settings"], advOff:["Ẩn tuỳ chỉnh nâng cao","Hide advanced settings"],
@@ -583,14 +590,15 @@ let SELFBASE=null;const SAVE={db:null,user:null,ro:false,local:true,map:{},busy:
 /* id bản lưu: vùng + tên seller (bỏ dấu, ký tự lạ) + mã băm ngắn để không trùng */
 function sid(R,n){let h=0;for(const c of R+"|"+n)h=(h*31+c.charCodeAt(0))>>>0;return (R+"__"+n).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[đĐ]/g,"d").replace(/[^A-Za-z0-9_\-.~:@+]+/g,"-").replace(/-+/g,"-").slice(0,120)+"~"+h.toString(36);}
 const savedOf=(R,n)=>SAVE.map[sid(R,n)]||null;
-function localLoad(){SAVE.local=true;try{SAVE.map=JSON.parse(localStorage.getItem("d2s-ns-saved")||"{}")||{};}catch(e){SAVE.map={};}localNetLoad();onSaved();}
+function localLoad(){SAVE.local=true;spnLocal();try{SAVE.map=JSON.parse(localStorage.getItem("d2s-ns-saved")||"{}")||{};}catch(e){SAVE.map={};}localNetLoad();onSaved();}
 function localStore(){try{localStorage.setItem("d2s-ns-saved",JSON.stringify(SAVE.map));return true;}catch(e){return false;}}
 async function initSave(){let db=null,user=null;try{if(window.claude&&claude.use)[db,user]=await Promise.all([claude.use("db"),claude.use("user")]);}catch(e){}
   if(!db){localLoad();return;}SAVE.db=db;SAVE.user=user;SAVE.local=false;try{SAVE.ro=user?(await user.can("data.write"))===false:false;}catch(e){}
   const mapOf=qs=>{const m={};qs.docs.forEach(d=>{if(d.exists)m[d.id]=d.data();});return m;};
   db.collection("seller_settings").onSnapshot(qs=>{SAVE.map=mapOf(qs);onSaved();},e=>{console.warn("seller_settings:",e&&e.code);});
   db.collection("groups").onSnapshot(qs=>{NET.groups=mapOf(qs);onSaved();},e=>{console.warn("groups:",e&&e.code);});
-  db.collection("new_sellers").onSnapshot(qs=>{NET.news=mapOf(qs);onSaved();},e=>{console.warn("new_sellers:",e&&e.code);});}
+  db.collection("new_sellers").onSnapshot(qs=>{NET.news=mapOf(qs);onSaved();},e=>{console.warn("new_sellers:",e&&e.code);});
+  db.collection("network").onSnapshot(qs=>{const m=mapOf(qs);if(m.S&&m.S.net){SPX.saved=m.S;if(!SPX.dirty)SPX.net=spnClone(m.S.net);}if(X.tab==="net")drawNet();},e=>{console.warn("network:",e&&e.code);});}
 /* bản lưu thay đổi (mình hoặc người khác lưu): tính lại bảng seller đang chạy; không tự áp vào form đang chỉnh */
 function onSaved(){for(const k in CUR)delete CUR[k];if(X.tab==="cur")drawCur();drawSelf();clearTimeout(onSaved.t);onSaved.t=setTimeout(()=>{if(LASTIN)render();},60);}
 async function saveSelf(){if(!X.self||!SELFBASE||SAVE.busy)return;const id=sid(X.R,X.self),d=diffS(snapS(X),SELFBASE);SAVE.busy=true;SAVE.msg="";drawSelf();
@@ -877,7 +885,7 @@ function drawAll(p){
     if(p.gates>1&&p.gateCmp){const g=p.gateCmp,nm=k=>TX.gModes[k][L],o=g.pick==="tour"?"each":"tour",d=g[o].cost-g[g.pick].cost;parts.push(L?`${p.gates} gates: at least ${p.gates} people. Using “${nm(g.pick)}”${d>0?`, Est. ${mn(d)}/month cheaper than “${nm(o)}”`:""}.`:`${p.gates} cổng: tối thiểu ${p.gates} người. Đang dùng “${nm(g.pick)}”${d>0?`, Est. rẻ hơn “${nm(o)}” ${mn(d)}/tháng`:""}.`);}
     $("hoNote").textContent=parts.join(" "); }
   }
-  $("plan").hidden=X.tab!=="plan";$("asm").hidden=X.tab!=="asm";$("upd").hidden=X.tab!=="upd";$("cur").hidden=X.tab!=="cur";if(X.tab==="upd")drawUpd();if(X.tab==="cur"&&p.lite)drawCur();document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===X.tab)));
+  $("plan").hidden=X.tab!=="plan";$("asm").hidden=X.tab!=="asm";$("upd").hidden=X.tab!=="upd";$("cur").hidden=X.tab!=="cur";$("net").hidden=X.tab!=="net";if(X.tab==="net")drawNet();if(X.tab==="upd")drawUpd();if(X.tab==="cur"&&p.lite)drawCur();document.querySelectorAll("#tabs [data-tab]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===X.tab)));
   if(X.tab==="asm"&&!p.lite)drawAsm(p);
   /* bản nhanh: các phần cần bản đủ giữ nội dung cũ, làm mờ tới khi có số mới */
   ["winSec","fillSug","asm"].forEach(id=>$(id).classList.toggle("stale",!!p.lite));$("mrg").closest("section").classList.toggle("stale",!!p.lite);
@@ -1115,6 +1123,135 @@ $("advBtn").addEventListener("click",()=>{X.adv=!X.adv;drawForm();});
 $("f").addEventListener("input",e=>{if(e.target.id==="R"||e.target.id==="nsName")return;if(e.target.id==="selfPick"){X.pick=e.target.checked?[...new Set(X.pick.concat([X.selfGrp]))]:X.pick.filter(q=>q!==X.selfGrp);render();return;}if(e.target.id==="preset"){if(e.target.value){applyPreset(e.target.value);drawForm();render();}else X.preset="";return;}if(X.preset){X.preset="";$("preset").value="";}shBal(e.target);read();if(e.target.id==="hub"||e.target.id==="sup")linkHS(e.target.id);render();});
 $("f").addEventListener("change",e=>{if(e.target.id!=="R")return;X.preset="";X.R=e.target.value;X.like="";X.hub="";X.sup="";X.pick=[];X.chutes=null;X.hcIn=["","",""];X.self="";X.selfGrp="";X.nsId="";SELFBASE=null;fillRegion(false);drawForm();render();});
 document.querySelectorAll("header .lang button").forEach(b=>b.addEventListener("click",()=>{L=b.dataset.l==="en"?1:0;try{localStorage.setItem("d2s-ns-lang",b.dataset.l);}catch(e){}drawForm();render();}));
+/* ===== MẠNG LƯỚI SPX (tab riêng): cài đặt sort tại FM Hub chuẩn (FLM) và tại seller D2S trên cùng mạng SOC — HCM & South.
+   Chute = 1 TO tới SOC 1, chứa các nhóm LM (sort code khi có dữ liệu); chute trống được. Luồng giữa các SOC suy từ chute: bao chỉ chứa hàng của đúng một SOC
+   mở bao khác SOC 1 → transit; còn lại SOC 1 rã bao (sort to SOC / sort to LM hub). Dùng chung qua db "network" (doc "S"), không có db thì lưu trên máy ===== */
+const SPX={net:null,saved:null,dirty:false,busy:false,msg:"",arm:null,p:"flm_se",a:"d2s_ex1",b:"flm_se",sel:null};
+const spnClone=o=>JSON.parse(JSON.stringify(o));
+const spnMan=()=>Math.round((REF.P.socPay||520000)/(REF.P.prodBase||2000));
+function spnLocal(){try{const v=JSON.parse(localStorage.getItem("d2s-ns-net")||"null");if(v&&v.net){SPX.saved=v;if(!SPX.dirty)SPX.net=spnClone(v.net);}}catch(e){}}
+function spnGet(){if(!SPX.net)SPX.net=spnClone(NS_NET);return SPX.net;}
+function spnEdit(f){f(spnGet());SPX.dirty=true;SPX.msg="";drawNet();}
+async function spnSave(){if(SPX.busy||SAVE.ro)return;SPX.busy=true;SPX.msg="";drawNet();const body=await stampOf({net:spnClone(spnGet()),v:1});
+  try{if(SAVE.db)await SAVE.db.collection("network").doc("S").set(body);else localStorage.setItem("d2s-ns-net",JSON.stringify(body));SPX.saved=body;SPX.dirty=false;}
+  catch(e){const c=e&&e.code;SPX.msg=c==="invalid_argument"?(L?"You can view but not save on this page.":"Bạn chỉ có quyền xem, không lưu được."):(L?"Could not save, try again.":"Chưa lưu được, thử lại.");}
+  SPX.busy=false;drawNet();}
+const ssn=s=>s.replace(/ (Mega )?SOC$/,"");
+/* sơ đồ như slide mạng lưới: điểm gốc → SOC 1 → SOC 2 → nhóm LM; xanh dương = sort to SOC, đỏ = transit (không rã bao), xanh lá = sort to LM hub */
+function netSvg(r,org){const rows=r.rows.filter(x=>x.ci>=0);if(!rows.length)return "";
+  const G=[...new Set(rows.map(x=>x.g))],dep={O:0};
+  rows.forEach(x=>{["O"].concat(x.e.map(e=>e.b)).forEach((n,i)=>{if(!n.startsWith("LM:"))dep[n]=Math.max(dep[n]||0,i);});});
+  const lmC=Math.max(...Object.values(dep))+1,RH=46,T0=26,NW=150,NH=30,CW=196,yN={};
+  G.forEach((g,i)=>{yN["LM:"+g]=T0+i*RH;});
+  const acc={};rows.forEach(x=>{const ly=yN["LM:"+x.g];x.e.forEach(e=>[e.a,e.b].forEach(n=>{if(n!=="O"&&!n.startsWith("LM:"))(acc[n]=acc[n]||new Set()).add(ly);}));});
+  Object.entries(acc).forEach(([n,s])=>{const a=[...s];yN[n]=a.reduce((p,q)=>p+q,0)/a.length;});yN.O=T0+(G.length-1)*RH/2;
+  for(let d=1;d<lmC;d++){const ns=Object.keys(dep).filter(n=>n!=="O"&&dep[n]===d).sort((a,b)=>yN[a]-yN[b]);for(let i=1;i<ns.length;i++)if(yN[ns[i]]-yN[ns[i-1]]<NH+8)yN[ns[i]]=yN[ns[i-1]]+NH+8;}
+  const col=n=>n.startsWith("LM:")?lmC:dep[n],X0=n=>8+col(n)*CW,W=8+lmC*CW+NW+8,H=Math.max(...Object.values(yN))+NH/2+T0;
+  const E=new Map();rows.forEach(x=>{const two=rows.some(z=>z.g===x.g&&z.v!==x.v);x.e.forEach(e=>{const k=e.a+"|"+e.b+"|"+e.k,o=E.get(k)||Object.assign({vs:new Set()},e);o.vs.add(two?x.v:"*");E.set(k,o);});});
+  const lab=o=>o.vs.has("*")||o.vs.size>1?"":o.vs.has("h")?"HV, DG":"Non HV";
+  /* nhiều mũi tên giữa cùng hai điểm (vd. HV, DG và Non HV) tách nhẹ lên / xuống, nhãn đặt gần đầu mũi tên */
+  const par={};[...E.values()].forEach(o=>{(par[o.a+"|"+o.b]=par[o.a+"|"+o.b]||[]).push(o);});
+  const edges=[...E.values()].map(o=>{const pl=par[o.a+"|"+o.b],j=pl.indexOf(o),off=pl.length>1?(j-(pl.length-1)/2)*9:0,x1=X0(o.a)+NW,y1=yN[o.a]+off,x2=X0(o.b)-4,y2=yN[o.b]+off,t=x2-x1>90?lab(o):"",lx=x1+(x2-x1)*0.72,ly=y1+(y2-y1)*0.86+(off<0?-5:off>0?12:-5);
+    return `<path class="fe ${o.k}" d="M${x1} ${y1} C${x1+40} ${y1} ${x2-40} ${y2} ${x2} ${y2}" marker-end="url(#ar-${o.k})"/>${t?`<text class="el" x="${lx}" y="${ly}" text-anchor="middle">${t}</text>`:""}`;}).join("");
+  const nodes=Object.keys(yN).map(n=>{const lm=n.startsWith("LM:"),nm=n==="O"?org:lm?n.slice(3):ssn(n);
+    return `<g class="nn${n==="O"?" o":lm?" lm":""}"><rect x="${X0(n)}" y="${yN[n]-NH/2}" width="${NW}" height="${NH}" rx="6"/><text x="${X0(n)+NW/2}" y="${yN[n]+4}" text-anchor="middle">${esc(nm.length>22?nm.slice(0,21)+"…":nm)}</text><title>${esc(n==="O"?org:lm?n.slice(3):n)}</title></g>`;}).join("");
+  const mk=k=>`<marker id="ar-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="fm ${k}" d="M0 0L10 5L0 10z"/></marker>`;
+  const hv=[...new Set(rows.filter(x=>x.v==="h").map(x=>x.g))].map(g=>{const n=rows.find(x=>x.g===g&&x.v==="n"),h=rows.find(x=>x.g===g&&x.v==="h"),f=x=>x.e.slice(1).map(e=>`${e.k==="tr"?"transit":e.k==="lm"?"sort LM":"sort SOC"} → ${e.b.startsWith("LM:")?"LM":ssn(e.b)}`).join(", ");
+    return `${esc(g)}: Non HV ${esc(ssn(n.e[0].b))} ${esc(f(n))}; HV, DG ${esc(ssn(h.e[0].b))} ${esc(f(h))}`;}).join(" · ");
+  return `${hv?`<p class="meta" style="margin:6px 0 0">${hv}</p>`:""}<div class="netd"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${L?"Order flow from":"Luồng hàng từ"} ${esc(org)}"><defs>${mk("soc")}${mk("tr")}${mk("lm")}</defs>${edges}${nodes}</svg></div>`;}
+function drawNet(){const el=$("net");if(!el)return;const N=spnGet(),V=(vi,en)=>L?en:vi,man=spnMan(),SN=N.socs.map(z=>z.s),GN=N.groups.map(z=>z.g);
+  if(!N.profs.some(p=>p.id===SPX.p))SPX.p=(N.profs[0]||{}).id;const P=N.profs.find(p=>p.id===SPX.p),r=P?nsNet(N,P,man):null;
+  const vn=v=>v==="h"?"HV, DG":"",dn=x=>nf(x)+" đ",sc=s=>{const c=r?r.sortC(s):null;return c==null?"–":dn(c);};
+  const kd={flm:V("FLM chuẩn","Standard FLM"),d2s:"D2S"};
+  /* đầu tab: nguồn, chú thích màu, lưu */
+  const dd=a=>a?(d=>isNaN(d)?"":`${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`)(new Date(a)):"";
+  const head=`<section class="panel sec"><h2>${V("Mạng lưới SPX · HCM & South","SPX network · HCM & South")}</h2>
+    <p class="sub">${V("Cài đặt sort tại FM Hub chuẩn (FLM) và tại seller D2S trên cùng mạng SOC. 1 chute = 1 TO tới SOC 1. Ở SOC 1, bao chỉ chứa hàng của đúng một SOC khác thì chuyển tiếp nguyên bao (transit); bao trộn thì SOC 1 rã bao và sort lại — mỗi lần rã bao tốn công sort (máy ASM hoặc tay). Dựng lại từ slide 7 (FLM SE); FLM HCA, HCB, SW1, SW2 chờ slide.","Sort settings at standard FM hubs (FLM) and at D2S sellers on the same SOC network. 1 chute = 1 TO to SOC 1. At SOC 1, a bag holding only one other SOC's goods passes through unopened (transit); a mixed bag is opened and re-sorted — every opening costs sorting effort (ASM machine or by hand). Rebuilt from slide 7 (FLM SE); FLM HCA, HCB, SW1, SW2 await their slides.")}</p>
+    <div class="flg"><span><i class="soc"></i>Sort to SOC</span><span><i class="tr"></i>Transit (${V("không rã bao","bag not opened")})</span><span><i class="lm"></i>Sort to LM hub</span></div>
+    <div class="savebar"><button type="button" class="ghost" data-nsave${SAVE.ro||SPX.busy||!SPX.dirty?" disabled":""}>${SPX.busy?V("Đang lưu…","Saving…"):SAVE.db?V("Lưu mạng lưới (dùng chung)","Save network (shared)"):V("Lưu (trên máy này)","Save (this browser)")}</button><button type="button" class="ghost" data-nreset>${V("Về bản dựng từ slide","Back to the slide version")}</button>
+      <span class="meta">${SPX.dirty?`<b style="color:var(--warn)">${V("Có thay đổi chưa lưu","Unsaved changes")}</b>`:SPX.saved?`${V("Đã lưu","Saved")} ${esc(dd(SPX.saved.at))}<span class="nby"></span>`:V("Đang dùng bản dựng từ slide.","Using the slide version.")}${SAVE.ro?` · ${V("chỉ xem","view only")}`:""}${SPX.msg?` · <b style="color:var(--bad)">${esc(SPX.msg)}</b>`:""}</span></div></section>`;
+  /* cài đặt sort của một điểm gốc: chute kéo thả + sơ đồ + đường đi từng nhóm */
+  const tabs=`<div class="cutab" role="group" aria-label="${V("Cài đặt sort","Sort settings")}">${N.profs.map(p=>`<button type="button" data-np="${esc(p.id)}" aria-pressed="${p.id===SPX.p}">${esc(p.n)}</button>`).join("")}<button type="button" data-npadd="flm">+ FLM</button><button type="button" data-npadd="d2s">+ D2S</button></div>`;
+  let board="";if(P){const used=new Set(P.ch.flatMap(c=>c.g)),tray=GN.filter(g=>!used.has(g)),chip=g=>{const z=N.groups.find(q=>q.g===g)||{},nc=(z.codes||"").split(/[,;\n]/).map(s=>s.trim()).filter(Boolean).length;return `<span class="chip2${SPX.sel===g?" sel":""}" draggable="true" tabindex="0" role="button" data-ng="${esc(g)}" title="${esc(g)}${nc?" · "+nc+" sort code":""}">${esc(g)}${nc?` <small>${nc}</small>`:""}</span>`;};
+    const eff=c=>{const x=r.chutes[c];if(!x||!x.g.length)return V("Chute trống — kéo nhóm vào.","Empty chute — drag groups in.");
+      if(x.transit)return `<b>${esc(ssn(x.to))}</b> ${V("transit nguyên bao","passes the bag through")} → ${esc(ssn(x.ops[0]))}`;
+      const own=x.g.filter(g=>r.rows.some(q=>q.g===g&&q.ci===c&&q.op.length===1&&q.op[0]===x.to)),oth=[...new Set(x.ops.filter(s=>s!==x.to))];
+      if(!oth.length)return `<b>${esc(ssn(x.to))}</b> ${V("sort tới LM hub","sorts to LM hubs")} (${own.map(esc).join(", ")})`;
+      return `<b>${esc(ssn(x.to))}</b> ${V("rã bao","opens the bag")}: ${own.length?`${V("sort tới LM hub","sorts to LM hubs")} (${own.map(esc).join(", ")})`:""}${own.length&&oth.length?"; ":""}${oth.length?`${V("sort lại đi","re-sorts to")} ${oth.map(s=>esc(ssn(s))).join(", ")}`:""}`;};
+    board=`<div class="savebar" style="margin:10px 0 6px"><label for="npn">${V("Tên","Name")}</label><input type="text" id="npn" value="${esc(P.n)}" style="width:220px;max-width:100%"><span class="meta">${kd[P.k]||""}${P.src?` · ${V("nguồn","source")}: ${esc(P.src)}`:""} <button type="button" class="ghost" data-npdel="${esc(P.id)}">${SPX.arm===P.id?V("Bấm lần nữa để xoá","Click again to delete"):V("Xoá","Delete")}</button></span></div>
+      <div class="nb">${`<div class="chu tray" data-nchu="-1"><div class="hd"><span>${V("Chưa xếp chute","Not in a chute")}</span></div><div class="chips">${tray.length?tray.map(chip).join(""):`<span class="ph">${V("Mọi nhóm đã vào chute","Every group is in a chute")}</span>`}</div></div>`}
+      ${P.ch.map((c,i)=>`<div class="chu" data-nchu="${i}"><div class="hd"><span>Chute ${i+1}</span><button type="button" data-ncdel="${i}" title="${V("Bỏ chute","Remove chute")}" aria-label="${V("Bỏ chute","Remove chute")} ${i+1}">×</button></div>
+        <div class="chips">${c.g.length?c.g.map(chip).join(""):`<span class="ph">${V("Kéo nhóm vào","Drop groups here")}</span>`}</div>
+        <label class="eff" style="display:grid;gap:2px">TO → SOC 1<select data-ncto="${i}">${SN.map(s=>`<option value="${esc(s)}"${s===c.to?" selected":""}>${esc(s)}</option>`).join("")}</select></label>
+        <div class="eff">${eff(i)}</div></div>`).join("")}
+      <button type="button" class="cuadd" data-ncadd="1">+ ${V("Thêm chute (trống cũng được)","Add chute (may stay empty)")}</button></div>
+      <p class="hint">${V("Kéo nhóm sang chute khác, hoặc chạm nhóm rồi chạm chute. Bỏ chute: nhóm trong đó về ô Chưa xếp chute.","Drag a group to another chute, or tap the group then the chute. Removing a chute sends its groups back to Not in a chute.")}${r.dup.length?` <b style="color:var(--bad)">${V("Nhóm nằm ở 2 chute","Group in 2 chutes")}: ${r.dup.map(esc).join(", ")}</b>`:""}</p>
+      <p class="meta" style="margin:8px 0 4px"><b>${r.nCh} chute</b> · ${r.chutes.filter(c=>c.transit).length} ${V("chute SOC 1 chỉ transit","chutes only transit at SOC 1")} · ${r.chutes.filter(c=>c.g.length&&!c.transit).length} ${V("chute SOC 1 phải rã bao","chutes opened at SOC 1")}</p>
+      ${netSvg(r,P.n)}
+      <div class="tw"><table><thead><tr><th>${V("Nhóm LM","LM group")}</th><th>Chute</th><th>${V("Đường đi","Path")}</th><th>${V("Rã bao ở","Opened at")}</th><th class="n">${V("Giá sort / đơn","Sort cost / order")}</th></tr></thead><tbody>${r.rows.map(x=>`<tr><td><b>${esc(x.g)}</b>${x.v==="h"?` <span class="meta">HV, DG</span>`:N.groups.find(z=>z.g===x.g&&z.hv&&z.hv!==z.lm)?` <span class="meta">Non HV</span>`:""}</td><td>${x.ci<0?`<span class="chip mid">${V("chưa có chute","no chute")}</span>`:x.ci+1}</td>
+        <td class="meta">${x.ci<0?"–":x.e.map((e,j)=>`${j?"":esc(P.n)+" "}<span class="fk ${e.k}">${e.k==="tr"?"transit":e.k==="lm"?"sort LM":"sort SOC"}</span> ${e.b.startsWith("LM:")?"LM":esc(ssn(e.b))}`).join(" ")}</td>
+        <td>${x.op.map(s=>esc(ssn(s))).join(" + ")||"–"}</td><td class="n">${x.ci<0?"–":x.cost==null?`<span class="meta">${V("thiếu giá","no rate")}</span>`:dn(x.cost)}</td></tr>`).join("")}</tbody></table></div>`;}
+  /* so một cài đặt D2S với FLM chuẩn: rã bao thêm ở đâu, giá thêm / đơn */
+  const DS=N.profs.filter(p=>p.k==="d2s"),FS=N.profs.filter(p=>p.k==="flm"&&p.ch.length);if(!DS.some(p=>p.id===SPX.a))SPX.a=(DS[0]||{}).id;if(!FS.some(p=>p.id===SPX.b))SPX.b=(FS[0]||{}).id;
+  const A=DS.find(p=>p.id===SPX.a),B=FS.find(p=>p.id===SPX.b);let cmp="";
+  if(A&&B){const c=nsNetCmp(N,A,B,man),more=c.rows.filter(x=>x.extra.length),by={};more.forEach(x=>x.extra.forEach(s=>{by[s]=(by[s]||0)+1;}));
+    cmp=`<p class="meta" style="margin:0 0 6px">${more.length?`${V("Nhóm phải rã bao thêm so với FLM","Groups opened once more than at FLM")}: <b>${new Set(more.map(x=>x.g)).size}/${new Set(c.rows.map(x=>x.g)).size}</b> — ${Object.entries(by).map(([s,n])=>`${esc(ssn(s))} ${n}`).join(", ")}`:V("Không nhóm nào phải rã bao thêm so với FLM.","No group is opened more often than at FLM.")}${c.rows.some(x=>x.a.ci<0)?` · <b style="color:var(--warn)">${V("D2S chưa xếp chute cho","D2S has no chute for")}: ${[...new Set(c.rows.filter(x=>x.a.ci<0).map(x=>x.g))].map(esc).join(", ")}</b>`:""}</p>
+      <div class="tw"><table><thead><tr><th>${V("Nhóm LM","LM group")}</th><th>${esc(B.n)}: ${V("rã bao ở","opened at")}</th><th>${esc(A.n)}: ${V("rã bao ở","opened at")}</th><th>${V("Rã bao thêm","Extra openings")}</th><th class="n">${V("Giá thêm / đơn","Extra cost / order")}</th></tr></thead><tbody>${c.rows.map(x=>`<tr><td><b>${esc(x.g)}</b>${vn(x.v)?` <span class="meta">${vn(x.v)}</span>`:""}</td><td>${x.b.ci<0?"–":x.b.op.map(s=>esc(ssn(s))).join(" + ")}</td><td>${x.a.ci<0?"–":x.a.op.map(s=>esc(ssn(s))).join(" + ")}</td>
+        <td>${x.extra.length?`<span class="chip late">+${x.extra.map(s=>esc(ssn(s))).join(", +")}</span>`:x.fewer.length?`<span class="chip ok">−${x.fewer.map(s=>esc(ssn(s))).join(", −")}</span>`:"–"}</td><td class="n">${x.dc==null?(x.extra.length||x.fewer.length?`<span class="meta">${V("thiếu giá","no rate")}</span>`:"–"):x.dc===0?"0":(x.dc>0?"+":"−")+dn(Math.abs(x.dc))}</td></tr>`).join("")}</tbody></table></div>
+      <p class="hint">${V("Giá thêm / đơn của từng nhóm; tổng của một seller = Σ % đơn theo sort code × giá thêm — nối khi có dữ liệu đơn theo sort code và điểm D2S.","Extra cost per order by group; a seller's total = Σ order share by sort code × extra cost — wired in once orders by sort code and D2S station arrive.")}</p>`;}
+  const cmpSec=`<section class="panel sec"><h2>${V("So sánh D2S với FLM chuẩn","D2S vs standard FLM")}</h2><p class="sub">${V("FLM chia chute riêng cho SOC đích thì SOC 1 chỉ transit; seller D2S gom ít chute hơn thì SOC 1 phải rã bao, sort lại — phần chênh này là chi phí sort thêm của D2S.","Where FLM makes a separate chute per destination SOC, SOC 1 only transits; a D2S seller with fewer chutes makes SOC 1 open and re-sort — that gap is D2S's extra sorting cost.")}</p>
+    <div class="row" style="grid-template-columns:auto 1fr auto 1fr;gap:8px;margin-bottom:8px"><label for="nca">D2S</label><select id="nca">${DS.map(p=>`<option value="${esc(p.id)}"${p.id===SPX.a?" selected":""}>${esc(p.n)}</option>`).join("")}</select><label for="ncb">FLM</label><select id="ncb">${FS.map(p=>`<option value="${esc(p.id)}"${p.id===SPX.b?" selected":""}>${esc(p.n)}</option>`).join("")}</select></div>
+    ${cmp||`<p class="meta">${V("Cần ít nhất một cài đặt D2S và một FLM có chute.","Needs at least one D2S setting and one FLM setting with chutes.")}</p>`}</section>`;
+  /* SOC: có máy ASM không, % đơn sort được trên ASM (phần còn lại sort tay), giá một lần rã bao */
+  const used=s=>N.groups.some(z=>z.lm===s||z.hv===s||z.via===s)||N.profs.some(p=>p.ch.some(c=>c.to===s));
+  const socSec=`<section class="panel sec"><h2>${V("SOC & giá sort lại","SOCs & re-sort cost")}</h2><p class="sub">${V("SOC có máy ASM (BD A, BD B): % đơn sort được trên ASM + % sort tay = 100%. SOC khác: 100% sort tay.","SOCs with an ASM (BD A, BD B): % sortable on the ASM + % by hand = 100%. Other SOCs: 100% by hand.")}</p>
+    <div class="trio" style="grid-template-columns:repeat(2,minmax(0,220px));margin-bottom:8px"><label for="ncm">${V("Giá sort tay ở SOC (đ/đơn)","Hand sort at SOC (VND/order)")}<input type="number" id="ncm" min="0" step="10" placeholder="${man}" value="${N.cost.man??""}"></label><label for="nca2">${V("Giá sort trên ASM (đ/đơn)","ASM sort (VND/order)")}<input type="number" id="nca2" min="0" step="10" placeholder="${V("chưa có","not set")}" value="${N.cost.asm??""}"></label></div>
+    <p class="hint" style="margin:0 0 8px">${V(`Trống = giả định model hiện có: ${nf(REF.P.socPay||520000)} đ/người/ca ÷ ${nf(REF.P.prodBase||2000)} đơn = ${nf(man)} đ/đơn. Giá ASM và % sort được trên ASM chưa có số: cần Ops / SOC cung cấp.`,`Blank = the model's current assumption: ${nf(REF.P.socPay||520000)} VND/person/shift ÷ ${nf(REF.P.prodBase||2000)} orders = ${nf(man)} VND/order. ASM rate and % sortable on the ASM are not known yet: needed from Ops / SOC.`)}</p>
+    <div class="tw"><table><thead><tr><th>SOC</th><th>ASM</th><th class="n">% ${V("sort trên ASM","on ASM")}</th><th class="n">% ${V("sort tay","by hand")}</th><th class="n">${V("Giá 1 lần rã bao / đơn","Cost per opening / order")}</th><th></th></tr></thead><tbody>${N.socs.map((z,i)=>`<tr><td>${esc(z.s)}</td><td><input type="checkbox" data-nsasm="${i}"${z.asm?" checked":""} aria-label="ASM ${esc(z.s)}"></td><td class="n">${z.asm?`<input type="number" data-nspct="${i}" min="0" max="100" step="5" style="width:70px" placeholder="?" value="${z.pct??""}" aria-label="% ASM ${esc(z.s)}">`:"–"}</td><td class="n">${z.asm?(z.pct==null||z.pct===""?"?":nf(100-Math.min(100,Math.max(0,+z.pct)))):"100"}</td><td class="n">${sc(z.s)}</td><td>${used(z.s)?"":`<button type="button" class="ghost" data-nsdel="${i}" aria-label="${V("Bỏ","Remove")} ${esc(z.s)}">×</button>`}</td></tr>`).join("")}</tbody></table></div>
+    <div class="savebar"><input type="text" id="nsadd" placeholder="${V("Tên SOC mới","New SOC name")}" style="width:180px"><button type="button" class="ghost" data-nsaddb>+ SOC</button></div></section>`;
+  /* nhóm LM: sort code thuộc nhóm, SOC sort tới LM hub, SOC riêng cho hàng nặng / DG, SOC chỉ chuyển tiếp sau khi sort */
+  const opt=(v,none)=>(none?`<option value="">—</option>`:"")+SN.map(s=>`<option value="${esc(s)}"${s===v?" selected":""}>${esc(s)}</option>`).join("");
+  const grpSec=`<section class="panel sec"><h2>${V("Nhóm LM & sort code","LM groups & sort codes")}</h2><p class="sub">${V("Mỗi nhóm: SOC sort tới LM hub; hàng nặng / DG có thể do SOC khác sort (như Cen2 ở Mini SOC); chuyển tiếp qua = SOC chỉ transit sau khi đã sort tới LM hub. Sort code điền khi có dữ liệu đơn theo sort code.","Each group: the SOC that sorts it to LM hubs; heavy / DG goods may be sorted by another SOC (like Cen2 at Mini SOC); via = a SOC that only transits after the LM sort. Sort codes are filled in once orders by sort code arrive.")}</p>
+    <div class="tw"><table><thead><tr><th>${V("Nhóm","Group")}</th><th>Sort code</th><th>${V("SOC sort tới LM hub","SOC sorting to LM hub")}</th><th>${V("SOC sort HV, DG","SOC sorting HV, DG")}</th><th>${V("Chuyển tiếp qua","Via")}</th><th></th></tr></thead><tbody>${N.groups.map((z,i)=>`<tr><td><input type="text" data-ngn="${i}" value="${esc(z.g)}" style="width:120px" aria-label="${V("Tên nhóm","Group name")}"></td><td><input type="text" data-ngc="${i}" value="${esc(z.codes||"")}" placeholder="${V("chờ dữ liệu","awaiting data")}" style="width:160px" aria-label="Sort code ${esc(z.g)}"></td>
+      <td><select data-ngl="${i}">${opt(z.lm)}</select></td><td><select data-ngh="${i}">${opt(z.hv||"",1)}</select></td><td><select data-ngv="${i}">${opt(z.via||"",1)}</select></td><td><button type="button" class="ghost" data-ngdel="${i}" aria-label="${V("Bỏ nhóm","Remove group")} ${esc(z.g)}">×</button></td></tr>`).join("")}</tbody></table></div>
+    <div class="savebar"><input type="text" id="ngadd" placeholder="${V("Tên nhóm mới","New group name")}" style="width:180px"><button type="button" class="ghost" data-ngaddb>+ ${V("Nhóm","Group")}</button></div></section>`;
+  const ae=document.activeElement,keep=ae&&ae.id&&el.contains(ae)?{id:ae.id,v:ae.value}:null;
+  el.innerHTML=head+`<section class="panel sec"><h2>${V("Cài đặt sort","Sort settings")}</h2><p class="sub">${V("Chọn điểm gốc: FLM chuẩn theo vùng FM Hub, hoặc một cài đặt D2S. Kéo nhóm LM vào chute, chọn TO của chute đi SOC 1; luồng sau SOC 1 tự suy ra.","Pick an origin: a standard FLM area, or a D2S setting. Drag LM groups into chutes and pick each chute's TO SOC 1; flows after SOC 1 follow automatically.")}</p>${tabs}${board}</section>`+cmpSec+socSec+grpSec;
+  if(keep){const k=$(keep.id);if(k){k.value=keep.v;k.focus();}}
+  const by=SPX.saved&&SPX.saved.by;if(by&&SAVE.user&&!SPX.dirty)SAVE.user.profiles([by]).then(ps=>{const b=el.querySelector(".nby");if(b&&ps[by]&&ps[by].name)b.textContent=` · ${ps[by].name}`;}).catch(()=>{});}
+/* sửa cài đặt: chuyển nhóm giữa chute (kéo thả hoặc chạm), thêm / bớt chute, đổi TO, thêm / bớt điểm gốc, SOC, nhóm */
+function spnMove(g,ci){spnEdit(N=>{const P=N.profs.find(p=>p.id===SPX.p);if(!P)return;P.ch.forEach(c=>{c.g=c.g.filter(x=>x!==g);});if(ci>=0&&P.ch[ci])P.ch[ci].g.push(g);});}
+$("net").addEventListener("click",e=>{const t=e.target,c=s=>t.closest(s);let b;
+  if(c("[data-nsave]")){spnSave();return;}
+  if(c("[data-nreset]")){spnEdit(N=>{Object.assign(N,spnClone(NS_NET));});return;}
+  if((b=c("[data-np]"))){SPX.p=b.dataset.np;SPX.sel=null;SPX.arm=null;drawNet();return;}
+  if((b=c("[data-npadd]"))){const k=b.dataset.npadd,id=k+"_"+newId();spnEdit(N=>{N.profs.push({id,n:k==="flm"?(L?"New FLM":"FLM mới"):(L?"New D2S":"D2S mới"),k,src:"",ch:[{to:"BD A Mega SOC",g:[]}]});});SPX.p=id;drawNet();return;}
+  if((b=c("[data-npdel]"))){const id=b.dataset.npdel;if(SPX.arm!==id){SPX.arm=id;drawNet();return;}SPX.arm=null;spnEdit(N=>{N.profs=N.profs.filter(p=>p.id!==id);});return;}
+  if(c("[data-ncadd]")){spnEdit(N=>{const P=N.profs.find(p=>p.id===SPX.p);if(P)P.ch.push({to:(P.ch[P.ch.length-1]||{}).to||"BD A Mega SOC",g:[]});});return;}
+  if((b=c("[data-ncdel]"))){const i=+b.dataset.ncdel;spnEdit(N=>{const P=N.profs.find(p=>p.id===SPX.p);if(P)P.ch.splice(i,1);});return;}
+  if((b=c("[data-ng]"))){SPX.sel=SPX.sel===b.dataset.ng?null:b.dataset.ng;drawNet();return;}
+  if((b=c("[data-nchu]"))&&SPX.sel&&!c("select,label,button")){const g=SPX.sel;SPX.sel=null;spnMove(g,+b.dataset.nchu);return;}
+  if((b=c("[data-nsdel]"))){const i=+b.dataset.nsdel;spnEdit(N=>{N.socs.splice(i,1);});return;}
+  if(c("[data-nsaddb]")){const v=($("nsadd").value||"").trim();if(!v)return;spnEdit(N=>{if(!N.socs.some(z=>z.s===v))N.socs.push({s:v,asm:false});});return;}
+  if((b=c("[data-ngdel]"))){const i=+b.dataset.ngdel;spnEdit(N=>{const g=N.groups[i].g;N.groups.splice(i,1);N.profs.forEach(p=>p.ch.forEach(q=>{q.g=q.g.filter(x=>x!==g);}));});return;}
+  if(c("[data-ngaddb]")){const v=($("ngadd").value||"").trim();if(!v)return;spnEdit(N=>{if(!N.groups.some(z=>z.g===v))N.groups.push({g:v,lm:"BD A Mega SOC",codes:""});});return;}});
+$("net").addEventListener("change",e=>{const t=e.target,d=t.dataset,num=v=>v.trim()===""?null:Math.max(0,+v||0);
+  if(t.id==="nca"){SPX.a=t.value;drawNet();return;}if(t.id==="ncb"){SPX.b=t.value;drawNet();return;}
+  if(t.id==="npn"){const v=t.value.trim();if(v)spnEdit(N=>{const P=N.profs.find(p=>p.id===SPX.p);if(P)P.n=v;});return;}
+  if(t.id==="ncm"){spnEdit(N=>{N.cost.man=num(t.value);});return;}if(t.id==="nca2"){spnEdit(N=>{N.cost.asm=num(t.value);});return;}
+  if(d.ncto!=null){spnEdit(N=>{const P=N.profs.find(p=>p.id===SPX.p);if(P&&P.ch[+d.ncto])P.ch[+d.ncto].to=t.value;});return;}
+  if(d.nsasm!=null){spnEdit(N=>{const z=N.socs[+d.nsasm];z.asm=t.checked;if(!z.asm)delete z.pct;else if(!("pct" in z))z.pct=null;});return;}
+  if(d.nspct!=null){spnEdit(N=>{const v=num(t.value);N.socs[+d.nspct].pct=v==null?null:Math.min(100,v);});return;}
+  if(d.ngn!=null){const v=t.value.trim(),i=+d.ngn;spnEdit(N=>{const old=N.groups[i].g;if(!v||N.groups.some((z,j)=>j!==i&&z.g===v))return;N.groups[i].g=v;N.profs.forEach(p=>p.ch.forEach(q=>{q.g=q.g.map(x=>x===old?v:x);}));});return;}
+  if(d.ngc!=null){spnEdit(N=>{N.groups[+d.ngc].codes=t.value.trim();});return;}
+  if(d.ngl!=null){spnEdit(N=>{N.groups[+d.ngl].lm=t.value;});return;}
+  if(d.ngh!=null){spnEdit(N=>{const z=N.groups[+d.ngh];if(t.value)z.hv=t.value;else delete z.hv;});return;}
+  if(d.ngv!=null){spnEdit(N=>{const z=N.groups[+d.ngv];if(t.value)z.via=t.value;else delete z.via;});return;}});
+$("net").addEventListener("input",e=>e.stopPropagation());
+$("net").addEventListener("dragstart",e=>{const c=e.target.closest("[data-ng]");if(!c)return;e.dataTransfer.setData("text/plain",c.dataset.ng);e.dataTransfer.effectAllowed="move";});
+$("net").addEventListener("dragover",e=>{const c=e.target.closest("[data-nchu]");if(!c)return;e.preventDefault();c.classList.add("ov");});
+$("net").addEventListener("dragleave",e=>{const c=e.target.closest("[data-nchu]");if(c&&!c.contains(e.relatedTarget))c.classList.remove("ov");});
+$("net").addEventListener("drop",e=>{const c=e.target.closest("[data-nchu]");if(!c)return;e.preventDefault();const g=e.dataTransfer.getData("text/plain");if(g)spnMove(g,+c.dataset.nchu);});
 mkWorker();drawForm();render();initSave();
 })();
 </script>
