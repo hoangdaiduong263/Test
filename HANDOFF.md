@@ -42,6 +42,8 @@ node core/qa/cap_check.js data/data.js          # sức chở học được: đ
 node core/qa/page_test.js out/D2S_New_Seller.html out/shots   # chạy trang thật: form mẫu → kết quả, seller đang chạy, mạng lưới, mobile, lỗi JS
 node core/qa/asm_test.js  out/D2S_New_Seller.html out/shots   # tab Giả định & ràng buộc (desktop + mobile, tràn ngang, lỗi JS)
 ```
+- Build tự tạo thư mục `out/`. Seller nào lỗi khi tính → build in "LỖI: … seller bị bỏ khỏi trang" và trả mã lỗi 1.
+- `ns_fuzz.js`, `page_test.js`, `asm_test.js` trả mã lỗi 1 khi có lỗi. `page_test.js` so **số chuẩn** của bản build mặc định (Tân Phú −28,8 / +80,3 tr; HCM −181,6 tr; South +154,8 tr — hằng `GOLD` đầu file). Đổi dữ liệu hoặc engine có chủ ý → sửa `GOLD`.
 Publish: Artifact tool, cập nhật đúng link cũ bằng `url` (phiên mới phải `read` artifact trước rồi mới publish được).
 
 ## 4. Artifact

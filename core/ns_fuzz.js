@@ -51,3 +51,4 @@ for(let it=0;it<N;it++){
 console.log("cases",N,"exceptions",nErr,"avg ms",(tSum/N).toFixed(0),"max ms",tMax);
 for(const k in issues)console.log(k.padEnd(36),issues[k].length,JSON.stringify(issues[k].slice(0,2)).slice(0,600));
 console.log("slowest",JSON.stringify(worstCase).slice(0,500));
+if(nErr||Object.keys(issues).length)process.exitCode=1;

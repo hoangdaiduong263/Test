@@ -35,9 +35,9 @@ const profOf = (q, R) => { const G = ref.reg[R], open = ref.P.open, a3 = q.a3 &&
     socsReal: Object.entries(q.soc || {}).map(([s, v]) => ({ s, sh: Math.round(v * 1000) / 10, km: q.skm && q.skm[s] != null ? q.skm[s] : (G.km[s] ?? 15), fw: false })),
     mix: pv ? pv.sh : avgHCM, mixSrc: pv ? "pivot" : "avg", boards: [0, 1, 2].map(() => L2.ns2Derived(q.soc)) }; };
 const fillOf = p => { let n = 0, c = 0; p.days.forEach(d => { if (!(d.X > 0)) return; d.W.forEach(w => (w.trk || []).forEach(z => { if (z.fill > 0) { n += z.q * d.n; c += z.q / z.fill * d.n; } })); }); return c ? Math.round(n / c * 100) : null; };
-const run = {};
+const run = {}, failed = [];
 for (const R of REG) { const G = ref.reg[R]; if (!G) continue; run[R] = G.pts.map(q => {
-  const prof = profOf(q, R), x = L2.ns2X(prof, socLL); let p; try { p = nsPlan(ref, x); } catch (e) { console.error(q.n, e.message); return null; }
+  const prof = profOf(q, R), x = L2.ns2X(prof, socLL); let p; try { p = nsPlan(ref, x); } catch (e) { console.error(q.n, e.message); failed.push(q.n); return null; }
   const m = p.month, i = idxOf[q.n], ordReal = i != null ? C.S[i].v.reduce((a, v) => a + (v || 0), 0) : 0, trReal = i != null ? C.realCost(i) : 0;
   /* THỰC TẾ CẢ KỲ: chuyến thật (phần chuyến của điểm × giá theo cỡ xe), độ đầy = đơn ÷ sức chở các chuyến đó (sức chở học được của chính điểm) */
   let tripEq = 0, capEq = 0, nDays = 0; const kind = {};
@@ -66,5 +66,7 @@ const XT = { socLL, hubs, piv: Object.fromEntries(Object.values(ref.reg).flatMap
 let page = fs.readFileSync(path.join(__dirname, "ns2_page.html"), "utf8");
 const strip = f => fs.readFileSync(path.join(__dirname, f), "utf8").replace(/^if \(typeof module.*$/m, "");
 for (const [tag, v] of [["/*NSREF*/", JSON.stringify(ref)], ["/*NSXT*/", JSON.stringify(XT)], ["/*NSJS*/", strip("newseller.js") + "\n" + strip("ns2_lib.js")], ["/*NSUI*/", fs.readFileSync(path.join(__dirname, "ns2_ui.js"), "utf8")]]) { if (page.split(tag).length !== 2) throw tag; page = page.replace(tag, () => v.replace(/<\/script/g, "<\\/script")); }
-fs.writeFileSync(out, page); console.log(out, (page.length / 1e3).toFixed(0), "kB ·", ref.dates.join(" → "), "·", Object.entries(run).map(([R, L]) => R + " " + L.length).join(", "));
-if (process.env.NS_DUMP) fs.writeFileSync(process.env.NS_DUMP, JSON.stringify({ ref, XT }));
+fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, page); console.log(out, (page.length / 1e3).toFixed(0), "kB ·", ref.dates.join(" → "), "·", Object.entries(run).map(([R, L]) => R + " " + L.length).join(", "));
+if (process.env.NS_DUMP) { fs.mkdirSync(path.dirname(process.env.NS_DUMP), { recursive: true }); fs.writeFileSync(process.env.NS_DUMP, JSON.stringify({ ref, XT })); }
+/* seller lỗi bị bỏ khỏi trang → tổng vùng sai: báo và trả mã lỗi */
+if (failed.length) { console.error("LỖI:", failed.length, "seller bị bỏ khỏi trang:", failed.join(" | ")); process.exitCode = 1; }

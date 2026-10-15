@@ -10,4 +10,4 @@ const { chromium } = require("playwright"); (async () => { const b = await chrom
       console.log("from B nav", await p.$$eval("#stepNav button:not([hidden])", e => e.map(x => x.textContent.trim()).join(" / ")));
       await p.click('#stepNav [data-nav="run"]'); await p.waitForTimeout(200); console.log("run ins", (await p.textContent("#run-ins")).slice(0, 400)); console.log("ba flags", await p.$$eval("#t-run tbody tr", e => e.filter(r => /hàng to = tổng/.test(r.textContent)).length)); }
     await p.close(); }
-  console.log("errors", JSON.stringify(errs)); await b.close(); })();
+  console.log("errors", JSON.stringify(errs)); await b.close(); if (errs.length) process.exitCode = 1; })();
