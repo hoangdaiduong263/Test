@@ -1,0 +1,13 @@
+const fs = require("fs"), { Core } = require("../engine.js"), { sliceD } = require("../sliceD.js");
+const src = fs.readFileSync(process.argv[2], "utf8"), D0 = eval("(" + src.match(/^const D=(.*);$/m)[1] + ")"), REF = eval("(" + src.match(/^const REF=(.*);$/m)[1] + ")");
+const show = (lab, C) => { const K = C.learnK(); console.log(lab, "điểm", C.S.length, "· sat", K.nSat, "· a", Math.round(K.a), "b", Math.round(K.b), "· RHO", Object.entries(K.RHO).map(([k, v]) => k + " " + v.toFixed(2)).join(", "), "· BA", K.nBA);
+  K.dem.forEach(o => console.log("  bỏ chạm trần:", o.n, o.k, o.c0, "→", o.c, "(so", o.from + ")"));
+  const at = b => Math.round(1 / ((1 - b) / K.a + b / K.b)); console.log("  1T9 @0/35/60/100%:", [0, .35, .6, 1].map(at).join(" / "));
+  return K; };
+const P0 = REF.P || {};
+const Cf = Core(D0, REF); show("FULL", Cf);
+const D = sliceD(D0, "2026-08-01", "2026-08-31", ["HCM", "South"]), C = Core(D, REF); show("AUG HCM+S", C);
+console.log("BA HCM+S Aug:", C.S.filter((_, i) => C.bulkAll(i)).length, "/", C.S.length);
+console.log(C.S.map((s, i) => i).filter(i => C.bulkAll(i)).map(i => C.nm(i)).join(" | "));
+C.adoptK(Cf); const K = C.learnK(); console.log("adopted a", Math.round(K.a), "from", JSON.stringify(K.from));
+["Top Gia", "Cocoon", "Flash", "MCL", "Keyphone", "BOX ME"].forEach(q => C.S.forEach((s, i) => { if (C.nm(i).includes(q)) console.log("  ", C.nm(i).slice(0, 34), ["1T9", "5T"].map(k => k + " " + Math.round(K.cap(i, k)) + " [" + K.conf(i, k) + "] " + K.src(i, k)).join(" · ")); }));

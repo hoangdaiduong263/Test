@@ -18,6 +18,8 @@ Data (đơn/ngày, chuyến thật, COT, toạ độ, giá xe)
 | `build.py` | Gộp data + engine + ui thành một trang: `python3 core/build.py <data.js> <out.html>` |
 | `extract.js` | Tách `data.js` từ app cũ: `node core/extract.js gas/App.html <app cũ .html> <data.js>` |
 | `test.js` | Chạy thử trên Node, in kết quả từng vùng: `node core/test.js <data.js> [vùng]` |
+| `pivot2json.js` | Volume by Sort Code (CSV) → `pivot.json` cho `build_ns2.js` |
+| `qa/` | Kiểm tra: `cap_check.js` (sức chở), `page_test.js` / `asm_test.js` (chạy trang thật bằng Playwright), `run_cmp.js` (so hai bản NS_DUMP) |
 
 `data.js` (khoảng 1,8 MB, có tên seller) không nằm trong repo.
 

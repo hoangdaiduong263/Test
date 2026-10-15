@@ -1,0 +1,6 @@
+const fs = require("fs"), A = JSON.parse(fs.readFileSync(process.argv[2])), B = JSON.parse(fs.readFileSync(process.argv[3])), tr = x => x == null ? "—" : (x / 1e6).toFixed(1);
+console.log("curve", JSON.stringify(B.ref.curve && { a: B.ref.curve.a, b: B.ref.curve.b, rho: B.ref.curve.rho, nSat: B.ref.curve.nSat, nBA: B.ref.curve.nBA, dem: B.ref.curve.dem.length }));
+for (const R of Object.keys(B.XT.run)) { const a = A.XT.run[R], b = B.XT.run[R]; let s0 = 0, s1 = 0, g0 = 0, g1 = 0; console.log("==", R);
+  b.forEach(r => { const o = a.find(z => z.n === r.n) || {}; s0 += o.estT8 || 0; s1 += r.estT8; g0 += o.best ? o.best.g : 0; g1 += r.best ? r.best.g : 0;
+    console.log((r.ba ? "*" : " ") + r.n.replace(/^(HCMSeller|HCMSPC|SouthSeller|South Seller|South)-\s*/, "").slice(0, 26).padEnd(26), "fill", String(o.fillReal).padStart(4), "→", String(r.fillReal).padStart(4), "| lãi", tr(o.estT8).padStart(7), "→", tr(r.estT8).padStart(7), "| best", (o.best ? o.best.k + " " + tr(o.best.g) : "—").padStart(12), "→", (r.best ? r.best.k + " " + tr(r.best.g) : "—").padStart(12), "| xe mô hình/đơn", Math.round(o.trModU || 0), "→", Math.round(r.trModU || 0)); });
+  console.log("Tổng lãi", tr(s0), "→", tr(s1), "· tổng đòn bẩy tốt nhất", tr(g0), "→", tr(g1)); }
