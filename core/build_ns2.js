@@ -7,7 +7,8 @@ const fs = require("fs"), path = require("path"), { Core } = require("./engine.j
 const [data, out, hsf, pvf] = process.argv.slice(2);
 const FROM = process.env.NS_FROM || "2026-08-01", TO = process.env.NS_TO || "2026-08-31", REG = (process.env.NS_REG || "HCM,South").split(",");
 const src = fs.readFileSync(data, "utf8"), D0 = eval("(" + src.match(/^const D=(.*);$/m)[1] + ")"), REF = eval("(" + src.match(/^const REF=(.*);$/m)[1] + ")");
-const D = sliceD(D0, FROM, TO, REG), C = Core(D, REF), ref = nsRef(C, REF);
+/* SỨC CHỞ học trên MỌI chuyến đang có (mọi kỳ, mọi vùng của data.js — cỡ xe và đơn không đổi theo tháng); số đơn, tiền xe thật, lời/lỗ vẫn chỉ tính trong kỳ */
+const D = sliceD(D0, FROM, TO, REG), C = Core(D, REF); C.adoptK(Core(D0, REF)); const ref = nsRef(C, REF);
 for (const R of Object.keys(ref.reg)) if (!REG.includes(R)) delete ref.reg[R];
 ref.sel = ref.sel.filter(s => REG.includes(s.R)); ref.dates = [D.dates[0], D.dates[D.dates.length - 1], D.dates.length];
 /* Hub / Sup cả vùng (core/hubsup.py): Sup điểm D2S thiếu hoặc lỗi thì lấy theo hub */
@@ -60,7 +61,7 @@ for (const R of REG) { const G = ref.reg[R]; if (!G) continue; run[R] = G.pts.ma
   return { n: q.n, R, ll: q.ll, hub: q.hub, sup: q.sup, a3: prof.ado, ordReal, nDays, trReal, estT8, cpoT8: ordReal ? (trReal + ordReal * (U(m.lab) + U(m.soc))) / ordReal : null, fmU: U(m.fm), labU: U(m.lab), socU: U(m.soc),
     fillReal, tripsDay: nDays ? +(tripEq / nDays).toFixed(1) : null, kMain, est: m.net, orders: m.orders, cost: m.cost, fm: m.fm, truck: m.truck, lab: m.lab, soc: m.soc,
     trRealU, trModU, fill: fillOf(p), trips: p.days.map(d => d.X > 0 ? d.trucks : null), hc: p.days.map(d => d.X > 0 ? d.hc : null), worst: Math.min(...p.days.filter(d => d.X > 0).map(d => d.worst)),
-    vd: p.verdict, chN, tos: prof.boards[0].map(c => c.to), soc: q.soc, mixSrc: prof.mixSrc, mix: prof.mix, rsSh: x.rsOv[0], b: q.b, lev, best, prof: Object.assign({}, prof, { socLL: undefined }) }; }).filter(Boolean); }
+    vd: p.verdict, ba: q.ba || 0, chN, tos: prof.boards[0].map(c => c.to), soc: q.soc, mixSrc: prof.mixSrc, mix: prof.mix, rsSh: x.rsOv[0], b: q.b, lev, best, prof: Object.assign({}, prof, { socLL: undefined }) }; }).filter(Boolean); }
 const XT = { socLL, hubs, piv: Object.fromEntries(Object.values(ref.reg).flatMap(G => G.pts).map(q => [q.n, pivOf(q.n)]).filter(e => e[1])), pivAvg: avgHCM, pivN: pivAll.reduce((a, p) => a + (p.n || 0), 0), pivPts: pivAll.length, run, from: FROM, to: TO };
 let page = fs.readFileSync(path.join(__dirname, "ns2_page.html"), "utf8");
 const strip = f => fs.readFileSync(path.join(__dirname, f), "utf8").replace(/^if \(typeof module.*$/m, "");

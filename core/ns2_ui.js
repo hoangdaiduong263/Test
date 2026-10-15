@@ -27,13 +27,14 @@ $("h-npts").textContent = Object.entries(XT.run).map(([R, L]) => `${L.length} đ
 $("ex-dates").textContent = `(${ddmm(REF.dates[0])} – ${ddmm(REF.dates[1])}, ${REF.dates[2]} ngày)`;
 
 /* ===== ĐIỀU HƯỚNG: trang chủ 2 thẻ, mỗi thẻ một bộ tab ===== */
-const SUITE = { home: "home", form: "A", busy: "A", dash: "A", run: "B", net: "B" }, VIEW = { home: "v-home", form: "v-form", busy: "v-busy", dash: "v-dash", run: "p-run", net: "p-net" };
-const HEAD = { home: ["D2S New Seller", "Hai việc khác nhau: đánh giá một seller sắp nhận, và xem các điểm D2S đang chạy để chỉnh cài đặt sort."], A: ["Đánh giá seller mới", "Điền thông tin seller sắp nhận, bấm tính: lời/lỗ, xe, người và ca, COT, cách chạy rẻ hơn, ghép xe và so với seller giống — trên số học từ dữ liệu thật."], B: ["Seller đang chạy & mạng lưới SPX", "Lời/lỗ từng điểm D2S đang chạy với tiền xe thật của kỳ, nút thắt và đòn bẩy tốt nhất; chỉnh cài đặt sort của từng điểm."] };
+/* asm (Giả định & ràng buộc) dùng chung cho cả hai bộ: giữ bộ tab đang mở */
+const SUITE = { home: "home", form: "A", busy: "A", dash: "A", run: "B", net: "B", asm: "*" }, VIEW = { home: "v-home", form: "v-form", busy: "v-busy", dash: "v-dash", run: "p-run", net: "p-net", asm: "v-asm" };
+const HEAD = { home: ["D2S New Seller", "Hai việc khác nhau: đánh giá một seller sắp nhận, và xem các điểm D2S đang chạy để chỉnh cài đặt sort."], A: ["Đánh giá seller mới", "Điền thông tin seller sắp nhận, bấm tính: lời/lỗ, xe, người và ca, COT, cách chạy rẻ hơn, ghép xe và so với seller giống — trên số học từ dữ liệu thật."], asm: ["Giả định & ràng buộc", "Mọi số, luật và cách mô hình xử lý chỗ thiếu dữ liệu — cho cả đánh giá seller mới lẫn seller đang chạy."], B: ["Seller đang chạy & mạng lưới SPX", "Lời/lỗ từng điểm D2S đang chạy với tiền xe thật của kỳ, nút thắt và đòn bẩy tốt nhất; chỉnh cài đặt sort của từng điểm."] };
 let DONE = false;
-function go(v) { const su = SUITE[v]; document.body.dataset.suite = su; Object.entries(VIEW).forEach(([k, id]) => { $(id).hidden = k !== v; });
-  $("stepNav").hidden = su === "home"; document.querySelectorAll("#stepNav [data-nav]").forEach(b => { const k = b.dataset.nav; b.hidden = SUITE[k] !== su; b.setAttribute("aria-current", (k === v || (v === "busy" && k === "dash")) ? "page" : "false"); if (k === "dash") b.disabled = !DONE; });
-  const h = HEAD[su === "home" ? "home" : su]; $("h-title").textContent = h[0]; $("h-sub").textContent = h[1];
-  if (v === "run") drawRun(); if (v === "net") drawNet(); window.scrollTo({ top: 0 }); }
+function go(v) { const ps = document.body.dataset.suite, su = SUITE[v] === "*" ? (ps === "A" || ps === "B" ? ps : "A") : SUITE[v]; document.body.dataset.suite = su; Object.entries(VIEW).forEach(([k, id]) => { $(id).hidden = k !== v; });
+  $("stepNav").hidden = su === "home"; document.querySelectorAll("#stepNav [data-nav]").forEach(b => { const k = b.dataset.nav; b.hidden = SUITE[k] !== su && SUITE[k] !== "*"; b.setAttribute("aria-current", (k === v || (v === "busy" && k === "dash")) ? "page" : "false"); if (k === "dash") b.disabled = !DONE; });
+  const h = v === "asm" ? HEAD.asm : HEAD[su === "home" ? "home" : su]; $("h-title").textContent = h[0]; $("h-sub").textContent = h[1];
+  if (v === "run") drawRun(); if (v === "net") drawNet(); if (v === "asm") drawAsm(); window.scrollTo({ top: 0 }); }
 document.addEventListener("click", e => { const b = e.target.closest("[data-nav],[data-go]"); if (!b || b.disabled) return; go(b.dataset.nav || b.dataset.go); });
 
 /* ===== DIỄN GIẢI & VÍ DỤ TỪNG Ô ===== */
@@ -106,10 +107,11 @@ function fillRegion() { const G = REF.reg[R], open = REF.P.open;
   $("f-pbase").placeholder = nf(REF.P.prodBase); $("f-phand").placeholder = nf(REF.P.prodHand); $("f-pchute").placeholder = REF.P.prodChute; $("f-pbulky").placeholder = REF.P.prodBulky; $("f-pfteh").placeholder = REF.P.fteH;
   BRD = [ns2Preset(R === "HCM" ? "3" : "1", R), null, null]; HIST = []; SEL = null; HUBMAN = false;
   capPh(); mixDefault(); markDefaults($("v-form")); }
-/* sức chở gợi ý theo % hàng to (trung vị seller cùng vùng ±10 điểm, như engine) */
-function capPh() { const be = (numv("f-bk") ?? 35) / 100; let pool = REF.sel.filter(s => s.R === R && Math.abs(s.b - be) <= 0.1); if (pool.length < 3) pool = REF.sel.filter(s => Math.abs(s.b - be) <= 0.1); if (pool.length < 3) pool = REF.sel.slice().sort((a, b) => Math.abs(a.b - be) - Math.abs(b.b - be)).slice(0, 5);
+/* sức chở gợi ý theo % hàng to: đường sức chở học được (như engine); ref cũ không có đường → trung vị seller giống */
+const curveAt = (be, k) => REF.curve ? (REF.curve.rho[k] || 0) / ((1 - be) / REF.curve.a + be / REF.curve.b) : null;
+function capPh() { const be = (numv("f-bk") ?? 35) / 100; const ok = REF.sel.filter(s => !s.ba); let pool = ok.filter(s => s.R === R && Math.abs(s.b - be) <= 0.1); if (pool.length < 3) pool = ok.filter(s => Math.abs(s.b - be) <= 0.1); if (pool.length < 3) pool = ok.slice().sort((a, b) => Math.abs(a.b - be) - Math.abs(b.b - be)).slice(0, 5);
   const med = a => { const b = a.filter(v => v > 0).sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; }; let prev = 0;
-  NS_KS.forEach((k, j) => { const v = Math.max(prev, med(pool.map(s => s.c[j]))); prev = v; const e = $("f-cap" + k); if (e) e.placeholder = v ? nf(v) : "—"; }); }
+  NS_KS.forEach((k, j) => { const v = Math.max(prev, REF.curve ? Math.round(curveAt(be, k)) : med(pool.map(s => s.c[j]))); prev = v; const e = $("f-cap" + k); if (e) e.placeholder = v ? nf(v) : "—"; }); }
 /* seller giống: cùng vùng, ADO BAU ±50% (khi đã nhập), gần nhất theo toạ độ */
 function peersOf(ll, a0, n) { const L = (XT.run[R] || []).filter(r => r.ll); let C = a0 > 0 ? L.filter(r => r.a3[0] > 0 && Math.abs(r.a3[0] - a0) <= 0.5 * a0) : L.slice();
   if (C.length < (n || 3)) C = C.concat(L.filter(r => !C.includes(r)).sort((a, b) => Math.abs((a.a3[0] || a.a3[2]) - (a0 || 0)) - Math.abs((b.a3[0] || b.a3[2]) - (a0 || 0))));
@@ -343,7 +345,11 @@ function drawTrk() { const p = cur(), d = p.days[TDT]; if (!(d.X > 0)) { $("c-tr
   const wm = d.W.filter(w => w.Q > 0.5).reduce((a, w) => !a || w.Q < a.Q ? w : a, null); if (wm) { const cp = trucksOf(wm).reduce((a, z) => a + capOf(z.k), 0), sp = Math.round(cp - wm.Q); if (sp > 100) t += ` Lượt ${cotL(wm.c.p)} còn trống ~${nf(sp)} đơn → chỗ để ghép xe với điểm nhỏ gần đó.`; }
   $("t-ins").textContent = t;
   const wb = d.W.filter(w => w.Q > 0.5).reduce((a, w) => !a || (trucksOf(w).reduce((s, z) => s + capOf(z.k), 0) - w.Q) < (trucksOf(a).reduce((s, z) => s + capOf(z.k), 0) - a.Q) ? w : a, null);
-  if (wb) { const cp = trucksOf(wb).reduce((s, z) => s + capOf(z.k), 0), th = d.X * cp / wb.Q; $("t-note").textContent = `Bậc xe: lượt ${cotL(wb.c.p)} đang dùng ${Math.round(wb.Q / cp * 100)}% sức chở các xe của lượt; ADO ${DTN[TDT]} vượt ~${nf(Math.round(th / 50) * 50)} thì lượt này phải thêm hoặc đổi xe. Sức chở 1T9 ~${nf(capOf("1T9"))} đơn, 5T ~${nf(capOf("5T"))} đơn (học từ chuyến thật, theo % hàng to).`; } }
+  if (wb) { const cp = trucksOf(wb).reduce((s, z) => s + capOf(z.k), 0), th = d.X * cp / wb.Q; $("t-note").textContent = `Bậc xe: lượt ${cotL(wb.c.p)} đang dùng ${Math.round(wb.Q / cp * 100)}% sức chở các xe của lượt; ADO ${DTN[TDT]} vượt ~${nf(Math.round(th / 50) * 50)} thì lượt này phải thêm hoặc đổi xe. ${capSrc(p)}`; } }
+/* nguồn sức chở đang dùng + dải seller giống để đối chiếu */
+function capSrc(p) { const c = k => (p.cap.find(z => z.k === k) || {}).q, h = p.how || {}, rg = h.rng && h.rng[NS_KS.indexOf("1T9")];
+  const src = h.ov ? "seller báo" : h.k === "like" ? `như ${shortN(h.name || "")}` : h.k === "curve" ? `đường sức chở theo % hàng to, học từ ${nf(REF.curve.nSat)} seller chạy đầy xe` : "trung vị seller giống";
+  return `Sức chở 1T9 ~${nf(c("1T9"))} đơn, 5T ~${nf(c("5T"))} đơn (${src}).` + (rg && h.k !== "like" ? ` Đối chiếu ${h.peers.length} seller giống (% hàng to ±10 điểm): 1T9 ${nf(rg[0])}–${nf(rg[2])}, trung vị ${nf(rg[1])}.` : ""); }
 /* ca gợi ý: một ca nếu khung làm ≤ 8 giờ; hai ca chồng giờ đỉnh nếu dài hơn — chia người theo khối việc mỗi nửa ngày (engine chưa giới hạn giờ mỗi người) */
 function shiftsOf(d, open) { const W = d.W.filter(w => (w.Qt || w.Q) > 0.5); if (!W.length || !(d.hc > 0)) return { st: open, en: open + 480, S: [] };
   const st = Math.min(open, ...W.map(w => w.a)), en = Math.max(...W.map(w => w.dep || w.done || w.b)) + 10, N = d.hc;
@@ -466,6 +472,7 @@ function drawRun() { const all = (XT.run[RR] || []).map(rowOf), q = $("q").value
   if (by("mrg").length) parts.push(`<b>${by("mrg").length}</b> điểm ghép được xe với tuyến gần Est. <b>+${sm(by("mrg"))}</b> tr`);
   if (by("hub").length) parts.push(`<b>${by("hub").length}</b> điểm nên dùng chung người FM Hub Est. <b>+${sm(by("hub"))}</b> tr`);
   if (by("fm").length) parts.push(`<b>${by("fm").length}</b> điểm lỗ mà không đòn bẩy nào cứu được → cân nhắc về FM pickup`);
+  const nBA = all.filter(r => r.ba).length; if (nBA) parts.push(`<b>${nBA}</b> điểm ghi hàng to = tổng đơn gần như mọi ngày (FM pickup đang tính 100% hàng to) — chờ BI xác nhận, xem tab Giả định &amp; ràng buộc`);
   $("run-ins").innerHTML = parts.join(". ") + (parts.length ? "." : "");
   $("run-h").textContent = `Est. tiết kiệm theo seller · ${ddmm(XT.from)}–${ddmm(XT.to)}`;
   const W = 760, L = 210, Rr = 66, rh = 22, H = Math.max(40, R2.length * rh + 28), vs = R2.map(r => tr(r.estT8)), mn = Math.min(0, Math.floor(Math.min(0, ...vs) / 25) * 25), mx = Math.max(25, Math.ceil(Math.max(0, ...vs) / 25) * 25), x = v => L + (W - L - Rr) * (v - mn) / (mx - mn || 1);
@@ -473,7 +480,7 @@ function drawRun() { const all = (XT.run[RR] || []).map(rowOf), q = $("q").value
   R2.forEach((r, i) => { const y = 4 + i * rh, v = tr(r.estT8), f = v >= 0 ? "var(--s1)" : "var(--s2)", x0 = v >= 0 ? x(0) : x(v), w = Math.abs(x(v) - x(0)), tt = `<b>${esc(shortN(r.n))}</b>: ${fs(v)} tr<br>Nút thắt: ${esc(botTxt(r))}<br>Đòn bẩy: ${esc(r.best ? r.best.t : "—")}${r.best ? ` · ${fs(tr(r.best.g))} tr` : ""}`;
     g += `<text x="${L - 8}" y="${y + 13}" text-anchor="end" style="fill:var(--ink)">${esc(shortN(r.n).slice(0, 30))}</text>` + (v >= 0 ? hbar(x0, y + 3, w, rh - 7, f, tt, true) : `<rect x="${x0}" y="${y + 3}" width="${w}" height="${rh - 7}" rx="3" fill="${f}" data-tip="${tt}"/>`) + `<text class="vl" x="${v >= 0 ? x(v) + 6 : x(0) + 6}" y="${y + 13}">${fs(v)}</text>`; });
   $("c-run").innerHTML = R2.length ? S(W, H, g, "Est. tiết kiệm theo seller") : `<p class="meta">Không có seller khớp bộ lọc.</p>`;
-  $("t-run").querySelector("tbody").innerHTML = R2.map(r => `<tr><td><b>${esc(shortN(r.n))}</b><span class="sub">${esc(r.hub || "")}${RUNO[r.n] ? " · đã chỉnh cài đặt sort" : ""}</span></td><td class="n">${r.a3.map(v => v ? nf(v) : "–").join(" / ")}<span class="sub">${nf(r.ordReal)} đơn kỳ</span></td><td class="n ${r.estT8 >= 0 ? "pos" : "neg"}">${fs(tr(r.estT8))} tr</td><td class="n">${nf(r.cpoT8)}<span class="sub">FM ${nf(r.fmU)}</span></td><td class="n">${r.fillReal == null ? "–" : r.fillReal > 100 ? "đi ghép" : "đầy " + r.fillReal + "%"}<span class="sub">${r.tripsDay == null ? "" : nf(r.tripsDay, 1) + " chuyến · " + (r.kMain || "")}</span></td><td style="white-space:nowrap">${r.chN} chute<span class="sub">${r.tos.map(SN).join(" · ")}</span><button class="lk" data-sort="${esc(r.n)}" style="font-size:12px">Cài đặt sort</button></td><td><span class="pill ${VL[vdOf(r)][1]}">${VL[vdOf(r)][0]}</span></td><td class="w">${esc(botTxt(r))}</td><td class="w"><b style="color:var(--ink)">${esc(r.best ? r.best.t : "Giữ nguyên")}</b>${r.best ? `<span class="sub" style="color:var(--good);font-family:var(--f-num)">Est. ${fs(tr(r.best.g))} tr/kỳ</span>` : ""}</td></tr>`).join(""); }
+  $("t-run").querySelector("tbody").innerHTML = R2.map(r => `<tr><td><b>${esc(shortN(r.n))}</b><span class="sub">${esc(r.hub || "")}${RUNO[r.n] ? " · đã chỉnh cài đặt sort" : ""}</span></td><td class="n">${r.a3.map(v => v ? nf(v) : "–").join(" / ")}<span class="sub">${nf(r.ordReal)} đơn kỳ</span></td><td class="n ${r.estT8 >= 0 ? "pos" : "neg"}">${fs(tr(r.estT8))} tr</td><td class="n">${nf(r.cpoT8)}<span class="sub">FM ${nf(r.fmU)}</span>${r.ba ? `<span class="sub" style="color:var(--warn)" title="File volume ghi hàng to = tổng đơn gần như mọi ngày: FM pickup đang tính như 100% hàng to (Est. có thể cao hơn thật). Chờ BI xác nhận.">hàng to = tổng?</span>` : ""}</td><td class="n">${r.fillReal == null ? "–" : r.fillReal > 100 ? "đi ghép" : "đầy " + r.fillReal + "%"}<span class="sub">${r.tripsDay == null ? "" : nf(r.tripsDay, 1) + " chuyến · " + (r.kMain || "")}</span></td><td style="white-space:nowrap">${r.chN} chute<span class="sub">${r.tos.map(SN).join(" · ")}</span><button class="lk" data-sort="${esc(r.n)}" style="font-size:12px">Cài đặt sort</button></td><td><span class="pill ${VL[vdOf(r)][1]}">${VL[vdOf(r)][0]}</span></td><td class="w">${esc(botTxt(r))}</td><td class="w"><b style="color:var(--ink)">${esc(r.best ? r.best.t : "Giữ nguyên")}</b>${r.best ? `<span class="sub" style="color:var(--good);font-family:var(--f-num)">Est. ${fs(tr(r.best.g))} tr/kỳ</span>` : ""}</td></tr>`).join(""); }
 $("p-run").addEventListener("click", e => { const s = e.target.closest("[data-sort]"); if (s) { ORG = s.dataset.sort; go("net"); } });
 
 /* ===== MẠNG LƯỚI SPX: cài đặt sort (sort code → chute → SOC) từng điểm; mặc định suy từ SOC xe thật tới ===== */
@@ -518,6 +525,148 @@ $("n-save").addEventListener("click", () => { const r = runOf(ORG); if (!r) retu
 $("t-map").innerHTML = NS2_CODES.map(g => `<tr><td><b>${g}</b></td><td class="n">${nf(XT.pivAvg[g] || 0, 1)}%</td><td>${esc(NS2_LMG[g])}</td><td>${SN(NS2_HOME[g])}</td><td>${NS2_DRAFT.includes(g) ? `<span class="tag">cần xác nhận</span>` : ""}</td></tr>`).join("");
 ["n-cman", "n-casm", "n-pa", "n-pb"].forEach(id => $(id).addEventListener("input", () => { const v = id => { const x = +String($(id).value).replace(",", "."); return $(id).value.trim() === "" || !isFinite(x) ? null : x; };
   NETC.man = v("n-cman") ?? 260; NETC.asm = v("n-casm"); NETC.pa = v("n-pa"); NETC.pb = v("n-pb"); drawNBoard(); drawBoard(); }));
+
+/* ===== GIẢ ĐỊNH & RÀNG BUỘC: mọi số, luật và cách mô hình xử lý chỗ thiếu dữ liệu (như tab cùng tên của Core Planner cũ) ===== */
+let ASMD = false;
+function drawAsm() { if (ASMD) return; ASMD = true;
+  const P = REF.P, dw = REF.dw, fm = REF.fm, K = REF.curve || null, d8 = REF.dates || [], RG = Object.keys(REF.reg), n = (v, d) => `<span class="num">${nf(v, d || 0)}</span>`;
+  const dd = s => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : "", rho = v => nf(v, 2);
+  const R3 = (a, b, c) => `<tr><td class="it">${a}</td><td>${b}</td><td class="src">${c}</td></tr>`;
+  const tb = (H, rows, cls) => `<div class="tw"><table class="asm-t ${cls || "st"}"><thead><tr>${H.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+  const H3 = ["Mục", "Đang dùng", "Căn cứ · cách xử lý"];
+  const SEC = [], sec = (id, t, sub, body) => { SEC.push([id, t]); return `<section class="card asm-s" id="asm-${id}"><h3>${t}</h3>${sub ? `<p class="cap">${sub}</p>` : ""}${body}</section>`; };
+  const pts = RG.flatMap(r => REF.reg[r].pts.map(q => Object.assign({ R: r }, q))), ba = pts.filter(q => q.ba);
+  const fmAt = be => (1 - be) * (fm.rS + fm.hS) + be * (fm.rS * fm.rM + fm.hS * fm.hM), c19 = be => K ? 1 / ((1 - be) / K.a + be / K.b) : null;
+  /* seller giống ở 35% hàng to (ví dụ dải đối chiếu) */
+  const pe = (() => { const ok = REF.sel.filter(s => !s.ba && Math.abs(s.b - 0.35) <= 0.1), a = ok.map(s => s.c[NS_KS.indexOf("1T9")]).filter(v => v > 0).sort((x, y) => x - y); return a.length ? { n: a.length, lo: a[0], hi: a[a.length - 1], md: a[a.length >> 1] } : null; })();
+  const body = [];
+  /* 1. tổng quan */
+  const C6 = [["Chi phí so với FM pickup", "Tiền xe + tiền người + tiền rã bao thêm ở SOC, so với đơn giá FM pickup theo % hàng to.", "ADO BAU / Mini CP / CP, số ngày, % hàng to", "Est. lời/tháng, đ/đơn, ADO hoà vốn"],
+    ["Xe", "Một xe chở được bao nhiêu đơn của seller (học từ chuyến thật), cỡ xe rẻ nhất mỗi lượt, mỗi SOC đích một đội xe.", "% hàng to, cỡ xe tối đa, km tới SOC, số seller báo", "Số chuyến, cỡ xe, độ đầy, bậc xe"],
+    ["Người", "Năng suất theo số chute và % hàng to; FTE riêng, nhóm FM Hub hay rider PPS; ca 8 giờ.", "Số chute, cách dùng người, số người tối đa", "Số người, ca, có phải làm thêm giờ"],
+    ["Bàn giao, giờ và COT", "Seller nhả hàng thế nào, tốc độ × số cổng, giao trễ; tới hạn COT xe phải đóng tải (xe vơi), hàng dồn lượt sau.", "Khung giờ, kiểu nhả hàng, số cổng, phút trễ", "Dư COT từng lượt, hàng dồn"],
+    ["Chute, TO và mạng lưới SPX", "14 nhóm sort → chute → SOC đích; phần đơn SOC đích phải rã bao thêm so với FLM chuẩn.", "Bảng chute, % đơn theo sort code", "Số SOC đích, tiền rã bao, cách chia chute rẻ nhất"],
+    ["Ràng buộc vận hành và ghép xe", "Cấm tải xe nặng, luật OE (South), ghép với tuyến D2S gần.", "Toạ độ, FM Hub, Sup", "Lượt bị chặn xe nặng, gợi ý ghép"]];
+  body.push(`<section class="card asm-s"><h3>Model xét những gì khi đánh giá một seller</h3><p class="cap">Một hồ sơ seller đi qua 6 nhóm yếu tố rồi ra một kết luận: nên chạy D2S, chạy được nhưng cần theo dõi, hay chưa nên. Seller đang chạy đi qua cùng engine, chỉ khác tiền xe lấy từ chuyến thật.</p>
+    <div class="cons">${C6.map((c, j) => `<div class="con"><h4><i>${j + 1}</i>${c[0]}</h4><p>${c[1]}</p><div class="io"><span><b>Đầu vào:</b> ${c[2]}</span><span><b>Ra:</b> ${c[3]}</span></div></div>`).join("")}</div></section>`);
+  /* 2. dữ liệu */
+  body.push(sec("data", "Dữ liệu dùng để học", "", tb(H3, [
+    R3("Đơn, tiền xe thật, lời/lỗ", `${dd(d8[0])} – ${dd(d8[1])} · ${n(d8[2])} ngày · ${RG.join(" & ")}`, "Cắt từ dữ liệu 01/08–18/09 toàn quốc: chỉ giữ ngày trong kỳ, điểm của 2 vùng và chuyến có lấy hàng ở các điểm đó; số SOC, số lượt mỗi điểm tính lại trên kỳ"),
+    R3("Sức chở xe", K && K.from ? `${dd(K.from.d0)} – ${dd(K.from.d1)} · ${n(K.from.days)} ngày · ${n(K.from.pts)} điểm mọi vùng` : "Cùng kỳ với số đơn", "Cỡ xe và kích thước đơn không đổi theo tháng. Học riêng tháng 8 của 2 vùng thì ít seller chạm trần hơn và nhiều số bị kéo thấp (vd Cocoon Juno 1T9 3.033 → 1.528 đơn), nên học trên mọi chuyến đang có"),
+    R3("Điểm D2S đang chạy", RG.map(r => `${r} ${n(REF.reg[r].pts.length)} điểm · ${n(REF.reg[r].rts.length)} tuyến`).join(" · "), "Tuyến theo kế hoạch Core; dùng để gợi ý ghép, suy cấm tải, so seller giống"),
+    R3("% đơn theo sort code", `${n(XT.pivPts)} điểm · ${n(XT.pivN)} đơn`, "Sheet “Volume by Sort Code” (đã bỏ 4PL, HCM, SIP). Điểm chưa có số (South) dùng trung bình có trọng số của các điểm HCM"),
+    R3("FM Hub → Sup", RG.map(r => `${r} ${n((REF.reg[r].hs || []).length)} hub`).join(" · "), "Sheet Network Address. Sup của điểm D2S thiếu hoặc lỗi thì lấy theo hub (khi hub chỉ có một Sup)"),
+    R3("Toạ độ SOC, hub, điểm", "Toạ độ trong dữ liệu", "Khoảng cách = đường chim bay × 1,3 (chưa có đường bộ thật)")])));
+  /* 3. sức chở */
+  if (K) { const BS = [0, 0.1, 0.25, 0.35, 0.5, 0.75, 1];
+    body.push(sec("cap", "Sức chở xe", "Câu hỏi “một xe chở được bao nhiêu đơn của seller này” quyết định số chuyến và tiền xe. Mô hình không dùng sức chở chuẩn của nhà xe: học từ số đơn seller đã thật sự chở trên từng cỡ xe, chỉ tính cái đã thấy được.", tb(H3, [
+      R3("[1] Chuyến chở một seller", "Xe coi là đầy (“chạm trần”) khi ≥ 30% chuyến (và ≥ 5 chuyến) có xe khác chạy song song cùng ngày, cùng SOC, rời cách ≤ 60′ → sức chở = p90 các chuyến song song. Chưa đầy → p95 số đã chở (cận dưới)", `Cần ≥ 8 chuyến mỗi seller × cỡ xe. Tự bỏ chuyến số đơn bất thường (log đơn > Q3 + 3·IQR): ${n(K.bad)} chuyến`),
+      R3("[2] Tỷ lệ giữa các cỡ xe", `So với 1T9: ${NS_KS.filter(k => k !== "1T9").map(k => `${k} ×${rho(K.rho[k])}`).join(" · ")}`, "Học từ seller chạm trần trên ≥ 2 cỡ; tỷ lệ thể tích thùng xe làm điểm tựa (nặng bằng 2 seller). 1T25 chưa có chuyến → theo thể tích"),
+      R3("[2b] Chạm trần trái tỷ lệ thể tích", `Cùng seller, số chạm trần của một cỡ quy về 1T9 thấp hơn ${n(70)}% mức cỡ khác đã chở → xe chạy song song vì lịch chứ chưa đầy: bỏ cờ chạm trần, cỡ đó quy theo kích thước đơn [6] (không dưới số đã thấy); học lại [2], lặp tới khi ổn định. ${K.dem.length} trường hợp: ${K.dem.map(o => `${esc(shortN(o.n).replace(/^NorthSeller_/, ""))} ${o.k} ${nf(o.c0)} → ${nf(o.c)}`).join("; ")}`, "Vd Top Gia HCM: xe 5T 583 đơn ≈ xe 1T9 488 đơn, trong khi 5T chứa gấp ~2 lần. Giữ số cũ thì mô hình coi 5T chở như 1T9 và không thấy thừa xe"),
+      R3("[3] Đường sức chở theo % hàng to", `1T9 = 1 ÷ ((1 − β) ÷ ${nf(K.a)} + β ÷ ${nf(K.b)}): toàn hàng nhỏ ${n(K.a)} đơn, toàn hàng to ${n(K.b)} đơn; cỡ khác × tỷ lệ [2]`, `Khớp trên ${n(K.nSat)} cặp seller × cỡ xe chạm trần (quy về 1T9); bỏ ${n(K.nBA)} điểm “hàng to = tổng đơn” (xem mục dưới)`),
+      R3("[4] Seller chỉ đi xe chung", "Phần chỗ còn lại trên xe chung (p90, ≥ 5 chuyến), trừ phần các seller khác đã chiếm", "Như Core"),
+      R3("[5] Sàn “đã thấy chở được”", "p95 số đơn của riêng seller trên một xe, trên mọi chuyến (kể cả xe chung, xe ghé hub; ≥ 3 chuyến): cỡ chưa chạm trần không thấp hơn mức này", "Như Core"),
+      R3("[6] Kích thước đơn của seller", "Mỗi seller một kích thước đơn, học chung trên mọi xe thật (so các seller với nhau qua xe chung). Cỡ seller chưa từng chạy = kích thước đơn × thể tích cỡ đó", "Như Core; độ tin “thấp”"),
+      R3("Cỡ lớn không chở ít hơn cỡ nhỏ", "Sức chở mỗi cỡ ≥ sức chở cao nhất của các cỡ nhỏ hơn", "Như Core"),
+      R3("Độ tin của từng số", "Cao = đo lúc xe chạm trần · Vừa = đã thấy chở được (1 mình, xe chung hoặc kích thước đơn trên chuyến thật) · Thấp = quy đổi từ cỡ khác / đường chung", "Hiện ở bảng từng điểm bên dưới"),
+      R3("Kiểm định", K.chk ? `${n(K.chk.n)} chuyến xe chở chung nhiều seller: theo các số này chuyến điển hình đầy ${n(K.chk.p50 * 100)}%, 90% chuyến đầy ≤ ${n(K.chk.p90 * 100)}%` : "—", "Số học từ xe một seller không vượt thực tế khi đem dùng cho xe chung"),
+      R3("% hàng to dùng để tính", "Bình quân của điểm trên cả kỳ, không theo từng ngày", "File volume ghi % hàng to nhảy 21–62% giữa các ngày trong khi xe thật không đổi; dùng từng ngày sẽ làm sức chở nhảy giả. Seller mới nhập % theo loại ngày (BAU / Mini CP / CP) thì sức chở ngày đó đổi theo đường [3]"),
+      R3("Seller mới", "Đường [3] tại % hàng to của seller (như Core với seller chưa có chuyến). Seller báo đơn/xe → dùng số seller báo (cỡ để trống suy theo tỷ lệ cỡ đã nhập gần nhất). Chọn “giống seller X” → dùng đúng số của X", pe ? `Dải seller giống (cùng vùng, % hàng to ±10 điểm, bỏ điểm hàng to = tổng) chỉ để đối chiếu, không dùng để tính: ở 35% hàng to, ${pe.n} seller dao động 1T9 ${nf(pe.lo)}–${nf(pe.hi)} đơn — quá rộng để lấy trung vị` : "Dải seller giống hiện kèm ở kết quả để đối chiếu"),
+      R3("Seller đang chạy", "Sức chở của chính điểm (các bước trên). Độ đầy xe thật = đơn thật ÷ Σ (số chuyến × sức chở của điểm theo cỡ xe)", "Trên 100% = điểm đi ghép xe với điểm khác")])
+      + `<h4 class="asm-h4">Đường [3] theo % hàng to (đơn/xe)</h4>` + tb(["Cỡ xe", ...BS.map(b => nf(b * 100) + "%")], NS_KS.filter(k => K.rho[k]).map(k => `<tr><td class="it">${k}</td>${BS.map(b => `<td class="n">${nf(c19(b) * K.rho[k])}</td>`).join("")}</tr>`), "num-t")
+      + `<details class="asm-d"><summary>Sức chở từng điểm đang chạy (1T9, 5T) và nguồn từng số</summary>` + tb(["Điểm", "% hàng to", "1T9", "5T", "Nguồn 1T9 · 5T"], pts.slice().sort((a, b) => a.R.localeCompare(b.R) || shortN(a.n).localeCompare(shortN(b.n))).map(q => { const j1 = NS_KS.indexOf("1T9"), j5 = NS_KS.indexOf("5T"), cl = j => q.cf && q.cf[j] === "c" ? "pos" : q.cf && q.cf[j] === "t" ? "muted" : "";
+        return `<tr><td class="it">${esc(shortN(q.n))}<span class="sub">${q.R}${q.ba ? " · hàng to = tổng?" : ""}</span></td><td class="n">${nf((q.b || 0) * 100)}%</td><td class="n ${cl(j1)}">${nf(q.c[j1])}</td><td class="n ${cl(j5)}">${nf(q.c[j5])}</td><td class="src">${esc((q.cs || [])[j1] || "")} · ${esc((q.cs || [])[j5] || "")}</td></tr>`; }), "cap-t")
+      + `<p class="hint">Xanh = độ tin cao (đo lúc chạm trần) · đen = vừa · nhạt = thấp (quy đổi).</p></details>`)); }
+  /* 4. hàng to = tổng */
+  body.push(sec("ba", "Điểm “hàng to = tổng đơn”", `${n(ba.length)}/${n(pts.length)} điểm đang chạy của kỳ có ≥ 90% số ngày có hàng ghi hàng to đúng bằng tổng đơn${K ? ` (trên toàn bộ dữ liệu: ${n(K.nBA)} điểm)` : ""}. Nhiều khả năng file volume ghi mặc định chứ chưa phải số đo — <b>cần BI xác nhận</b>.`, tb(H3, [
+    R3("Học sức chở theo % hàng to", "Loại các điểm này khỏi đường [3], khỏi định mức theo % hàng to và khỏi nhóm seller giống", "% hàng to 100% giả sẽ kéo lệch đường sức chở của mọi seller mới"),
+    R3("Sức chở riêng của điểm", "Giữ nguyên", "Học từ số đơn trên xe, không cần % hàng to"),
+    R3("Đơn giá FM pickup của điểm", `Vẫn theo file: 100% hàng to → ${n(fmAt(1))} đ/đơn (ở 35% hàng to là ${n(fmAt(0.35))} đ/đơn)`, "Est. của các điểm này có thể cao hơn thật; bảng Seller đang chạy gắn nhãn “hàng to = tổng?”. Có số BI thì sửa trong dữ liệu, không cần sửa model")])
+    + `<div class="chips-s" style="margin-top:10px">${ba.map(q => `<span class="chip-s">${esc(shortN(q.n))} · ${q.R}</span>`).join("")}</div>`));
+  /* 5. xe và giá */
+  body.push(sec("truck", "Xe và giá", "", tb(H3, [
+    R3("Cỡ xe", `${NS_KS.join(" · ")}; cỡ có ở vùng: ${RG.map(r => `${r} ${(REF.reg[r].fleet || []).join(", ")}`).join(" · ")}`, `Cỡ có ≥ 5 chuyến thật trong kỳ (${RG.map(r => `${r}: ${Object.entries(REF.reg[r].fleetN || {}).map(([k, v]) => k + " " + nf(v)).join(", ")}`).join(" · ")}); cỡ khác coi như không có xe`),
+    R3("Giá thuê chuyến", RG.map(r => `${r}: ${NS_KS.map(k => `${k} ${nf(REF.reg[r].price[k][0] / 1e3)}k`).join(" · ")}`).join("<br>"), "Bảng giá nhà xe của vùng, theo km tới SOC (bậc 5 km)"),
+    R3("Đi vòng thêm 1 km", RG.map(r => `${r}: ${NS_KS.map(k => `${k} ${nf(REF.reg[r].pkm[k] / 1e3, 1)}k`).join(" · ")}`).join("<br>"), "Chênh giá giữa 2 bậc km"),
+    R3("Đội xe mỗi lượt", "n xe cỡ chính + 1 xe vừa phần lẻ, chọn tổ hợp rẻ nhất; mỗi xe ≤ 100% sức chở học được; mỗi SOC đích một đội xe", "Như Core Planner"),
+    R3("Khoảng cách, tốc độ", `Chim bay × 1,3 · ${nf(dw.spd * 60)} km/h`, "Trung vị chuyến thật; chưa có đường bộ thật"),
+    R3("Tiền xe seller đang chạy", "Tiền xe thật của kỳ: phần chuyến của điểm × giá theo cỡ xe", "Lời/lỗ hiện tại không dùng xe mô hình; xe mô hình chỉ dùng để đo đòn bẩy “đặt xe đúng cỡ” và “gộp 1 chute”")])));
+  /* 6. giờ và COT */
+  body.push(sec("cot", "Giờ và COT", "", tb(["Vùng", "Lượt", "Khung bàn giao mặc định", "Hạn xe rời điểm"], RG.flatMap(r => REF.reg[r].cots.map((c, k) => `<tr><td class="it">${k ? "" : r}</td><td>Lượt ${k + 1}</td><td>${c.a > -1e8 ? hm(c.a) : hm(P.open)} – ${cotL(c.b)}</td><td>${cotL(c.p)}</td></tr>`)), "cot-t")
+    + tb(H3, [
+      R3("Xe rời sau khi hàng xong", `${n(P.closeMin)}′`, "Như mô phỏng Core"),
+      R3("Thời gian chất một xe", `${nf(dw.fix, 1)}′ + ${nf(dw.rate * 100, 1)}′ mỗi 100 đơn`, "Trung vị toàn mạng; nhập số của điểm thì dùng số điểm"),
+      R3("Người bắt đầu làm", hm(P.open), "<b>Giả định</b>; sửa ở form"),
+      R3("Seller nhả hàng", "Đều trong khung nếu chưa nhập; có thể chọn dồn cuối, một cục, theo đợt; tốc độ × số cổng", "Seller đang chạy: khung theo giờ xe rời thật của điểm"),
+      R3("Trễ COT cho phép", `Xe rời sau hạn COT không quá ${n(NS_LATE)}′ vẫn tính là kịp nhưng chip vàng “theo dõi” — không bao giờ xanh; hơn ${n(NS_LATE)}′ là trễ (đỏ)`, "Đổi ở ô “Cho trễ COT tối đa”; nhập “Dư COT tối thiểu” > 0 thì không cho trễ"),
+      R3("Tới hạn COT", "Xe đầy thì đi (xe lớn trước); tới hạn COT xe đóng tải với hàng đã xử lý (xe vơi), phần còn lại dồn sang lượt sau; lượt sau thiếu chỗ thì gọi thêm xe (tính tiền). Lượt cuối không dồn được: chờ chở hết, quá COT thì tính trễ", "Như mô phỏng Core")])));
+  /* 7. người */
+  body.push(sec("ppl", "Người", "", tb(H3, [
+    R3("Năng suất sort", `${n(P.prodBase)} đơn/người/ngày (1 chute, 10% hàng to); −${P.prodChute}% mỗi chute thêm; −${P.prodBulky}% mỗi 10 điểm % hàng to lệch khỏi 10% (mỗi hệ số không dưới 20%)`, "<b>Giả định</b> của Seller Planner cũ, chưa hiệu chỉnh bằng chấm công; chỉnh được ở form"),
+    R3("Việc không sort", `${n(P.prodHand)} đơn/người/ngày · ${n(P.fteH)} giờ sort trong ca ${n(P.shiftH)} giờ`, "<b>Giả định</b>"),
+    R3("Tiền người", `FTE riêng = nhóm FM Hub = ${n(P.ftePay / 1e3)}k/người/ca · rider PPS ${n(P.ppsRate)} đ/đơn`, `Nhóm Hub chỉ khác FTE ở chỗ dùng chung người giữa các điểm cùng hub (đi ≤ ${n(P.hubKm)} km, ${n(P.hubSpd)} km/h; làm + đi ≤ ca)`),
+    R3("Số người đề xuất", "Ít nhất mà mọi lượt kịp COT và không dồn hàng; thêm người khi trễ, không giới hạn (trừ khi nhập số người tối đa cấp được)", "Trễ do chỗ chất xe thì thêm người không giúp"),
+    R3("Giờ làm mỗi người", "Engine chia khối việc đều cho số người, không giới hạn giờ mỗi người. Trang tự xếp 1 hoặc 2 ca 8 giờ theo giờ hàng tới; khối việc vượt ca hơn 15′/người thì gắn cờ “làm thêm giờ”", "Tránh kết luận “thiếu 1 người vẫn chạy được” khi thật ra mỗi người phải làm quá ca"),
+    R3("Thiếu / thêm 1 người", "Chạy lại với đúng số người ±1 (không tự thêm người) để thấy COT, hàng dồn, tiền", "Số người thực tế nhập ở form thì COT, xe, tiền chạy theo số đó")])));
+  /* 8. chute, TO, rã bao */
+  body.push(sec("chute", "Chute, TO và rã bao ở SOC", "", tb(H3, [
+    R3("Nhóm sort → SOC nhà", `${NS2_CODES.length} sort code → nhóm LM trên slide mạng lưới → SOC mở bao như FLM chuẩn`, `Bản nháp chờ Ops xác nhận: ${NS2_DRAFT.join(", ")}. Xem và sửa ở tab Mạng lưới SPX → nâng cao`),
+    R3("Chute", "1 chute = 1 TO, đi đúng 1 SOC đích; trong TO có thể trộn đơn nhiều nhóm", "Theo vận hành"),
+    R3("Phần đơn phải rã bao thêm", "Chute bị mở ở SOC đích (trừ chute chỉ chứa nhóm của đúng một SOC nhà khác SOC đích — chuyển thẳng); nhóm nào SOC nhà khác SOC đích thì SOC đích phải sort lại thêm một lần", "So với FLM chuẩn (mỗi nhóm về đúng SOC nhà)"),
+    R3("Giá một lần rã bao", `${n(NETC.man)} đ/đơn sort tay; có giá ASM thì % đơn sort trên ASM × giá ASM + phần còn lại × giá tay (BD A, BD B)`, "Cài ở tab Mạng lưới SPX → nâng cao; áp cho cả seller mới và seller đang chạy"),
+    R3("Chuyển hàng giữa SOC", "Không tính vào D2S", "Khoản chi phí mới chưa duyệt"),
+    R3("Cách chia chute đề xuất", `Thử cài đặt đang nhập và các cách mẫu (${CANDS("HCM").map(c => c[1]).join("; ")}); chọn cách Est. cao nhất trong các cách kịp COT và đủ người (hơn ≥ 0,1 tr/tháng mới đổi)`, "South: 1 chute, 3 chute, như FLM SE"),
+    R3("Chute của seller đang chạy", "Mỗi SOC xe thật tới (≥ 5% đơn) một chute; nhóm sort về chute có SOC nhà, còn lại vào chute SOC chính", "Kéo / chạm để đổi ở tab Mạng lưới SPX")])));
+  /* 9. FM pickup và kết luận */
+  body.push(sec("fm", "So với FM pickup và kết luận", "", tb(H3, [
+    R3("Đơn giá FM pickup", `Rider ${n(fm.rS)} + hub ${n(fm.hS)} đ/đơn; hàng to rider ×${nf(fm.rM, 1)}, hub ×${nf(fm.hM, 1)} → 0% hàng to ${n(fmAt(0))} · 35% ${n(fmAt(0.35))} · 100% ${n(fmAt(1))} đ/đơn`, "Giả định của Seller Planner"),
+    R3("Est. tiết kiệm", "FM pickup − (xe + người + rã bao) của tháng: BAU / Mini CP / CP × số ngày (mặc định 25 / 4 / 1)", "Mọi số tiết kiệm đều là ước tính (Est.)"),
+    R3("Kết luận seller mới", "Nên chạy: lời cả tháng, mọi loại ngày không lỗ, kịp COT, đủ người, seller trễ thử vẫn kịp, camera đạt. Chạy được · cần theo dõi: lời, kịp COT, đủ người nhưng có loại ngày lỗ / trễ trong mức cho phép / seller trễ thì trễ COT. Chưa nên: lỗ cả tháng, trễ COT hoặc thiếu người", "Trễ trong mức cho phép không bao giờ cho kết luận xanh"),
+    R3("ADO hoà vốn", "Nhân cả bộ ADO đang nhập (giữ tỷ lệ BAU / Mini CP / CP) tới mức nhỏ nhất mà cả tháng không lỗ; vẽ đường Est. theo ADO", "Cùng engine"),
+    R3("Kết luận seller đang chạy", "Est. kỳ ≥ 0 và engine kết luận “nên chạy” → Nên chạy; Est. ≥ 0 → Theo dõi; Est. < 0 → Chưa đạt", "Est. kỳ dùng tiền xe thật")])));
+  /* 10. phép thử */
+  body.push(sec("stress", "Phép thử sự cố (seller mới)", "Mỗi phép thử chạy hai lần: giữ đúng số người đề xuất (COT còn kịp không, hàng dồn bao nhiêu) và lập lại kế hoạch (cần bao nhiêu người, Est. đổi bao nhiêu).", tb(["Phép thử", "Thay đổi"], [
+    ["Seller giao trễ", "+20′ mọi lượt"], ["ADO cao hơn", "+20% mọi loại ngày"], ["Seller dồn hàng cuối khung", "30% đơn vào 60′ cuối"], ["Năng suất thấp (tuần đầu)", "−15% năng suất sort và không sort"], ["Luật cấm tải mới (HCM)", "Bật vùng cấm TS khi đang tắt"]].map(([a, b]) => `<tr><td class="it">${a}</td><td>${b}</td></tr>`))));
+  /* 11. ghép xe */
+  body.push(sec("mrg", "Ghép xe với tuyến D2S gần", "", tb(H3, [
+    R3("Ứng viên", "Tuyến theo kế hoạch Core có điểm cách ≤ 30 km, chung SOC và lượt; vào chung cả tuyến, không tách điểm", "Như Core"),
+    R3("Est. lợi", "Tiền xe seller đi riêng + tiền xe tuyến đang chạy − tiền xe chạy chung, lập lại đúng kế hoạch; điểm có sẵn dùng đơn/ngày theo nhãn loại ngày thật", "Seller đang chạy: Est. lợi × tỷ lệ đơn thật / đơn mô hình"),
+    R3("Trạng thái", "Ghép được · khác Sup/hub (cần OE duyệt) · trễ trong mức cho phép (theo dõi) · trễ COT · vướng luật OE · không lợi", "Chỉ đề xuất khi vẫn kịp COT và có lời"),
+    R3("Luật OE", RG.map(r => `${r}: ${REF.reg[r].oe ? "chỉ ghép cùng Sup; không ghép tuyến có seller giữ chuyến ghé hub" : "chưa áp"}`).join("<br>"), "OE South đề nghị; vùng khác chờ OE xác nhận")])));
+  /* 12. seller đang chạy */
+  body.push(sec("run", "Seller đang chạy và đòn bẩy", "", tb(H3, [
+    R3("Est. kỳ", "Đơn thật × (FM pickup − người − rã bao, đ/đơn theo mô hình) − tiền xe thật", "Người và rã bao chưa có số thật nên theo mô hình"),
+    R3("Hồ sơ điểm", "ADO theo nhãn loại ngày thật (trung vị các ngày có hàng); SOC và km thật; % hàng to; sức chở của điểm; thời gian xe đứng của điểm; khung giờ theo giờ xe rời thật", "Chạy cùng engine như seller mới"),
+    R3("Đặt xe đúng cỡ, đúng số chuyến", "Khi tiền xe thật/đơn > 1,1 × tiền xe mô hình/đơn: lợi = chênh × đơn thật", "Phần lớn là xe to hơn cần hoặc thừa chuyến"),
+    R3("Gộp 1 chute → BD A, xe đúng cỡ", "Est. mới (xe mô hình của cài đặt mới) − Est. kỳ (xe thật)", "Đã gồm cả phần xe đúng cỡ — không cộng thêm đòn bẩy “đặt xe đúng cỡ”"),
+    R3("Ghép xe · nhóm FM Hub", "Như seller mới, quy theo đơn thật", "—"),
+    R3("Về FM pickup", "Điểm lỗ mà không đòn bẩy nào bù được", "Cân nhắc, không tự động"),
+    R3("Lưu cài đặt sort", "Giữ SOC đích → giữ tiền xe thật, chỉ đổi rã bao; đổi SOC đích → tiền xe theo mô hình đúng cỡ", "Đòn bẩy cộng lại có thể chồng nhau")])));
+  /* 13. cấm tải */
+  const bz = { HCM: `Mặc định: luật suy từ giờ chạy thật của các điểm gần nhau (cụm ≤ 2 km). Luật mới vùng cấm TS (xe từ 1T9 cấm 06:00–22:00, ban ngày chỉ VAN) chỉ áp khi bật ở form`, South: "Không thấy cấm theo giờ trên chuyến thật → không ràng buộc. Cấm theo tuyến (QL13, ĐT743…) chưa mô hình" };
+  body.push(sec("ban", "Cấm tải", "", tb(H3, RG.map(r => { const L = REF.reg[r].pts, c = m => L.filter(q => q.ban && q.ban.m === m).length;
+    return R3(r, bz[r] || "—", `${n(L.length)} điểm: ${c("obs")} theo giờ thật · ${c("restr")} hạn chế · ${c("unk")} chưa đủ dữ liệu · ${c("free")} không ràng buộc${r === "HCM" ? ". Ranh vùng TS vẽ lại từ bản đồ (sai ~0,5–1 km), chờ file ranh giới" : ""}`); }))));
+  /* 14. thiếu dữ liệu → cách xử lý */
+  body.push(sec("gap", "Thiếu dữ liệu và cách mô hình xử lý", "Chỗ nào dữ liệu thiếu hoặc nghi sai, mô hình xử lý thế nào, và cần ai xác nhận để bỏ cách xử lý tạm.", tb(["Thiếu / nghi sai", "Mô hình xử lý", "Cần xác nhận"], [
+    ["Sức chở chuẩn nhà xe không đúng với hàng từng seller", "Học từ số đơn thật trên xe, chỉ tính cái đã thấy (chạm trần / đã chở được)", "—"],
+    ["Xe chạy song song chưa chắc đã đầy", "Chặn số chạm trần trái tỷ lệ thể tích giữa các cỡ xe [2b]", "—"],
+    ["Một tháng, hai vùng quá ít chuyến chạm trần", `Học sức chở trên mọi chuyến ${K && K.from ? `${dd(K.from.d0)}–${dd(K.from.d1)}` : ""}, mọi vùng; số đơn và tiền vẫn theo kỳ`, "—"],
+    ["% hàng to trong file nhảy theo ngày", "Dùng % bình quân của điểm; cho nhập % theo loại ngày", "BI"],
+    [`${ba.length} điểm ghi hàng to = tổng đơn`, "Loại khỏi học đường sức chở; FM pickup vẫn theo file và gắn nhãn", "BI"],
+    ["Seller mới chưa có chuyến", "Đường sức chở theo % hàng to; kèm dải seller giống để đối chiếu", "Seller báo đơn/xe"],
+    ["South chưa có % đơn theo sort code", "Trung bình có trọng số các điểm HCM", "BI / Ops"],
+    [`Mã nhóm sort ${NS2_DRAFT.join(", ")}`, "Bản nháp theo slide mạng lưới", "Ops"],
+    ["Năng suất chưa hiệu chỉnh", "Giả định Seller Planner cũ, cho chỉnh tay; phép thử −15%", "Chấm công 30 ngày theo hub"],
+    ["Giờ bàn giao thật", "Khung COT của vùng; seller đang chạy theo giờ xe rời thật", "Sup"],
+    ["Giá sort trên ASM", `Sort tay ${nf(NETC.man)} đ/đơn; có ô nhập giá và % ASM`, "Ops SOC"],
+    ["Chưa có đường bộ", "Chim bay × 1,3", "—"]].map(([a, b, c]) => `<tr><td class="it">${a}</td><td>${b}</td><td class="src">${c}</td></tr>`))));
+  /* 15. chưa có */
+  body.push(sec("todo", "Chưa có trong model", "Biết trước để không đọc quá kết quả.", tb(["Mục", "Ảnh hưởng"], [
+    ["Model mix", "Chưa chọn D2S / FM pickup / kết hợp theo loại ngày (vd chỉ chạy D2S ngày sale)"], ["Chuyển hàng giữa SOC", "1 chute có thể trông lời hơn thực tế"], ["Thiếu xe linehaul, ngày sale lớn", "Chưa mô phỏng thiếu xe, ngày 11.11, 12.12"],
+    ["Đối soát với seller", "Chưa trừ thời gian đối soát vào năng suất và giờ xe rời"], ["Cấm tải theo tuyến", "Chưa có đường bộ thật"]].map(([a, b]) => `<tr><td class="it">${a}</td><td>${b}</td></tr>`))));
+  $("asm").innerHTML = `<p class="lead">Số đơn, tiền xe thật và lời/lỗ: ${dd(d8[0])} – ${dd(d8[1])}, ${RG.join(" & ")}. Sức chở xe: mọi chuyến đang có${K && K.from ? ` ${dd(K.from.d0)} – ${dd(K.from.d1)}, mọi vùng` : ""}. Mục ghi <b>Giả định</b> là số chưa đo tại điểm, cần Ops xác nhận.</p>
+    <nav class="asm-toc" aria-label="Mục lục">${SEC.map(([id, t]) => `<a href="#asm-${id}">${t}</a>`).join("")}</nav>${body.join("")}`;
+  $("asm").querySelectorAll(".asm-toc a").forEach(a => a.addEventListener("click", e => { e.preventDefault(); const t = document.querySelector(a.getAttribute("href")); if (t) t.scrollIntoView({ behavior: "smooth", block: "start" }); })); }
 
 /* ===== KHỞI ĐỘNG ===== */
 document.querySelectorAll("[data-reg]").forEach(x => x.setAttribute("aria-pressed", x.dataset.reg === R));

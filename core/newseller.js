@@ -39,7 +39,7 @@ function nsRef(C, REF) {
     const ks = [...new Set(L.flatMap(Object.keys))], o = Object.fromEntries(ks.map(x => [x, nsMed(L.map(sh => sh[x] || 0)) || 0])), t = Object.values(o).reduce((a, b) => a + b, 0) || 1;
     for (const x in o) o[x] /= t; SSH[R] = o; SN[R] = { multi: L.length, all: N.length }; }); P.flow1cOn = f0; C.reset();
   C.S.forEach((s, i) => { const act = C.active(i); if (!act.length || !K.sizeOk(i)) return;
-    sel.push({ n: C.nm(i), R: s.R, b: +C.betaOf(i).toFixed(3), c: NS_KS.map(k => Math.round(K.cap(i, k))), ado: Math.round(nsMed(act.map(d => s.v[d]))) }); });
+    sel.push({ n: C.nm(i), R: s.R, b: +C.betaOf(i).toFixed(3), ba: C.bulkAll && C.bulkAll(i) ? 1 : 0, c: NS_KS.map(k => Math.round(K.cap(i, k))), ado: Math.round(nsMed(act.map(d => s.v[d]))) }); });
   /* giờ rời điểm của từng chuyến thật (loại xe, phút, ngày) — để suy luật cấm tải */
   /* CHUYẾN THẬT từng điểm (mỗi lần xe dừng lấy hàng): ngày, giờ tới, giờ rời, đơn lên — lịch xe chung giữ đúng cách điểm đang chạy (xe tới, chất bao lâu, rời lúc nào) theo loại ngày */
   const DT = C.DT || null, DTa = DT, DAYI = (C.DATES || []).map((_, d) => d), STP = {}; Object.values(C.TRP).forEach(t => t[5].forEach(p => { if (p[1] !== 0 || p[4] == null) return; const n = String(C.TRN[p[0]]).trim(); (STP[n] = STP[n] || []).push([t[0], p[4], p[5] ?? p[4], p[2] || 0]); }));
@@ -78,6 +78,8 @@ function nsRef(C, REF) {
         return { n: C.nm(i), ll: g ? [+g[0].toFixed(5), +g[1].toFixed(5)] : null, hub: C.S[i].h || "", sup: C.supOf(i) || "", lock: C.locked(i) ? 1 : 0, solo: (P.soloKeep || []).includes(C.nm(i)) ? 1 : 0,
           soc: Object.fromEntries(Object.entries(sh).filter(e => e[1] >= 0.02).map(([k, v]) => [k, +v.toFixed(3)])), sh: o.map(v => +v.toFixed(3)), dep: dep.map(v => v == null ? null : Math.round(v)),
           ado: Math.round(nsMed(act.map(d => C.S[i].v[d])) || 0), b: +C.betaOf(i).toFixed(3), c: NS_KS.map(k => Math.round(K.cap(i, k))),
+          /* độ tin (c / v / t = cao / vừa / thấp) và nguồn của từng số sức chở; ba = 1: điểm "hàng to = tổng đơn" (≥ 90% số ngày), % hàng to chưa tin được */
+          cf: NS_KS.map(k => (K.conf(i, k) || "thấp")[0]), cs: NS_KS.map(k => K.src(i, k)), ba: C.bulkAll && C.bulkAll(i) ? 1 : 0,
           /* để dựng hồ sơ "như seller mới" cho seller đang chạy: đơn/ngày BAU / Mini CP / CP = P50 / P87 / P97 các ngày có hàng (≈ 25 / 4 / 1 ngày mỗi tháng),
              km thật tới từng SOC, số chute / SOC phải chia, thời gian xe đứng riêng của điểm (cố định, phút mỗi đơn) */
           /* đơn/ngày theo NHÃN LOẠI NGÀY THẬT (BAU / Mini CP / CP của dữ liệu): loại ngày nào điểm có hàng ≥ một nửa số ngày thì = trung vị các ngày có hàng, ít hơn thì 0
@@ -127,7 +129,7 @@ function nsRef(C, REF) {
      khớp đường 1/đơn = (1 − b)/n + b/bk (n: đơn/xe khi 0% hàng to, bk: khi 100%). Ít hơn 5 seller hoặc khớp không hợp lý → đường chung của Core nhân hệ số trung vị.
      Dùng để đổi sức chở theo % hàng to của từng loại ngày; bands = trung vị theo dải % hàng to (để hiện trên trang) */
   const capNorm = {}; NS_KS.forEach(k => { const pts = [];
-    C.S.forEach((s, i) => { if (!C.active(i).length) return; const cf = K.conf(i, k), v = K.cap(i, k); if ((cf === "cao" || cf === "vừa") && v > 0) pts.push([C.betaOf(i), v]); });
+    C.S.forEach((s, i) => { if (!C.active(i).length || (C.bulkAll && C.bulkAll(i))) return; const cf = K.conf(i, k), v = K.cap(i, k); if ((cf === "cao" || cf === "vừa") && v > 0) pts.push([C.betaOf(i), v]); });
     const V = (C.VEH || []).find(u => u.k === k) || { n: 1000, b: 350 }, vc = be => 1 / ((1 - be) / V.n + be / V.b);
     /* neo hai đầu: n = trung vị seller < 10% hàng to, bk = trung vị seller > 75% hàng to (≥ 3 seller mỗi đầu); thiếu đầu nào thì lấy đường chung của Core × hệ số trung vị (thực tế ÷ đường chung) */
     const r = pts.length ? nsMed(pts.map(([be, v]) => v / vc(be))) || 1 : 1, lo = pts.filter(p => p[0] < 0.1).map(p => p[1]), hi = pts.filter(p => p[0] > 0.75).map(p => p[1]);
@@ -136,7 +138,12 @@ function nsRef(C, REF) {
     const bands = [[0, 0.1], [0.1, 0.25], [0.25, 0.5], [0.5, 0.75], [0.75, 1.01]].map(([lo, hi]) => { const a = pts.filter(p => p[0] >= lo && p[0] < hi).map(p => p[1]); return [lo, Math.min(1, hi), a.length ? Math.round(nsMed(a)) : null, a.length]; });
     capNorm[k] = { n: Math.round(n), b: Math.round(bk), N: pts.length, fit, veh: [V.n, V.b], bands }; });
   const dw = C.simK();
-  return { v: 1, sel, reg, capNorm, dw: { fix: +dw.fix.toFixed(2), rate: +dw.rate.toFixed(4), spd: +dw.spd.toFixed(3) },
+  /* ĐƯỜNG SỨC CHỞ THEO % HÀNG TO của Core (seller chạy đầy xe, quy về 1T9, bỏ điểm "hàng to = tổng đơn"): 1T9 = 1 / ((1 − β)/a + β/b), cỡ khác × tỷ lệ thể tích học được (rho).
+     Seller mới lấy sức chở theo đường này tại % hàng to của chính seller (như Core cho seller chưa có chuyến) */
+  const curve = { a: Math.round(K.a), b: Math.round(K.b), rho: Object.fromEntries(Object.entries(K.RHO).map(([k, v]) => [k, +v.toFixed(3)])), nSat: K.nSat, nBA: K.nBA,
+    chk: K.chk ? { n: K.chk.n, p50: +(K.chk.p50 || 0).toFixed(2), p90: +(K.chk.p90 || 0).toFixed(2) } : null, from: K.from || null,
+    dem: (K.dem || []).map(o => ({ n: o.n, k: o.k, from: o.from, c0: o.c0, c: o.c })), bad: Object.values(K.bad || {}).reduce((a, o) => a + Object.values(o).reduce((b, x) => b + x, 0), 0) };
+  return { v: 1, sel, reg, capNorm, curve, dw: { fix: +dw.fix.toFixed(2), rate: +dw.rate.toFixed(4), spd: +dw.spd.toFixed(3) },
     P: { prodBase: P.prodBase, prodHand: P.prodHand, prodChute: P.prodChute, prodBulky: P.prodBulky, fteH: P.fteH, shiftH: P.shiftH, ftePay: P.ftePay, hubPay: P.hubPay, hubKm: P.hubKm, hubSpd: P.hubSpd, poolN: P.poolN, socPay: 520000, ppsRate: P.ppsRate, ppsSpd: P.ppsSpd, closeMin: P.closeMin, open: P.open, maxExtra: P.maxExtra },
     /* đơn giá FM pickup (rider + hub, đ/đơn; hàng to nhân hệ số) — cùng giả định với Seller Planner */
     fm: { rS: 669, rM: 2.2, hS: 632.2157, hM: 1.4 } };
@@ -176,13 +183,19 @@ function nsPlan(ref, x) {
   /* x.rsOv[t] (0–1): phần đơn phải rã bao thêm theo NHÓM SORT (so với FLM chuẩn, tính ở trang từ bảng chute theo nhóm sort) — thay cho phần tính theo SOC ở đây */
   const rsSh = socsT.map((L, t) => Array.isArray(x.rsOv) && x.rsOv[t] != null && isFinite(+x.rsOv[t]) ? Math.min(1, Math.max(0, +x.rsOv[t])) : L.reduce((a, l) => a + l.rsm.reduce((b, n) => b + byS[n].sh, 0), 0) / shS);
   const km0 = socs.length ? socs.reduce((a, o) => a + o.sh * o.km, 0) / shS : 0;
-  /* 1. sức chở theo cỡ xe: trung vị các seller giống (cùng vùng, % hàng to ±10 điểm), hoặc đúng một seller chọn tay; cỡ lớn không chở ít hơn cỡ nhỏ */
-  let pool, how;
+  /* 1. sức chở theo cỡ xe: đúng một seller chọn tay (x.like); không chọn → đường sức chở theo % hàng to học được (ref.curve, như Core cho seller chưa có chuyến);
+     ref cũ không có đường → trung vị các seller giống. Seller giống (cùng vùng, % hàng to ±10 điểm, bỏ điểm "hàng to = tổng đơn") luôn đi kèm làm dải đối chiếu (how.rng).
+     Cỡ lớn không chở ít hơn cỡ nhỏ */
+  let pool, how, cap;
+  const peer = (() => { const ok = ref.sel.filter(s => !s.ba); let p = ok.filter(s => s.R === x.R && Math.abs(s.b - beta) <= 0.1), k = "reg";
+    if (p.length < 3) { p = ok.filter(s => Math.abs(s.b - beta) <= 0.1); k = "all"; }
+    if (p.length < 3) { p = ok.slice().sort((a, b) => Math.abs(a.b - beta) - Math.abs(b.b - beta)).slice(0, 5); k = "near"; } return { p, k }; })();
   if (x.like) { pool = ref.sel.filter(s => s.n === x.like); how = { k: "like", n: pool.length, name: x.like }; }
-  if (!pool || !pool.length) { pool = ref.sel.filter(s => s.R === x.R && Math.abs(s.b - beta) <= 0.1); how = { k: "reg", n: pool.length };
-    if (pool.length < 3) { pool = ref.sel.filter(s => Math.abs(s.b - beta) <= 0.1); how = { k: "all", n: pool.length }; }
-    if (pool.length < 3) { pool = ref.sel.slice().sort((a, b) => Math.abs(a.b - beta) - Math.abs(b.b - beta)).slice(0, 5); how = { k: "near", n: pool.length }; } }
-  const cap = NS_KS.map((k, j) => nsMed(pool.map(s => s.c[j])) || 0); for (let j = 1; j < cap.length; j++) cap[j] = Math.max(cap[j], cap[j - 1]);
+  if (pool && pool.length) cap = NS_KS.map((k, j) => nsMed(pool.map(s => s.c[j])) || 0);
+  else if (ref.curve) { pool = peer.p; how = { k: "curve", n: pool.length, pk: peer.k }; const c19 = 1 / ((1 - beta) / ref.curve.a + beta / ref.curve.b); cap = NS_KS.map(k => c19 * (ref.curve.rho[k] || 0)); }
+  else { pool = peer.p; how = { k: peer.k, n: pool.length }; cap = NS_KS.map((k, j) => nsMed(pool.map(s => s.c[j])) || 0); }
+  how.rng = NS_KS.map((k, j) => { const a = peer.p.map(s => s.c[j]).filter(v => v > 0); return a.length ? [Math.min(...a), Math.round(nsMed(a)), Math.max(...a)] : null; }); how.peers = peer.p.map(s => s.n);
+  for (let j = 1; j < cap.length; j++) cap[j] = Math.max(cap[j], cap[j - 1]);
   /* seller tự báo một xe 1T9 chở bao nhiêu đơn: quy mọi cỡ theo cùng tỷ lệ (giữ tỷ lệ giữa các cỡ đã học) */
   /* SELLER BÁO SỨC CHỞ theo từng cỡ (x.capK = { VAN, 1T25, 1T9, 5T, 8T }, đơn/xe; x.capOv cũ = 1T9): cỡ được nhập dùng đúng số;
      cỡ để trống suy từ cỡ đã nhập gần nhất theo tỷ lệ học được (nằm giữa hai cỡ đã nhập thì nội suy theo hệ số); vẫn giữ cỡ lớn không chở ít hơn cỡ nhỏ */
@@ -217,8 +230,8 @@ function nsPlan(ref, x) {
   const chs = chutesT.map((L, t) => Array.isArray(x.chCnt) && +x.chCnt[t] > 0 ? Math.round(+x.chCnt[t]) : L.length || 1), works = chs.map((c, t) => workOf(c, betaT[t]));
   const rsU = +x.rsCost > 0 ? +x.rsCost : (P.socPay || 520000) / Math.max(1, workOf(st).prod);
   const fmOf = be => (1 - be) * (ref.fm.rS + ref.fm.hS) + be * (ref.fm.rS * ref.fm.rM + ref.fm.hS * ref.fm.hM), fmU = fmOf(beta), fmT = betaT.map(fmOf);
-  /* sức chở theo % hàng to của ngày: tỷ lệ định mức ở % hàng to ngày đó so với % chung (định mức học từ seller đã chạy đầy xe, ref.capNorm) */
-  const fNorm = (k, be) => { const c = ref.capNorm && ref.capNorm[k]; return c ? 1 / ((1 - be) / c.n + be / c.b) : 1; };
+  /* sức chở theo % hàng to của ngày: tỷ lệ định mức ở % hàng to ngày đó so với % chung (đường sức chở theo % hàng to ref.curve; ref cũ: định mức ref.capNorm) */
+  const fNorm = (k, be) => { if (ref.curve) return 1 / ((1 - be) / ref.curve.a + be / ref.curve.b); const c = ref.capNorm && ref.capNorm[k]; return c ? 1 / ((1 - be) / c.n + be / c.b) : 1; };
   const capScT = betaT.map(bt => NS_KS.map(k => Math.abs(bt - beta) < 1e-6 ? 1 : fNorm(k, bt) / Math.max(1e-9, fNorm(k, beta))));
   /* THIẾT LẬP NÂNG CAO (đi site): người cố định mỗi cổng + hàng lệch cổng, năng suất mất do bàn giao phân mảnh / sai lệch, ngày campaign có bạt/lều (chỗ tập kết + năng suất tăng) */
   const gateFix = !!x.gateFix, gateMax = Math.min(1, Math.max(0, (+x.gateMax || 0) / 100)), hoDev = Math.min(0.9, Math.max(0, (+x.hoDev || 0) / 100));

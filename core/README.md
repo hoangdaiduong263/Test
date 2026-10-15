@@ -111,3 +111,7 @@ node core/build_ns2.js <data.js> <out.html> [hubsup.json] [pivot.json]   # NS_FR
 - `nsPlan` nhận thêm `rsOv[t]` (phần đơn rã bao thêm theo sort code, thay phần tính theo SOC), `rsCost` (đ/lần rã bao: tay 260 đ hoặc theo % ASM), `chCnt[t]` (số chute khi nhiều chute cùng SOC). Không truyền thì như cũ.
 - Seller đang chạy: lời/lỗ của kỳ = FM pickup trên số đơn thật − (tiền xe thật + người + rã bao theo mô hình); đòn bẩy so với lời/lỗ thực tế đó.
 - South chưa có trong Volume by Sort Code → % sort code tạm theo trung bình HCM.
+- Sức chở xe học trên **mọi chuyến của `data.js`** (mọi kỳ, mọi vùng) qua `C.adoptK(Core(D0))`; số đơn, tiền xe thật, lời/lỗ vẫn theo kỳ cắt.
+- Seller mới (không chọn "giống seller X", không báo đơn/xe): sức chở = đường sức chở theo % hàng to của Core (`ref.curve`: 1T9 = 1/((1−β)/a + β/b), cỡ khác × tỷ lệ thể tích học được). Dải seller giống (`how.rng`) chỉ để đối chiếu.
+- `learnK` (engine): bỏ điểm "hàng to = tổng đơn" (`bulkAll`: ≥ 90% số ngày hàng to = tổng) khỏi đường [3]; chặn số chạm trần trái tỷ lệ thể tích giữa các cỡ xe (`P.kSatChk` = 0,7, `K.dem`). Thay đổi này áp cho cả Core Planner.
+- Tab **Giả định & ràng buộc** (`drawAsm`): mọi số, luật và cách xử lý chỗ thiếu dữ liệu; dùng chung cho cả hai bộ tab.
