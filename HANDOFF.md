@@ -6,6 +6,14 @@
 - Repo `hoangdaiduong263/Test`, nhánh làm việc `claude/jolly-brahmagupta-enlz0l` (commit gần nhất: capacity fixes + tab Giả định & ràng buộc).
 - Đọc theo thứ tự: `HANDOFF.md` → `core/README.md` (lệnh build, file) → `core/DESIGN.md` (thiết kế engine) → tab **Giả định & ràng buộc** trong trang New Seller (mọi luật, ràng buộc, cách xử lý thiếu dữ liệu; code ở `drawAsm` trong `core/ns2_ui.js`).
 - Node ≥ 18. Test trang dùng Playwright (`npm i playwright` hoặc dùng bản cài sẵn; trên cloud: `NODE_PATH=/opt/node22/lib/node_modules`).
+- Máy local, lần đầu:
+  ```
+  git clone https://github.com/hoangdaiduong263/Test.git D2S && cd D2S   # đã có repo: git fetch origin && git checkout claude/jolly-brahmagupta-enlz0l && git pull
+  git checkout claude/jolly-brahmagupta-enlz0l
+  # giải nén d2s_data.zip vào thư mục này → data/data.js, data/hubsup.json, data/pivot_aug.json
+  npm i playwright && npx playwright install chromium                     # chỉ cần cho core/qa/page_test.js, asm_test.js
+  ```
+- Trang build ra là một file HTML độc lập: mở thẳng `out/D2S_New_Seller.html` trong trình duyệt để xem.
 
 ## 2. Dữ liệu (KHÔNG có trong repo — không commit)
 Đặt vào thư mục `data/` ở gốc repo (đã có trong `.gitignore`):
